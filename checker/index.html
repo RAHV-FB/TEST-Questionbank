@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAHV Question Bank — Checker</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* TOP BAR */
+    #topbar {
+      background: var(--color-primary);
+      color: #fff;
+      padding: 0 20px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-md);
+    }
+
+    #topbar .brand { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+    #topbar a { color: rgba(255,255,255,0.8); font-size: 0.8rem; font-weight: 400; }
+    #topbar a:hover { color: #fff; text-decoration: none; }
+
+    /* NAVIGATION BAR */
+    #navbar {
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .nav-info {
+      font-size: 0.85rem;
+      color: var(--color-text-secondary);
+      font-weight: 500;
+    }
+
+    .nav-counter {
+      font-weight: 700;
+      color: var(--color-primary);
+      background: var(--color-surface-2);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+    }
+
+    .progress-bar-wrap {
+      flex: 1;
+      height: 6px;
+      background: var(--color-border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--color-accent);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    /* MAIN AREA */
+    #main {
+      flex: 1;
+      display: flex;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    /* SIDEBAR */
+    #sidebar {
+      width: 280px;
+      border-right: 1px solid var(--color-border);
+      background: var(--color-surface);
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 12px 16px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-text-muted);
+      border-bottom: 1px solid var(--color-border);
+      position: sticky;
+      top: 0;
+      background: var(--color-surface);
+      z-index: 1;
+    }
+
+    .change-item {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--color-border);
+      cursor: pointer;
+      transition: background 0.12s;
+      position: relative;
+    }
+
+    .change-item:hover { background: var(--color-surface-2); }
+    .change-item.active { background: #eaf4fc; border-left: 3px solid var(--color-accent); }
+
+    .ci-type-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .ci-type-edit  { background: #fff3cd; color: #856404; }
+    .ci-type-group { background: #d4edda; color: #155724; }
+    .ci-type-del   { background: #fde8e8; color: #a01a1a; }
+
+    .ci-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 2px; }
+    .ci-sub { font-size: 0.75rem; color: var(--color-text-muted); }
+
+    /* CONTENT AREA */
+    #content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* EMPTY / LOADING */
+    #empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 300px;
+      text-align: center;
+      color: var(--color-text-muted);
+      gap: 12px;
+    }
+
+    /* DIFF PANEL */
+    .diff-header {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .diff-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) { .diff-grid { grid-template-columns: 1fr; } }
+
+    .diff-col {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--color-border);
+    }
+
+    .diff-col-header {
+      padding: 10px 16px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diff-col-original .diff-col-header { background: #fde8e8; color: #7a1a1a; }
+    .diff-col-edited .diff-col-header   { background: #edf7ed; color: #1a5c1a; }
+
+    .diff-col-body { padding: 16px; font-size: 0.875rem; line-height: 1.7; }
+
+    /* Changed field highlight */
+    .field-changed { background: #fffbe6; border-radius: 3px; padding: 1px 3px; }
+    .field-added   { background: #edf7ed; border-radius: 3px; padding: 1px 3px; }
+    .field-removed { background: #fde8e8; border-radius: 3px; text-decoration: line-through; }
+
+    /* Question preview mini-card */
+    .mini-q {
+      background: var(--color-surface-2);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+
+    .mini-q-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--color-text-muted);
+      margin-bottom: 6px;
+    }
+
+    .mini-q-text { font-size: 0.9rem; line-height: 1.6; }
+
+    /* Group diff */
+    .group-diff-sources {
+      margin-top: 14px;
+    }
+
+    .group-src-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 14px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      background: var(--color-surface-2);
+    }
+
+    .group-src-order {
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--color-primary);
+      color: #fff;
+      border-radius: 50%;
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .group-src-body { flex: 1; }
+    .group-src-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 3px; }
+    .group-src-text { font-size: 0.82rem; color: var(--color-text-secondary); line-height: 1.5; }
+
+    /* Change detail fields */
+    .field-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--color-border);
+      font-size: 0.85rem;
+    }
+
+    .field-row:last-child { border-bottom: none; }
+
+    .field-name {
+      font-weight: 700;
+      color: var(--color-text-muted);
+      min-width: 120px;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      padding-top: 2px;
+    }
+
+    .field-val { flex: 1; word-break: break-word; }
+    .field-val-old { color: #c0392b; }
+    .field-val-new { color: #27ae60; }
+
+    /* Metadata */
+    .change-meta {
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
+      margin-bottom: 14px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* Marks summary */
+    .marks-summary {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      font-size: 0.85rem;
+    }
+
+    .marks-chip {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .marks-before { background: #fde8e8; color: #7a1a1a; }
+    .marks-after  { background: #edf7ed; color: #1a5c1a; }
+
+    /* Section heading */
+    .section-heading {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-text-muted);
+      margin: 16px 0 8px;
+    }
+
+    /* Changelog tab */
+    .log-entry {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .log-entry:last-child { border-bottom: none; }
+
+    .log-action-badge {
+      display: inline-flex;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: var(--color-surface-2);
+      color: var(--color-text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .log-action-edit   { background: #fff3cd; color: #856404; }
+    .log-action-group  { background: #d4edda; color: #155724; }
+    .log-action-delete { background: #fde8e8; color: #a01a1a; }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="brand">
+    <span>🔍 RAHV Question Bank — Checker</span>
+    <a href="../tester/">↗ Tester</a>
+    <a href="../">Home</a>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn btn-sm" id="btn-tab-changes"
+      onclick="switchTab('changes')"
+      style="background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">
+      Changes
+    </button>
+    <button class="btn btn-sm" id="btn-tab-log"
+      onclick="switchTab('log')"
+      style="background:transparent;color:rgba(255,255,255,0.7);border-color:transparent">
+      Changelog
+    </button>
+    <button class="btn btn-ghost btn-sm" id="btn-settings"
+      style="color:#fff;border-color:rgba(255,255,255,0.3)" onclick="openModal('modal-settings')">
+      ⚙ Settings
+    </button>
+    <button class="btn btn-sm" onclick="loadAll()"
+      style="background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">
+      ↺ Refresh
+    </button>
+  </div>
+</div>
+
+<!-- NAV BAR (changes tab) -->
+<div id="navbar">
+  <button class="btn btn-outline btn-sm" id="btn-prev" onclick="navigate(-1)" disabled>← Prev</button>
+  <span class="nav-counter" id="nav-counter">—</span>
+  <button class="btn btn-primary btn-sm" id="btn-next" onclick="navigate(1)" disabled>Next →</button>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+  <span class="nav-info" id="nav-info">Load data to begin</span>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-header">All Changes</div>
+    <div id="sidebar-list">
+      <div style="padding:20px;text-align:center;color:var(--color-text-muted);font-size:0.85rem">
+        Loading changes…
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+    <div id="empty-state">
+      <div style="font-size:3rem">🔍</div>
+      <h2>No change selected</h2>
+      <p>Select a change from the sidebar, or click Next to step through.</p>
+    </div>
+    <div id="diff-view" class="hidden"></div>
+    <div id="log-view" class="hidden"></div>
+  </div>
+</div>
+
+<!-- =============================================
+     SETTINGS MODAL
+     ============================================= -->
+<div class="modal-overlay hidden" id="modal-settings">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙ GitHub Settings</h2>
+      <button class="btn btn-ghost btn-icon" onclick="closeModal('modal-settings')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Personal Access Token</label>
+        <input type="password" id="gh-token" placeholder="ghp_…" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Owner</label>
+          <input type="text" id="gh-owner" placeholder="rahv-questionbank" />
+        </div>
+        <div class="form-group">
+          <label>Repository</label>
+          <input type="text" id="gh-repo" placeholder="TEST-Questionbank" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Branch</label>
+        <input type="text" id="gh-branch" placeholder="main" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-settings')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGHSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+     JAVASCRIPT
+     ============================================= -->
+<script src="../assets/js/csv-utils.js"></script>
+<script src="../assets/js/github-api.js"></script>
+<script src="../assets/js/data-store.js"></script>
+<script>
+/* ============================================
+   State
+   ============================================ */
+let checkerState = {
+  activeTab: 'changes',
+  allChanges: {},    // { id: changeObj }
+  allGroups:  {},    // { id: groupObj }
+  changelog:  [],
+  allRows:    {},    // { subject_file: rows[] }
+  manifest:   null,
+  changesList: [],   // ordered array of change items for navigation
+  currentIdx:  -1,
+};
+
+const BASE_URL = (() => {
+  const p = window.location.pathname;
+  const base = p.replace(/\/checker\/?.*$/, '');
+  return window.location.origin + base;
+})();
+
+let store = new DataStore(GitHubAPI.fromSaved(), BASE_URL);
+
+/* ============================================
+   Boot
+   ============================================ */
+async function init() {
+  loadSettings();
+  await loadAll();
+}
+
+async function loadAll() {
+  try {
+    const [manifest, changes, groups, changelog] = await Promise.all([
+      store.loadManifest(),
+      store.getChanges(),
+      store.getGroups(),
+      store.getChangelog()
+    ]);
+
+    checkerState.manifest  = manifest;
+    checkerState.allChanges = changes;
+    checkerState.allGroups  = groups;
+    checkerState.changelog  = changelog;
+
+    // Load all CSVs in background
+    for (const subj of manifest.subjects) {
+      try {
+        checkerState.allRows[subj.file] = await store.loadCSV(subj.file);
+      } catch { /* ignore */ }
+    }
+
+    buildChangesList();
+    renderSidebar();
+    renderLogView();
+    updateNav();
+
+    // Auto-select first
+    if (checkerState.changesList.length > 0) {
+      selectChange(0);
+    } else {
+      document.getElementById('nav-info').textContent = 'No changes recorded yet.';
+    }
+  } catch (e) {
+    showNotification('Failed to load data: ' + e.message, 'error');
+  }
+}
+
+/* ============================================
+   Build unified changes list
+   ============================================ */
+function buildChangesList() {
+  const list = [];
+
+  // Edits from changes.json
+  Object.entries(checkerState.allChanges).forEach(([id, change]) => {
+    list.push({ type: 'edit', id, data: change });
+  });
+
+  // Groups from groups.json
+  Object.entries(checkerState.allGroups).forEach(([id, group]) => {
+    list.push({ type: 'group', id, data: group });
+  });
+
+  // Sort by timestamp (newest first for sidebar, but we navigate oldest-first)
+  list.sort((a,b) => {
+    const ta = a.data.timestamp || a.data.created_at || '';
+    const tb = b.data.timestamp || b.data.created_at || '';
+    return ta.localeCompare(tb);
+  });
+
+  checkerState.changesList = list;
+}
+
+/* ============================================
+   Sidebar
+   ============================================ */
+function renderSidebar() {
+  const list = document.getElementById('sidebar-list');
+  const items = checkerState.changesList;
+
+  if (items.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--color-text-muted);font-size:0.85rem">No changes recorded yet.<br><a href="../tester/">Open Tester</a> to begin editing.</div>';
+    return;
+  }
+
+  list.innerHTML = items.map((item, idx) => {
+    const typeClass = item.type === 'edit' ? 'ci-type-edit' : 'ci-type-group';
+    const typeLabel = item.type === 'edit' ? '✎ Edit' : '🔗 Group';
+    const title = item.type === 'edit'
+      ? `Q${item.data.original?.question_index || item.id}`
+      : (item.data.title || item.id);
+    const sub = item.type === 'edit'
+      ? (item.data.original?.topic || item.id)
+      : `${item.data.questions?.length || 0} questions`;
+    const ts = item.data.timestamp || item.data.created_at;
+    const date = ts ? new Date(ts).toLocaleDateString() : '';
+
+    return `
+      <div class="change-item" id="ci-${idx}" onclick="selectChange(${idx})">
+        <span class="ci-type-badge ${typeClass}">${typeLabel}</span>
+        <div class="ci-title">${escapeHTML(title)}</div>
+        <div class="ci-sub">${escapeHTML(sub)} ${date ? '· ' + date : ''}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================
+   Navigation
+   ============================================ */
+function navigate(dir) {
+  const next = checkerState.currentIdx + dir;
+  if (next >= 0 && next < checkerState.changesList.length) {
+    selectChange(next);
+  }
+}
+
+function selectChange(idx) {
+  checkerState.currentIdx = idx;
+  // Update sidebar highlight
+  document.querySelectorAll('.change-item').forEach((el,i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  // Scroll into view
+  const el = document.getElementById(`ci-${idx}`);
+  if (el) el.scrollIntoView({ block: 'nearest' });
+  // Render diff
+  const item = checkerState.changesList[idx];
+  if (item) renderDiff(item);
+  updateNav();
+}
+
+function updateNav() {
+  const total = checkerState.changesList.length;
+  const idx   = checkerState.currentIdx;
+
+  document.getElementById('btn-prev').disabled = idx <= 0;
+  document.getElementById('btn-next').disabled = idx >= total - 1;
+  document.getElementById('nav-counter').textContent = total > 0 ? `${idx + 1} / ${total}` : '0 / 0';
+  document.getElementById('nav-info').textContent = `${total} change${total !== 1 ? 's' : ''} recorded`;
+
+  const pct = total > 0 ? ((idx + 1) / total) * 100 : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+/* ============================================
+   Diff Rendering
+   ============================================ */
+function renderDiff(item) {
+  document.getElementById('empty-state').classList.add('hidden');
+  const view = document.getElementById('diff-view');
+  view.classList.remove('hidden');
+
+  if (item.type === 'edit') renderEditDiff(item, view);
+  else if (item.type === 'group') renderGroupDiff(item, view);
+}
+
+function renderEditDiff(item, container) {
+  const { data } = item;
+  const orig = data.original || {};
+  const edit = data.edited   || {};
+  const ts   = data.timestamp ? new Date(data.timestamp).toLocaleString() : 'Unknown';
+
+  // Compute changed fields
+  const allFields = new Set([...Object.keys(orig), ...Object.keys(edit)]);
+  const changed = [...allFields].filter(k => (orig[k]||'') !== (edit[k]||''));
+
+  const origType  = normaliseType(orig.question_type);
+  const editType  = normaliseType(edit.question_type || orig.question_type);
+
+  container.innerHTML = `
+    <div class="diff-header">
+      <span>Q${orig.question_index || '?'}${orig.sub_index ? ' (' + orig.sub_index + ')' : ''}</span>
+      <span class="badge ${typeBadgeClass(origType)}">${origType}</span>
+      ${origType !== editType ? `<span style="color:var(--color-text-muted)">→</span><span class="badge ${typeBadgeClass(editType)}">${editType}</span>` : ''}
+      ${data.needsMoreInfo ? '<span class="badge badge-needs-info">⚠ Needs More Info</span>' : ''}
+      <span style="margin-left:auto;font-size:0.78rem;color:var(--color-text-muted);font-weight:400">${ts}</span>
+    </div>
+
+    <div class="change-meta">
+      <span>Subject: <strong>${orig.subject || '?'}</strong></span>
+      <span>Topic: <strong>${orig.topic || '?'}</strong></span>
+      <span>Subtopic: <strong>${orig.subtopic || '?'}</strong></span>
+      <span>${changed.length} field${changed.length !== 1 ? 's' : ''} changed</span>
+    </div>
+
+    ${data.needsMoreInfo && edit.notes ? `
+      <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:0.875rem">
+        <strong>⚠ Editor Note:</strong> ${escapeHTML(edit.notes)}
+      </div>
+    ` : ''}
+
+    <div class="diff-grid">
+      <div class="diff-col diff-col-original">
+        <div class="diff-col-header">📄 Original</div>
+        <div class="diff-col-body">
+          ${renderQuestionPreview(orig, item.id, false, null)}
+        </div>
+      </div>
+      <div class="diff-col diff-col-edited">
+        <div class="diff-col-header">✎ Edited</div>
+        <div class="diff-col-body">
+          ${renderQuestionPreview(orig, item.id, true, edit)}
+        </div>
+      </div>
+    </div>
+
+    ${changed.length > 0 ? `
+      <div class="section-heading" style="margin-top:20px">Changed Fields</div>
+      <div class="card" style="padding:0">
+        ${changed.map(field => {
+          const ov = orig[field] || '';
+          const nv = edit[field] || '';
+          return `
+            <div class="field-row">
+              <div class="field-name">${escapeHTML(field)}</div>
+              <div class="field-val">
+                <div class="field-val-old">− ${escapeHTML(ov).slice(0, 200)}</div>
+                <div class="field-val-new">+ ${escapeHTML(nv).slice(0, 200)}</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : '<p class="text-muted text-small mt-12">No field changes detected.</p>'}
+  `;
+}
+
+function renderQuestionPreview(orig, changeId, applyEdit, edit) {
+  const q = applyEdit && edit ? { ...orig, ...edit } : orig;
+  const type = normaliseType(q.question_type);
+
+  let html = `
+    <div class="q-meta-row" style="margin-bottom:10px">
+      <span class="badge ${typeBadgeClass(type)}">${type}</span>
+      <span class="q-marks">${q.marks || '?'} mark${q.marks != 1 ? 's' : ''}</span>
+    </div>
+  `;
+
+  if (q.image_path) {
+    html += `<div class="question-image"><img src="../images/${q.image_path}" alt="diagram" /></div>`;
+  }
+
+  html += `<div class="mini-q-text" style="margin-bottom:12px">${q.question_text || '<em>No text</em>'}</div>`;
+
+  if (type === 'MCQ' && q.option_a) {
+    const correct = (q.correct_option || '').toUpperCase();
+    ['a','b','c','d'].forEach(l => {
+      const opt = q[`option_${l}`];
+      if (!opt) return;
+      const key = l.toUpperCase();
+      const isCorrect = applyEdit && key === correct;
+      html += `<div class="mcq-option ${isCorrect ? 'correct-answer' : ''}" style="margin-bottom:5px;padding:6px 10px">
+        <span class="option-label">${key}.</span> ${opt}
+        ${isCorrect ? '<span style="margin-left:auto;color:var(--color-success)">✓</span>' : ''}
+      </div>`;
+    });
+    html += '<div style="margin-top:6px"></div>';
+  }
+
+  html += `
+    <div style="margin-top:12px">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--color-success);margin-bottom:6px">Mark Scheme</div>
+      <div style="font-size:0.82rem;line-height:1.7;color:#1a4d1a">${q.markscheme || '<em>None</em>'}</div>
+    </div>
+  `;
+
+  return html;
+}
+
+function renderGroupDiff(item, container) {
+  const group = item.data;
+  const ts = group.created_at ? new Date(group.created_at).toLocaleString() : 'Unknown';
+
+  // Find source rows
+  const sourceRows = (group.questions || []).map(gq => {
+    let row = null;
+    Object.values(checkerState.allRows).forEach(rows => {
+      const found = rows.find(r => questionId(r) === gq.question_id);
+      if (found) row = found;
+    });
+    return { ...gq, row };
+  }).sort((a,b) => a.order - b.order);
+
+  container.innerHTML = `
+    <div class="diff-header">
+      🔗 Group: <span>${escapeHTML(group.title || group.id)}</span>
+      <span class="badge badge-grouped">${group.format || 'Mixed'}</span>
+      ${group.combined_marks ? `<span class="q-marks">${group.combined_marks} marks total</span>` : ''}
+      <span style="margin-left:auto;font-size:0.78rem;color:var(--color-text-muted);font-weight:400">${ts}</span>
+    </div>
+
+    <div class="change-meta">
+      <span>Subject: <strong>${group.subject || '?'}</strong></span>
+      <span>${sourceRows.length} questions combined</span>
+    </div>
+
+    <div class="diff-grid">
+      <!-- Left: original questions -->
+      <div class="diff-col diff-col-original">
+        <div class="diff-col-header">📄 Source Questions (${sourceRows.length})</div>
+        <div class="diff-col-body">
+          ${sourceRows.map((gq, i) => {
+            if (!gq.row) return `<div class="mini-q text-muted text-small">Q${gq.question_id} — not found</div>`;
+            return `
+              <div class="mini-q">
+                <div class="mini-q-label">Part ${gq.sub_index_label || (i+1)} — Q${gq.row.question_index}${gq.row.sub_index ? '('+gq.row.sub_index+')' : ''}</div>
+                <div class="q-meta-row" style="margin-bottom:7px">
+                  <span class="badge ${typeBadgeClass(normaliseType(gq.row.question_type))}">${normaliseType(gq.row.question_type)}</span>
+                  <span class="q-marks">${gq.row.marks || '?'} mk</span>
+                </div>
+                <div class="mini-q-text">${gq.row.question_text}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Right: combined result -->
+      <div class="diff-col diff-col-edited">
+        <div class="diff-col-header">✎ Combined Result</div>
+        <div class="diff-col-body">
+          <div class="mini-q" style="background:#edf7ed;border:1px solid #b8ddb8">
+            <div class="mini-q-label">Group: ${escapeHTML(group.title || '')}</div>
+            <div class="q-meta-row" style="margin-bottom:8px">
+              <span class="badge badge-grouped">${group.format || 'Mixed'}</span>
+              ${group.combined_marks ? `<span class="q-marks">${group.combined_marks} marks total</span>` : ''}
+            </div>
+            ${sourceRows.map((gq, i) => {
+              if (!gq.row) return '';
+              return `
+                <div style="border-bottom:1px dashed #b8ddb8;padding-bottom:10px;margin-bottom:10px">
+                  <strong style="font-size:0.85rem">(${gq.sub_index_label || String.fromCharCode(97+i)})</strong>
+                  <div class="mini-q-text" style="margin-top:4px">${gq.row.question_text}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${group.markscheme ? `
+            <div style="margin-top:12px">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--color-success);margin-bottom:6px">Combined Mark Scheme</div>
+              <div style="font-size:0.82rem;line-height:1.7;color:#1a4d1a">${group.markscheme}</div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================
+   Changelog View
+   ============================================ */
+function renderLogView() {
+  const view = document.getElementById('log-view');
+  const entries = checkerState.changelog;
+
+  if (!entries.length) {
+    view.innerHTML = '<div style="padding:40px;text-align:center;color:var(--color-text-muted)">No changelog entries yet.</div>';
+    return;
+  }
+
+  view.innerHTML = `
+    <div style="background:var(--color-surface);border-radius:var(--radius-md);border:1px solid var(--color-border);overflow:hidden">
+      ${entries.map(entry => {
+        const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
+        const actionClass = `log-action-${entry.action === 'edit' ? 'edit' : entry.action.includes('delete') ? 'delete' : 'group'}`;
+        return `
+          <div class="log-entry">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span class="log-action-badge ${actionClass}">${entry.action}</span>
+              <span class="text-small text-muted">${ts}</span>
+            </div>
+            <div style="font-size:0.875rem;font-weight:600">${escapeHTML(entry.description || '')}</div>
+            ${entry.questionId ? `<div class="text-small text-muted">ID: ${entry.questionId}</div>` : ''}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+/* ============================================
+   Tab Switching
+   ============================================ */
+function switchTab(tab) {
+  checkerState.activeTab = tab;
+
+  const navBar  = document.getElementById('navbar');
+  const diffV   = document.getElementById('diff-view');
+  const logV    = document.getElementById('log-view');
+  const emptyV  = document.getElementById('empty-state');
+  const sidebar = document.getElementById('sidebar');
+  const btnCh   = document.getElementById('btn-tab-changes');
+  const btnLog  = document.getElementById('btn-tab-log');
+
+  if (tab === 'changes') {
+    navBar.style.display = '';
+    sidebar.style.display = '';
+    logV.classList.add('hidden');
+    emptyV.classList.toggle('hidden', checkerState.currentIdx >= 0);
+    if (checkerState.currentIdx >= 0) diffV.classList.remove('hidden');
+    btnCh.style.background  = 'rgba(255,255,255,0.15)';
+    btnLog.style.background = 'transparent';
+  } else {
+    navBar.style.display = 'none';
+    sidebar.style.display = 'none';
+    diffV.classList.add('hidden');
+    emptyV.classList.add('hidden');
+    logV.classList.remove('hidden');
+    btnLog.style.background  = 'rgba(255,255,255,0.15)';
+    btnCh.style.background = 'transparent';
+  }
+}
+
+/* ============================================
+   Settings
+   ============================================ */
+function loadSettings() {
+  const cfg = GitHubAPI.loadConfig();
+  if (!cfg) return;
+  document.getElementById('gh-token').value  = cfg.token  || '';
+  document.getElementById('gh-owner').value  = cfg.owner  || '';
+  document.getElementById('gh-repo').value   = cfg.repo   || '';
+  document.getElementById('gh-branch').value = cfg.branch || '';
+}
+
+function saveGHSettings() {
+  const cfg = {
+    token:  document.getElementById('gh-token').value.trim(),
+    owner:  document.getElementById('gh-owner').value.trim(),
+    repo:   document.getElementById('gh-repo').value.trim(),
+    branch: document.getElementById('gh-branch').value.trim()
+  };
+  GitHubAPI.saveConfig(cfg);
+  store.api = cfg.token ? new GitHubAPI(cfg) : null;
+  closeModal('modal-settings');
+  showNotification('Settings saved — refreshing…', 'success');
+  setTimeout(loadAll, 500);
+}
+
+/* ============================================
+   Helpers
+   ============================================ */
+function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.add('hidden');
+  });
+});
+
+function showNotification(message, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `notification notification-${type}`;
+  const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+  el.innerHTML = `<span>${icons[type] || 'ℹ'}</span><span>${message}</span>`;
+  document.body.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 0.3s';
+    setTimeout(() => el.remove(), 320);
+  }, 3500);
+}
+
+function escapeHTML(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ============================================
+   Boot
+   ============================================ */
+init();
+</script>
+</body>
+</html>
