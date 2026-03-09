@@ -63,7 +63,12 @@ class DataStore {
       const result = await this.api.readJSON(PATHS.changes);
       if (result && result.data) return result;
     }
-    // Fallback: localStorage
+    // Fallback: try static file served by GitHub Pages
+    try {
+      const data = await this._fetchJSON(PATHS.changes);
+      if (data && typeof data === 'object') return { data, sha: null };
+    } catch { /* not yet deployed or unavailable */ }
+    // Last resort: localStorage
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       const data = raw ? JSON.parse(raw) : { schema_version:'1.0', last_updated:null, changes:{} };
@@ -119,6 +124,10 @@ class DataStore {
       const result = await this.api.readJSON(PATHS.groups);
       if (result && result.data) return result;
     }
+    try {
+      const data = await this._fetchJSON(PATHS.groups);
+      if (data && typeof data === 'object') return { data, sha: null };
+    } catch { /* not yet deployed */ }
     try {
       const raw = localStorage.getItem(GROUPS_KEY);
       const data = raw ? JSON.parse(raw) : { schema_version:'1.0', last_updated:null, groups:{} };
@@ -193,6 +202,10 @@ class DataStore {
       const result = await this.api.readJSON(PATHS.changelog);
       if (result && result.data) return result;
     }
+    try {
+      const data = await this._fetchJSON(PATHS.changelog);
+      if (data && typeof data === 'object') return { data, sha: null };
+    } catch { /* not yet deployed */ }
     try {
       const raw = localStorage.getItem(CLKEY);
       const data = raw ? JSON.parse(raw) : { schema_version:'1.0', entries:[] };
