@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAHV Question Bank — Tester</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    /* ---- Page-specific layout ---- */
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* TOP BAR */
+    #topbar {
+      background: var(--color-primary);
+      color: #fff;
+      padding: 0 20px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-md);
+      z-index: 100;
+    }
+
+    #topbar .brand { font-size: 1rem; font-weight: 700; letter-spacing: 0.3px; display: flex; align-items: center; gap: 10px; }
+    #topbar .brand a { color: #fff; opacity: 0.85; font-size: 0.8rem; font-weight: 400; }
+    #topbar .brand a:hover { opacity: 1; text-decoration: none; }
+
+    #topbar .controls { display: flex; align-items: center; gap: 8px; }
+
+    .edit-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: transparent;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+
+    .edit-toggle:hover { background: rgba(255,255,255,0.12); }
+    .edit-toggle.active { background: var(--color-warning); border-color: var(--color-warning); }
+
+    .toggle-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      transition: background 0.18s;
+    }
+    .edit-toggle.active .toggle-dot { background: #fff; }
+
+    /* FILTER BAR */
+    #filterbar {
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    #filterbar select {
+      width: auto;
+      min-width: 160px;
+      font-size: 0.85rem;
+    }
+
+    #search-input {
+      flex: 1;
+      min-width: 180px;
+      max-width: 320px;
+      font-size: 0.85rem;
+    }
+
+    .filter-info {
+      margin-left: auto;
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
+    }
+
+    /* QUESTION LIST */
+    #main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px 40px;
+    }
+
+    /* QUESTION CARD */
+    .q-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 14px;
+      overflow: hidden;
+      transition: box-shadow 0.18s;
+    }
+
+    .q-card:hover { box-shadow: var(--shadow-md); }
+    .q-card.needs-info { border-color: #ffc107; background: #fffdf0; }
+    .q-card.edited { border-color: #a0c8e0; }
+    .q-card.grouped { border-color: #a8d5b0; }
+
+    /* Q-CARD HEADER */
+    .q-header {
+      padding: 13px 16px 10px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .q-header:hover { background: var(--color-surface-2); }
+
+    .q-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .q-number {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      min-width: 36px;
+    }
+
+    .q-topic-path {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .q-topic-path span { color: var(--color-text-secondary); }
+
+    .q-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .q-marks {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      white-space: nowrap;
+    }
+
+    .q-expand-icon {
+      color: var(--color-text-muted);
+      font-size: 0.8rem;
+      transition: transform 0.18s;
+    }
+
+    .q-card.open .q-expand-icon { transform: rotate(180deg); }
+
+    /* Q-CARD BODY */
+    .q-body {
+      border-top: 1px solid var(--color-border);
+      display: none;
+    }
+
+    .q-card.open .q-body { display: block; }
+
+    .q-part {
+      padding: 16px 18px;
+    }
+
+    .q-part + .q-part {
+      border-top: 1px dashed var(--color-border);
+    }
+
+    .q-part-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--color-text-muted);
+      margin-bottom: 10px;
+    }
+
+    .q-text {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: var(--color-text);
+      margin-bottom: 12px;
+    }
+
+    .q-text img { max-width: 100%; }
+
+    .q-meta-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    /* MCQ */
+    .mcq-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 600px) { .mcq-grid { grid-template-columns: 1fr; } }
+
+    /* Mark scheme toggle */
+    .ms-toggle-btn {
+      background: transparent;
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-sm);
+      padding: 5px 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--color-success);
+      font-weight: 600;
+      transition: all 0.18s;
+    }
+    .ms-toggle-btn:hover { background: #edf7ed; border-color: var(--color-success); }
+    .ms-toggle-btn.open { background: #edf7ed; }
+
+    .markscheme-content {
+      display: none;
+      margin-top: 10px;
+      background: #f4faf4;
+      border: 1px solid #c0ddc0;
+      border-radius: var(--radius-sm);
+      padding: 13px 15px;
+      font-size: 0.875rem;
+      line-height: 1.8;
+      color: #1a4d1a;
+    }
+
+    .markscheme-content.open { display: block; }
+
+    /* CARD FOOTER (edit controls) */
+    .q-footer {
+      display: none;
+      border-top: 1px solid var(--color-border);
+      padding: 10px 16px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .q-card.open .q-footer { display: flex; }
+    body.edit-mode .q-footer { display: flex !important; }
+
+    /* EDIT PANEL */
+    .edit-panel {
+      border-top: 2px solid var(--color-warning);
+      background: #fffdf0;
+      padding: 18px;
+      display: none;
+      animation: slideDown 0.2s ease;
+    }
+
+    .edit-panel.open { display: block; }
+
+    @keyframes slideDown {
+      from { opacity:0; transform: translateY(-10px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    .edit-panel-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--color-border);
+      margin-bottom: 16px;
+    }
+
+    .ep-tab {
+      padding: 7px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      color: var(--color-text-secondary);
+      transition: all 0.15s;
+    }
+
+    .ep-tab:hover { color: var(--color-text); }
+    .ep-tab.active { color: var(--color-accent); border-bottom-color: var(--color-accent); }
+
+    .ep-pane { display: none; }
+    .ep-pane.active { display: block; }
+
+    .ep-save-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .ep-status {
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
+    }
+
+    /* NEEDS-INFO BANNER */
+    .needs-info-banner {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #856404;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* GROUPED question display */
+    .group-banner {
+      background: #edf7ed;
+      border: 1px solid #b8ddb8;
+      border-radius: var(--radius-sm);
+      padding: 7px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #1a5c1a;
+      margin-bottom: 10px;
+    }
+
+    /* LOADING */
+    #loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      gap: 16px;
+      color: var(--color-text-muted);
+    }
+
+    .loading-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    #no-questions {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--color-text-muted);
+    }
+
+    /* STATUS BAR */
+    #statusbar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--color-primary);
+      color: rgba(255,255,255,0.7);
+      font-size: 0.75rem;
+      padding: 5px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 99;
+    }
+
+    #statusbar .status-online  { color: #4ade80; }
+    #statusbar .status-offline { color: #fbbf24; }
+
+    /* GROUP PICKER (in modal) */
+    .group-picker-list {
+      max-height: 320px;
+      overflow-y: auto;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+    }
+
+    .gp-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 9px 13px;
+      border-bottom: 1px solid var(--color-border);
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .gp-item:last-child { border-bottom: none; }
+    .gp-item:hover { background: var(--color-surface-2); }
+    .gp-item.selected { background: #eaf4fc; }
+
+    .gp-item input[type="checkbox"] { margin-top: 3px; flex-shrink: 0; }
+
+    .gp-item-text { flex: 1; font-size: 0.85rem; }
+    .gp-item-title { font-weight: 600; margin-bottom: 2px; }
+    .gp-item-sub { font-size: 0.75rem; color: var(--color-text-muted); }
+
+    .selected-questions-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+    .sq-item {
+      display: grid;
+      grid-template-columns: 1fr 80px 80px;
+      gap: 8px;
+      align-items: center;
+      background: var(--color-surface-2);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+
+    .sq-item-label { font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="brand">
+    <span>📚 RAHV Question Bank</span>
+    <a href="../checker/">↗ Checker</a>
+    <a href="../">Home</a>
+  </div>
+  <div class="controls">
+    <button class="btn btn-ghost btn-sm" id="btn-settings" title="GitHub Settings" style="color:#fff;border-color:rgba(255,255,255,0.3)">
+      ⚙ Settings
+    </button>
+    <button class="edit-toggle" id="btn-edit-mode">
+      <span class="toggle-dot"></span>
+      Edit Mode
+    </button>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div id="filterbar">
+  <select id="sel-subject">
+    <option value="">— Select Subject —</option>
+  </select>
+  <select id="sel-topic">
+    <option value="">All Topics</option>
+  </select>
+  <select id="sel-type">
+    <option value="">All Types</option>
+    <option value="MCQ">MCQ</option>
+    <option value="Short Answer">Short Answer</option>
+    <option value="Long Answer">Long Answer</option>
+    <option value="Structured">Structured</option>
+  </select>
+  <input type="text" id="search-input" placeholder="🔍 Search questions…" />
+  <div class="filter-info" id="filter-info">Select a subject to begin</div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="loading-state" class="hidden">
+    <div class="loading-spinner"></div>
+    <span>Loading questions…</span>
+  </div>
+  <div id="no-questions" class="hidden">
+    <p style="font-size:2rem;margin-bottom:8px">📋</p>
+    <p>No questions match the current filters.</p>
+  </div>
+  <div id="questions-container"></div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="statusbar">
+  <span id="status-mode" class="status-offline">⬤ Local Mode</span>
+  <span id="status-msg">Changes saved locally — configure GitHub in Settings to sync</span>
+</div>
+
+<!-- =============================================
+     MODALS
+     ============================================= -->
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay hidden" id="modal-settings">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙ GitHub Settings</h2>
+      <button class="btn btn-ghost btn-icon" onclick="closeModal('modal-settings')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted text-small mb-12">
+        Configure your GitHub Personal Access Token to save edits directly to the repository.
+        Without this, edits are stored in browser localStorage only.
+      </p>
+      <div class="form-group">
+        <label>Personal Access Token</label>
+        <input type="password" id="gh-token" placeholder="ghp_…" />
+        <span class="text-small text-muted">Requires <code>contents:write</code> permission on this repo.</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Owner / Organisation</label>
+          <input type="text" id="gh-owner" placeholder="rahv-questionbank" />
+        </div>
+        <div class="form-group">
+          <label>Repository</label>
+          <input type="text" id="gh-repo" placeholder="TEST-Questionbank" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Branch</label>
+        <input type="text" id="gh-branch" placeholder="main" />
+      </div>
+      <button class="btn btn-outline btn-sm" id="btn-test-gh">Test Connection</button>
+      <span id="gh-test-result" class="text-small ml-8"></span>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-settings')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGHSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay hidden" id="modal-edit">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2 id="modal-edit-title">Edit Question</h2>
+      <button class="btn btn-ghost btn-icon" onclick="closeModal('modal-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Tabs -->
+      <div class="edit-panel-tabs">
+        <div class="ep-tab active" onclick="switchEPTab(this,'ep-question')">Question</div>
+        <div class="ep-tab" onclick="switchEPTab(this,'ep-markscheme')">Mark Scheme</div>
+        <div class="ep-tab" onclick="switchEPTab(this,'ep-settings')">Settings</div>
+        <div class="ep-tab" onclick="switchEPTab(this,'ep-group')">Grouping</div>
+      </div>
+
+      <!-- Question Tab -->
+      <div class="ep-pane active" id="ep-question">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Question Type</label>
+            <select id="ep-type">
+              <option value="MCQ">MCQ</option>
+              <option value="Short Answer">Short Answer</option>
+              <option value="Long Answer">Long Answer</option>
+              <option value="Structured">Structured</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Marks</label>
+            <input type="number" id="ep-marks" min="1" max="20" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Question Text (HTML allowed)</label>
+          <textarea id="ep-text" rows="5" placeholder="Question text…"></textarea>
+        </div>
+        <div class="form-group" id="ep-mcq-options-group">
+          <label>MCQ Options (A–D)</label>
+          <input type="text" id="ep-opt-a" placeholder="Option A" class="mb-8" />
+          <input type="text" id="ep-opt-b" placeholder="Option B" class="mb-8" />
+          <input type="text" id="ep-opt-c" placeholder="Option C" class="mb-8" />
+          <input type="text" id="ep-opt-d" placeholder="Option D" class="mb-8" />
+          <div class="form-group" style="margin-bottom:0">
+            <label>Correct Option</label>
+            <select id="ep-correct">
+              <option value="A">A</option><option value="B">B</option>
+              <option value="C">C</option><option value="D">D</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Image Path (relative to /images/)</label>
+          <input type="text" id="ep-image" placeholder="e.g. bio_cell_01.png" />
+        </div>
+      </div>
+
+      <!-- Mark Scheme Tab -->
+      <div class="ep-pane" id="ep-markscheme">
+        <div class="form-group">
+          <label>Mark Scheme (HTML allowed)</label>
+          <textarea id="ep-ms" rows="10" placeholder="Mark scheme text…"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Preview</label>
+          <div id="ep-ms-preview" class="markscheme-box" style="min-height:60px"></div>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div class="ep-pane" id="ep-settings">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Difficulty</label>
+            <select id="ep-difficulty">
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Year</label>
+            <input type="text" id="ep-year" placeholder="2023" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Paper</label>
+            <input type="text" id="ep-paper" placeholder="P1" />
+          </div>
+          <div class="form-group">
+            <label>Topic</label>
+            <input type="text" id="ep-topic" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Subtopic</label>
+          <input type="text" id="ep-subtopic" />
+        </div>
+        <div class="form-group">
+          <label>Notes / Editor Comments</label>
+          <textarea id="ep-notes" rows="3" placeholder="Internal notes…"></textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:#fff3cd;border-radius:var(--radius-sm);margin-top:8px;">
+          <input type="checkbox" id="ep-needs-info" style="width:auto;margin:0" />
+          <label for="ep-needs-info" style="font-size:0.875rem;font-weight:600;cursor:pointer;color:#856404">
+            ⚠ Mark as "Needs More Information"
+          </label>
+        </div>
+      </div>
+
+      <!-- Grouping Tab -->
+      <div class="ep-pane" id="ep-group">
+        <p class="text-muted text-small mb-12">
+          Combine this question with others from the same subject into a structured multi-part question.
+          The original CSV files are <strong>not modified</strong>.
+        </p>
+        <div class="form-group">
+          <label>Group Title</label>
+          <input type="text" id="grp-title" placeholder="e.g. Cell Biology — Extended Response" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Overall Format</label>
+            <select id="grp-format">
+              <option value="Mixed">Mixed</option>
+              <option value="MCQ">MCQ</option>
+              <option value="Short Answer">Short Answer</option>
+              <option value="Long Answer">Long Answer</option>
+              <option value="Structured">Structured</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Combined Marks</label>
+            <input type="number" id="grp-marks" min="1" max="30" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Select Questions to Group (same subject)</label>
+          <input type="text" id="grp-search" placeholder="🔍 Filter questions…" style="margin-bottom:8px" />
+          <div class="group-picker-list" id="grp-picker"></div>
+        </div>
+        <div class="form-group">
+          <label>Selected Questions — Set Order &amp; Sub-index</label>
+          <div class="selected-questions-list" id="grp-selected"></div>
+        </div>
+        <div class="form-group">
+          <label>Combined Mark Scheme (optional override)</label>
+          <textarea id="grp-ms" rows="4" placeholder="Overall mark scheme for the group…"></textarea>
+        </div>
+        <div id="grp-existing-info" class="hidden" style="background:#edf7ed;border:1px solid #b8ddb8;border-radius:var(--radius-sm);padding:10px 14px;font-size:0.85rem;margin-top:8px;">
+          <strong>Existing group:</strong> <span id="grp-existing-id"></span>
+          <button class="btn btn-danger btn-sm" onclick="deleteCurrentGroup()" style="margin-left:8px">Delete Group</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-edit')">Cancel</button>
+      <button class="btn btn-warning" id="btn-save-group" onclick="saveGroup()">Save Group</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Save Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+     JAVASCRIPT
+     ============================================= -->
+<script src="../assets/js/csv-utils.js"></script>
+<script src="../assets/js/github-api.js"></script>
+<script src="../assets/js/data-store.js"></script>
+<script>
+/* ============================================
+   App State
+   ============================================ */
+let state = {
+  subjects: [],
+  currentSubject: null,
+  allRows: [],          // raw CSV rows for current subject
+  allGroups: {},        // groups from groups.json
+  allChanges: {},       // changes from changes.json
+  editMode: false,
+  currentEditId: null,  // questionId being edited
+  currentEditRow: null, // the raw row being edited
+  currentGroupId: null, // group being edited (if any)
+};
+
+// Determine base URL for fetching static files
+const BASE_URL = (() => {
+  const p = window.location.pathname;
+  // Remove /tester/ or /tester/index.html from path
+  const base = p.replace(/\/tester\/?.*$/, '');
+  return window.location.origin + base;
+})();
+
+let store = new DataStore(GitHubAPI.fromSaved(), BASE_URL);
+
+/* ============================================
+   Initialisation
+   ============================================ */
+async function init() {
+  updateStatusBar();
+  await loadManifest();
+  loadSettings();
+  setupEventListeners();
+}
+
+async function loadManifest() {
+  try {
+    const manifest = await store.loadManifest();
+    state.subjects = manifest.subjects || [];
+    const sel = document.getElementById('sel-subject');
+    state.subjects.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.file;
+      opt.textContent = `${s.icon || ''} ${s.name}`;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    showNotification('Failed to load subject manifest: ' + e.message, 'error');
+  }
+}
+
+function setupEventListeners() {
+  document.getElementById('sel-subject').addEventListener('change', onSubjectChange);
+  document.getElementById('sel-topic').addEventListener('change', renderQuestions);
+  document.getElementById('sel-type').addEventListener('change', renderQuestions);
+  document.getElementById('search-input').addEventListener('input', renderQuestions);
+  document.getElementById('btn-edit-mode').addEventListener('click', toggleEditMode);
+  document.getElementById('btn-settings').addEventListener('click', () => openModal('modal-settings'));
+  document.getElementById('btn-test-gh').addEventListener('click', testGHConnection);
+
+  // Mark scheme live preview
+  document.getElementById('ep-ms').addEventListener('input', e => {
+    document.getElementById('ep-ms-preview').innerHTML = e.target.value;
+  });
+  // MCQ toggle in edit panel
+  document.getElementById('ep-type').addEventListener('change', e => {
+    const mcq = e.target.value === 'MCQ';
+    document.getElementById('ep-mcq-options-group').style.display = mcq ? '' : 'none';
+  });
+  // Group search
+  document.getElementById('grp-search').addEventListener('input', filterGroupPicker);
+}
+
+/* ============================================
+   Subject / Data Loading
+   ============================================ */
+async function onSubjectChange() {
+  const file = document.getElementById('sel-subject').value;
+  if (!file) return;
+
+  const subjectObj = state.subjects.find(s => s.file === file);
+  state.currentSubject = subjectObj;
+
+  showLoading(true);
+  try {
+    // Load CSV
+    state.allRows = await store.loadCSV(file);
+    // Load changes and groups
+    [state.allChanges, state.allGroups] = await Promise.all([
+      store.getChanges(),
+      store.getGroups()
+    ]);
+    // Populate topic filter
+    populateTopicFilter();
+    renderQuestions();
+  } catch (e) {
+    showNotification('Error loading data: ' + e.message, 'error');
+    document.getElementById('filter-info').textContent = 'Error loading questions.';
+  } finally {
+    showLoading(false);
+  }
+}
+
+function populateTopicFilter() {
+  const topics = [...new Set(state.allRows.map(r => r.topic).filter(Boolean))];
+  const sel = document.getElementById('sel-topic');
+  sel.innerHTML = '<option value="">All Topics</option>';
+  topics.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    sel.appendChild(opt);
+  });
+}
+
+/* ============================================
+   Render Questions
+   ============================================ */
+function renderQuestions() {
+  const topicFilter = document.getElementById('sel-topic').value;
+  const typeFilter  = document.getElementById('sel-type').value;
+  const search      = document.getElementById('search-input').value.toLowerCase().trim();
+  const container   = document.getElementById('questions-container');
+  container.innerHTML = '';
+
+  if (!state.allRows.length) {
+    document.getElementById('no-questions').classList.remove('hidden');
+    document.getElementById('filter-info').textContent = '';
+    return;
+  }
+
+  // Apply filters to individual rows
+  let rows = state.allRows.filter(row => {
+    if (topicFilter && row.topic !== topicFilter) return false;
+    if (typeFilter) {
+      const nt = normaliseType(row.question_type);
+      if (nt !== typeFilter) return false;
+    }
+    if (search) {
+      const haystack = [row.question_text, row.topic, row.subtopic,
+                        row.question_index, row.sub_index, row.notes].join(' ').toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+
+  // Group into logical questions (by question_index)
+  const grouped = groupQuestions(rows);
+
+  if (grouped.length === 0) {
+    document.getElementById('no-questions').classList.remove('hidden');
+    document.getElementById('filter-info').textContent = '0 questions';
+    return;
+  }
+
+  document.getElementById('no-questions').classList.add('hidden');
+  document.getElementById('filter-info').textContent = `${grouped.length} question${grouped.length > 1 ? 's' : ''}`;
+
+  grouped.forEach(qGroup => {
+    const card = buildQuestionCard(qGroup);
+    container.appendChild(card);
+  });
+}
+
+/* ============================================
+   Build Question Card
+   ============================================ */
+function buildQuestionCard(qGroup) {
+  const { mainIndex, topic, subtopic, parts } = qGroup;
+
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  card.id = `card-${mainIndex}`;
+
+  // Check for edits/flags/groups on any part
+  const partIds = parts.map(p => questionId(p));
+  const anyChange = partIds.some(id => state.allChanges[id]);
+  const anyNeedsInfo = partIds.some(id => state.allChanges[id]?.needsMoreInfo);
+  const relatedGroup = Object.values(state.allGroups).find(g =>
+    g.questions && g.questions.some(q => partIds.includes(q.question_id))
+  );
+
+  if (anyNeedsInfo) card.classList.add('needs-info');
+  else if (relatedGroup) card.classList.add('grouped');
+  else if (anyChange) card.classList.add('edited');
+
+  // Build marks summary
+  const totalMarks = parts.reduce((sum, p) => {
+    const ch = state.allChanges[questionId(p)];
+    return sum + parseInt((ch?.edited?.marks) || p.marks || 0, 10);
+  }, 0);
+
+  const subjectColour = state.currentSubject?.color || '#3498db';
+
+  // -- HEADER --
+  const header = document.createElement('div');
+  header.className = 'q-header';
+  header.onclick = () => toggleCard(card);
+  header.innerHTML = `
+    <div class="q-meta">
+      <span class="q-number" style="color:${subjectColour}">Q${mainIndex}</span>
+      ${buildTypeBadges(parts)}
+      ${anyNeedsInfo ? '<span class="badge badge-needs-info">⚠ Needs Info</span>' : ''}
+      ${relatedGroup ? '<span class="badge badge-grouped">🔗 Grouped</span>' : ''}
+      ${anyChange && !anyNeedsInfo ? '<span class="badge badge-edited">✎ Edited</span>' : ''}
+      <span class="q-topic-path">
+        <span>${topic || ''}</span>
+        ${subtopic ? `<span style="color:var(--color-text-muted)">›</span><span>${subtopic}</span>` : ''}
+      </span>
+    </div>
+    <div class="q-right">
+      <span class="q-marks">${totalMarks} mk</span>
+      <span class="q-expand-icon">▼</span>
+    </div>
+  `;
+
+  // -- BODY --
+  const body = document.createElement('div');
+  body.className = 'q-body';
+
+  // Group banner
+  if (relatedGroup) {
+    body.innerHTML += `<div class="group-banner">🔗 Part of group: <strong>${relatedGroup.title || relatedGroup.id}</strong></div>`;
+  }
+
+  // Render each part
+  parts.forEach((part, i) => {
+    const pid = questionId(part);
+    const change = state.allChanges[pid];
+    // Apply edits if any
+    const effective = change ? { ...part, ...change.edited } : part;
+    const partEl = buildPartElement(part, effective, change, parts.length > 1, i);
+    body.appendChild(partEl);
+  });
+
+  // -- FOOTER (edit controls) --
+  const footer = document.createElement('div');
+  footer.className = 'q-footer';
+  footer.innerHTML = `
+    <button class="btn btn-sm btn-outline" onclick="openEditModal('${mainIndex}', null)">✎ Edit Q${mainIndex}</button>
+    ${parts.length > 1 ? parts.map((p,i) =>
+      `<button class="btn btn-sm btn-ghost" onclick="openEditModal('${mainIndex}','${p.sub_index || i}')">Edit part ${p.sub_index || (i+1)}</button>`
+    ).join('') : ''}
+  `;
+
+  card.appendChild(header);
+  card.appendChild(body);
+  card.appendChild(footer);
+  return card;
+}
+
+function buildTypeBadges(parts) {
+  const types = [...new Set(parts.map(p => normaliseType(p.question_type)))];
+  return types.map(t => `<span class="badge ${typeBadgeClass(t)}">${t}</span>`).join('');
+}
+
+function buildPartElement(original, effective, change, isMultiPart, partIdx) {
+  const pid = questionId(original);
+  const el = document.createElement('div');
+  el.className = 'q-part';
+  el.id = `part-${pid}`;
+
+  const type = normaliseType(effective.question_type);
+
+  let html = '';
+
+  if (isMultiPart) {
+    const label = effective.sub_index ? `(${effective.sub_index})` : `Part ${partIdx + 1}`;
+    html += `<div class="q-part-label">${label}</div>`;
+  }
+
+  // Needs info banner
+  if (change?.needsMoreInfo) {
+    html += `<div class="needs-info-banner">⚠ This question needs more information. <em>${change.edited?.notes || ''}</em></div>`;
+  }
+
+  // Meta badges row
+  html += `<div class="q-meta-row">
+    <span class="badge ${typeBadgeClass(type)}">${type}</span>
+    <span class="badge badge-difficulty-${(effective.difficulty||'medium').toLowerCase()}">${effective.difficulty || ''}</span>
+    ${effective.year ? `<span class="badge" style="background:#f0f2f5;color:#5a6a7a">${effective.year}</span>` : ''}
+    ${effective.paper ? `<span class="badge" style="background:#f0f2f5;color:#5a6a7a">${effective.paper}</span>` : ''}
+    <span class="q-marks" style="margin-left:auto">${effective.marks || '?'} mark${effective.marks != 1 ? 's' : ''}</span>
+  </div>`;
+
+  // Image (before text if present)
+  if (effective.image_path) {
+    html += `<div class="question-image"><img src="../images/${effective.image_path}" alt="Question diagram" loading="lazy" /></div>`;
+  }
+
+  // Question text
+  html += `<div class="q-text">${effective.question_text || ''}</div>`;
+
+  // MCQ options
+  if (type === 'MCQ') {
+    html += buildMCQHTML(effective, change);
+  }
+
+  // Mark scheme toggle
+  html += `
+    <div>
+      <button class="ms-toggle-btn" onclick="toggleMS(this, '${pid}')">▶ Show Mark Scheme</button>
+      <div class="markscheme-content" id="ms-${pid}">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--color-success);margin-bottom:8px">Mark Scheme</div>
+        ${effective.markscheme || '<em>No mark scheme provided.</em>'}
+      </div>
+    </div>
+  `;
+
+  // Edit button per part (in edit mode)
+  if (state.editMode) {
+    html += `<div style="margin-top:10px"><button class="btn btn-sm btn-warning" onclick="openEditModal('${original.question_index}','${original.sub_index}')">✎ Edit This Part</button></div>`;
+  }
+
+  el.innerHTML = html;
+  return el;
+}
+
+function buildMCQHTML(q, change) {
+  const opts = [
+    { key: 'A', text: q.option_a },
+    { key: 'B', text: q.option_b },
+    { key: 'C', text: q.option_c },
+    { key: 'D', text: q.option_d },
+  ].filter(o => o.text);
+
+  const correct = (q.correct_option || '').toUpperCase();
+
+  return `<div class="mcq-grid">${opts.map(o => `
+    <div class="mcq-option ${state.editMode && o.key === correct ? 'correct-answer' : ''}">
+      <span class="option-label">${o.key}.</span>
+      <span>${o.text}</span>
+      ${state.editMode && o.key === correct ? '<span style="margin-left:auto;color:var(--color-success)">✓</span>' : ''}
+    </div>
+  `).join('')}</div>`;
+}
+
+/* ============================================
+   Card Interaction
+   ============================================ */
+function toggleCard(card) {
+  card.classList.toggle('open');
+}
+
+function toggleMS(btn, pid) {
+  const ms = document.getElementById(`ms-${pid}`);
+  ms.classList.toggle('open');
+  btn.classList.toggle('open');
+  btn.textContent = ms.classList.contains('open') ? '▼ Hide Mark Scheme' : '▶ Show Mark Scheme';
+}
+
+/* ============================================
+   Edit Mode
+   ============================================ */
+function toggleEditMode() {
+  state.editMode = !state.editMode;
+  document.body.classList.toggle('edit-mode', state.editMode);
+  const btn = document.getElementById('btn-edit-mode');
+  btn.classList.toggle('active', state.editMode);
+  btn.innerHTML = `<span class="toggle-dot"></span>${state.editMode ? 'Exit Edit Mode' : 'Edit Mode'}`;
+
+  // Re-render to show/hide edit controls
+  if (state.allRows.length) renderQuestions();
+}
+
+/* ============================================
+   Edit Modal
+   ============================================ */
+function openEditModal(questionIndex, subIndex) {
+  // Find the specific row
+  let row;
+  if (subIndex !== null && subIndex !== '') {
+    row = state.allRows.find(r =>
+      r.question_index === questionIndex && r.sub_index === subIndex
+    );
+  } else {
+    // For single-part question or first part
+    row = state.allRows.find(r => r.question_index === questionIndex);
+  }
+
+  if (!row) {
+    showNotification('Question row not found', 'error');
+    return;
+  }
+
+  state.currentEditRow = row;
+  state.currentEditId  = questionId(row);
+
+  const change = state.allChanges[state.currentEditId];
+  const eff = change ? { ...row, ...change.edited } : row;
+
+  // Set modal title
+  document.getElementById('modal-edit-title').textContent =
+    `Edit Q${row.question_index}${row.sub_index ? '(' + row.sub_index + ')' : ''} — ${row.topic}`;
+
+  // Populate fields
+  document.getElementById('ep-type').value   = normaliseType(eff.question_type);
+  document.getElementById('ep-marks').value  = eff.marks || '';
+  document.getElementById('ep-text').value   = eff.question_text || '';
+  document.getElementById('ep-opt-a').value  = eff.option_a || '';
+  document.getElementById('ep-opt-b').value  = eff.option_b || '';
+  document.getElementById('ep-opt-c').value  = eff.option_c || '';
+  document.getElementById('ep-opt-d').value  = eff.option_d || '';
+  document.getElementById('ep-correct').value= (eff.correct_option || 'A').toUpperCase();
+  document.getElementById('ep-image').value  = eff.image_path || '';
+  document.getElementById('ep-ms').value     = eff.markscheme || '';
+  document.getElementById('ep-ms-preview').innerHTML = eff.markscheme || '';
+  document.getElementById('ep-difficulty').value = eff.difficulty || 'Medium';
+  document.getElementById('ep-year').value   = eff.year || '';
+  document.getElementById('ep-paper').value  = eff.paper || '';
+  document.getElementById('ep-topic').value  = eff.topic || '';
+  document.getElementById('ep-subtopic').value = eff.subtopic || '';
+  document.getElementById('ep-notes').value  = (change?.edited?.notes) || eff.notes || '';
+  document.getElementById('ep-needs-info').checked = !!(change?.needsMoreInfo);
+
+  // MCQ options visibility
+  const isMCQ = normaliseType(eff.question_type) === 'MCQ';
+  document.getElementById('ep-mcq-options-group').style.display = isMCQ ? '' : 'none';
+
+  // Grouping tab
+  buildGroupPicker(row);
+  checkExistingGroup(state.currentEditId);
+
+  // Switch to first tab
+  switchEPTab(document.querySelector('.ep-tab'), 'ep-question');
+  openModal('modal-edit');
+}
+
+async function saveEdit() {
+  const row = state.currentEditRow;
+  if (!row) return;
+
+  const type = document.getElementById('ep-type').value;
+  const isMCQ = type === 'MCQ';
+
+  const edited = {
+    question_type: type,
+    marks:         document.getElementById('ep-marks').value,
+    question_text: document.getElementById('ep-text').value,
+    markscheme:    document.getElementById('ep-ms').value,
+    difficulty:    document.getElementById('ep-difficulty').value,
+    year:          document.getElementById('ep-year').value,
+    paper:         document.getElementById('ep-paper').value,
+    topic:         document.getElementById('ep-topic').value,
+    subtopic:      document.getElementById('ep-subtopic').value,
+    notes:         document.getElementById('ep-notes').value,
+    image_path:    document.getElementById('ep-image').value,
+  };
+
+  if (isMCQ) {
+    edited.option_a = document.getElementById('ep-opt-a').value;
+    edited.option_b = document.getElementById('ep-opt-b').value;
+    edited.option_c = document.getElementById('ep-opt-c').value;
+    edited.option_d = document.getElementById('ep-opt-d').value;
+    edited.correct_option = document.getElementById('ep-correct').value;
+  }
+
+  const needsMoreInfo = document.getElementById('ep-needs-info').checked;
+
+  const changeData = {
+    original:     { ...row },
+    edited,
+    needsMoreInfo,
+    status: 'edited'
+  };
+
+  const logMsg = `Q${row.question_index}${row.sub_index ? '('+row.sub_index+')' : ''}: edited question`;
+
+  try {
+    await store.saveChange(state.currentEditId, changeData, logMsg);
+    state.allChanges[state.currentEditId] = changeData;
+    showNotification('Edit saved' + (store.isOnline ? ' to GitHub' : ' locally'), 'success');
+    closeModal('modal-edit');
+    renderQuestions();
+  } catch (e) {
+    showNotification('Save failed: ' + e.message, 'error');
+  }
+}
+
+/* ============================================
+   Group Builder
+   ============================================ */
+let pickerSelections = {}; // { questionId: { row, order, subIndexLabel } }
+
+function buildGroupPicker(currentRow) {
+  pickerSelections = {};
+  pickerSelections[questionId(currentRow)] = {
+    row: currentRow,
+    order: 1,
+    subIndexLabel: 'a'
+  };
+
+  renderGroupPicker('');
+  renderSelectedList();
+}
+
+function renderGroupPicker(filter) {
+  const container = document.getElementById('grp-picker');
+  const rows = state.allRows;
+  const f = filter.toLowerCase();
+
+  const items = rows.filter(r => {
+    if (!f) return true;
+    const hay = [r.question_text, r.topic, r.subtopic, r.question_index].join(' ').toLowerCase();
+    return hay.includes(f);
+  });
+
+  // Group by question_index
+  const byIdx = {};
+  items.forEach(r => {
+    const idx = r.question_index;
+    if (!byIdx[idx]) byIdx[idx] = [];
+    byIdx[idx].push(r);
+  });
+
+  container.innerHTML = '';
+  Object.entries(byIdx).forEach(([idx, parts]) => {
+    const pid = questionId(parts[0]);
+    const isSel = !!pickerSelections[pid];
+    const div = document.createElement('div');
+    div.className = 'gp-item' + (isSel ? ' selected' : '');
+    div.innerHTML = `
+      <input type="checkbox" ${isSel ? 'checked' : ''} onchange="togglePickerSelect('${idx}', this)" />
+      <div class="gp-item-text">
+        <div class="gp-item-title">Q${idx} — ${parts.map(p => normaliseType(p.question_type)).join('/')} &nbsp; <span style="color:var(--color-text-muted);font-size:0.75rem">${parts[0].marks || '?'} mk</span></div>
+        <div class="gp-item-sub">${parts[0].topic} › ${parts[0].subtopic} &nbsp;|&nbsp; ${parts[0].question_text.replace(/<[^>]+>/g,'').slice(0,60)}…</div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function togglePickerSelect(questionIndex, checkbox) {
+  const row = state.allRows.find(r => r.question_index === questionIndex);
+  if (!row) return;
+  const pid = questionId(row);
+  if (checkbox.checked) {
+    const order = Object.keys(pickerSelections).length + 1;
+    const labels = 'abcdefghijklmnop';
+    pickerSelections[pid] = { row, order, subIndexLabel: labels[order - 1] || order };
+  } else {
+    delete pickerSelections[pid];
+  }
+  // Re-number
+  Object.values(pickerSelections).sort((a,b) => a.order - b.order).forEach((sel, i) => {
+    sel.order = i + 1;
+  });
+  renderSelectedList();
+  renderGroupPicker(document.getElementById('grp-search').value);
+}
+
+function filterGroupPicker() {
+  renderGroupPicker(document.getElementById('grp-search').value);
+}
+
+function renderSelectedList() {
+  const container = document.getElementById('grp-selected');
+  const sorted = Object.values(pickerSelections).sort((a,b) => a.order - b.order);
+  container.innerHTML = sorted.map(sel => `
+    <div class="sq-item">
+      <div>
+        <div class="sq-item-label">Q${sel.row.question_index}${sel.row.sub_index ? '('+sel.row.sub_index+')' : ''}</div>
+        <div class="text-small text-muted">${sel.row.topic}</div>
+      </div>
+      <input type="text" value="${sel.subIndexLabel}" placeholder="label"
+        onchange="updatePickerLabel('${questionId(sel.row)}', this.value)"
+        style="font-size:0.8rem;padding:4px 8px" title="Sub-index label" />
+      <input type="number" value="${sel.order}" min="1"
+        onchange="updatePickerOrder('${questionId(sel.row)}', this.value)"
+        style="font-size:0.8rem;padding:4px 8px" title="Order" />
+    </div>
+  `).join('') || '<div class="text-muted text-small">No questions selected</div>';
+}
+
+function updatePickerLabel(pid, val) {
+  if (pickerSelections[pid]) pickerSelections[pid].subIndexLabel = val;
+}
+
+function updatePickerOrder(pid, val) {
+  if (pickerSelections[pid]) {
+    pickerSelections[pid].order = parseInt(val, 10);
+    renderSelectedList();
+  }
+}
+
+function checkExistingGroup(pid) {
+  const existing = Object.values(state.allGroups).find(g =>
+    g.questions && g.questions.some(q => q.question_id === pid)
+  );
+  const info = document.getElementById('grp-existing-info');
+  if (existing) {
+    state.currentGroupId = existing.id;
+    document.getElementById('grp-existing-id').textContent = existing.id;
+    document.getElementById('grp-title').value = existing.title || '';
+    document.getElementById('grp-format').value = existing.format || 'Mixed';
+    document.getElementById('grp-marks').value = existing.combined_marks || '';
+    document.getElementById('grp-ms').value = existing.markscheme || '';
+    info.classList.remove('hidden');
+    // Rebuild selection from existing group
+    pickerSelections = {};
+    existing.questions.forEach(q => {
+      const row = state.allRows.find(r => questionId(r) === q.question_id);
+      if (row) pickerSelections[q.question_id] = { row, order: q.order, subIndexLabel: q.sub_index_label || '' };
+    });
+    renderSelectedList();
+  } else {
+    state.currentGroupId = null;
+    info.classList.add('hidden');
+    document.getElementById('grp-title').value = '';
+    document.getElementById('grp-marks').value = '';
+    document.getElementById('grp-ms').value = '';
+  }
+}
+
+async function saveGroup() {
+  const selections = Object.values(pickerSelections);
+  if (selections.length < 2) {
+    showNotification('Select at least 2 questions to create a group', 'warning');
+    switchEPTab(document.querySelectorAll('.ep-tab')[3], 'ep-group');
+    return;
+  }
+
+  const group = {
+    id: state.currentGroupId || ('group_' + Date.now()),
+    subject: state.currentSubject?.name || '',
+    title: document.getElementById('grp-title').value || 'Untitled Group',
+    format: document.getElementById('grp-format').value,
+    combined_marks: parseInt(document.getElementById('grp-marks').value, 10) || null,
+    markscheme: document.getElementById('grp-ms').value,
+    questions: selections.sort((a,b) => a.order - b.order).map(sel => ({
+      question_id: questionId(sel.row),
+      sub_index_label: sel.subIndexLabel,
+      order: sel.order,
+      type_override: null
+    })),
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    await store.saveGroup(group);
+    state.allGroups[group.id] = group;
+    showNotification('Group saved' + (store.isOnline ? ' to GitHub' : ' locally'), 'success');
+    closeModal('modal-edit');
+    renderQuestions();
+  } catch (e) {
+    showNotification('Failed to save group: ' + e.message, 'error');
+  }
+}
+
+async function deleteCurrentGroup() {
+  if (!state.currentGroupId) return;
+  if (!confirm('Delete this group?')) return;
+  try {
+    await store.deleteGroup(state.currentGroupId);
+    delete state.allGroups[state.currentGroupId];
+    state.currentGroupId = null;
+    showNotification('Group deleted', 'success');
+    closeModal('modal-edit');
+    renderQuestions();
+  } catch (e) {
+    showNotification('Failed to delete group: ' + e.message, 'error');
+  }
+}
+
+/* ============================================
+   Settings
+   ============================================ */
+function loadSettings() {
+  const cfg = GitHubAPI.loadConfig();
+  if (!cfg) return;
+  document.getElementById('gh-token').value  = cfg.token  || '';
+  document.getElementById('gh-owner').value  = cfg.owner  || '';
+  document.getElementById('gh-repo').value   = cfg.repo   || '';
+  document.getElementById('gh-branch').value = cfg.branch || '';
+}
+
+function saveGHSettings() {
+  const cfg = {
+    token:  document.getElementById('gh-token').value.trim(),
+    owner:  document.getElementById('gh-owner').value.trim(),
+    repo:   document.getElementById('gh-repo').value.trim(),
+    branch: document.getElementById('gh-branch').value.trim()
+  };
+  GitHubAPI.saveConfig(cfg);
+  store.api = cfg.token ? new GitHubAPI(cfg) : null;
+  updateStatusBar();
+  closeModal('modal-settings');
+  showNotification('Settings saved', 'success');
+}
+
+async function testGHConnection() {
+  const cfg = {
+    token:  document.getElementById('gh-token').value.trim(),
+    owner:  document.getElementById('gh-owner').value.trim(),
+    repo:   document.getElementById('gh-repo').value.trim(),
+    branch: document.getElementById('gh-branch').value.trim()
+  };
+  const result = document.getElementById('gh-test-result');
+  result.textContent = '⏳ Testing…';
+  try {
+    const api = new GitHubAPI(cfg);
+    const ok = await api.testConnection();
+    result.textContent = ok ? '✅ Connected!' : '❌ Connection failed';
+    result.style.color = ok ? 'var(--color-success)' : 'var(--color-danger)';
+  } catch (e) {
+    result.textContent = '❌ Error: ' + e.message;
+    result.style.color = 'var(--color-danger)';
+  }
+}
+
+function updateStatusBar() {
+  const mode = document.getElementById('status-mode');
+  const msg  = document.getElementById('status-msg');
+  if (store.api) {
+    const cfg = GitHubAPI.loadConfig();
+    mode.className = 'status-online';
+    mode.textContent = '⬤ GitHub Connected';
+    msg.textContent = `${cfg.owner}/${cfg.repo} @ ${cfg.branch}`;
+  } else {
+    mode.className = 'status-offline';
+    mode.textContent = '⬤ Local Mode';
+    msg.textContent = 'Changes saved locally — configure GitHub in Settings to sync';
+  }
+}
+
+/* ============================================
+   Modal Helpers
+   ============================================ */
+function openModal(id) {
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+function switchEPTab(tabEl, paneId) {
+  document.querySelectorAll('.ep-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.ep-pane').forEach(p => p.classList.remove('active'));
+  tabEl.classList.add('active');
+  document.getElementById(paneId).classList.add('active');
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.add('hidden');
+  });
+});
+
+/* ============================================
+   Notifications
+   ============================================ */
+function showNotification(message, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `notification notification-${type}`;
+  const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+  el.innerHTML = `<span>${icons[type] || 'ℹ'}</span><span>${message}</span>`;
+  document.body.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 0.3s';
+    setTimeout(() => el.remove(), 320);
+  }, 3500);
+}
+
+/* ============================================
+   Loading State
+   ============================================ */
+function showLoading(show) {
+  document.getElementById('loading-state').classList.toggle('hidden', !show);
+  document.getElementById('questions-container').style.display = show ? 'none' : '';
+}
+
+/* ============================================
+   Boot
+   ============================================ */
+init();
+</script>
+</body>
+</html>
