@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
   <title>RAHV Question Bank — Tester</title>
   <link rel="stylesheet" href="../assets/css/style.css" />
   <style>
@@ -345,9 +347,9 @@
 </div>
 
 <!-- =====================  SCRIPTS  ===================== -->
-<script src="../assets/js/csv-utils.js"></script>
-<script src="../assets/js/github-api.js"></script>
-<script src="../assets/js/data-store.js"></script>
+<script src="../assets/js/csv-utils.js?v=20260310b"></script>
+<script src="../assets/js/github-api.js?v=20260310b"></script>
+<script src="../assets/js/data-store.js?v=20260310b"></script>
 <script>
 /* ============================================
    App State
@@ -642,10 +644,13 @@ function buildPartEl(row, change, isChild, partIdx) {
   }
 
   // Meta tags
+  const lvl = (eff.level||'').trim();
   html += `<div class="q-meta-row">
-    <span class="badge badge-difficulty-medium" style="display:${eff.level?'inline-flex':'none'}">${(eff.level||'').toUpperCase()}</span>
-    ${eff.paper    ? `<span class="badge" style="background:#f0f2f5;color:#5a6a7a">Paper ${eff.paper}</span>` : ''}
-    ${eff.command_term ? `<span class="badge" style="background:#f0eafe;color:#5a1aa0">${eff.command_term}</span>` : ''}
+    ${lvl ? `<span class="badge" style="background:#e8f4fd;color:#1a5a8a">${lvl.toUpperCase()}</span>` : ''}
+    ${eff.paper       ? `<span class="badge" style="background:#f0f2f5;color:#5a6a7a">Paper ${eff.paper}</span>` : ''}
+    ${eff.exam        ? `<span class="badge" style="background:#f0f2f5;color:#5a6a7a;font-size:.67rem">${formatExam(eff.exam)}</span>` : ''}
+    ${eff.command_term? `<span class="badge" style="background:#f0eafe;color:#5a1aa0">${eff.command_term}</span>` : ''}
+    ${(eff.needs_context||'').toUpperCase()==='TRUE' ? `<span class="badge" style="background:#fff8e6;color:#8a6000;font-size:.67rem" title="This question accompanied a stimulus/context in the original exam">📎 Context</span>` : ''}
     <span class="q-marks" style="margin-left:auto">${eff.marks||'?'} mark${eff.marks!=1?'s':''}</span>
   </div>`;
 
@@ -980,6 +985,16 @@ function updateStatusBar() {
     mode.className='status-offline'; mode.textContent='⬤ Local Mode';
     msg.textContent='Edits saved in browser';
   }
+}
+function formatExam(exam) {
+  if (!exam) return '';
+  // De-duplicate "Example questions Example questions" → "Example"
+  const parts = exam.split(' ');
+  const half = Math.ceil(parts.length / 2);
+  const first = parts.slice(0, half).join(' ');
+  const second = parts.slice(half).join(' ');
+  const deduped = first === second ? first : exam;
+  return deduped.replace('Example questions', 'Example').slice(0, 20);
 }
 function flashSaved() {
   const el = document.getElementById('status-saved');
