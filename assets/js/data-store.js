@@ -4,7 +4,9 @@
  *  - Reading question CSVs
  *  - Reading/writing changes.json, groups.json, changelog.json
  *
- * Falls back to localStorage when GitHub API is not configured.
+ * Priority for local mode (no GitHub):
+ *   localStorage is the primary store.
+ *   Static JSON files are only used as a fallback seed if localStorage is empty.
  */
 
 const PATHS = {
@@ -19,20 +21,11 @@ const GROUPS_KEY  = 'qb_draft_groups';
 const CLKEY       = 'qb_draft_changelog';
 
 class DataStore {
-  /**
-   * @param {GitHubAPI|null} api - GitHub API instance, or null for local-only mode
-   * @param {string} baseURL - Base URL for fetching static assets (e.g. CSV files)
-   */
   constructor(api, baseURL) {
     this.api     = api;
     this.baseURL = baseURL.replace(/\/$/, '');
   }
 
-  // -------------------------
-  // CSV / Question loading
-  // -------------------------
-
-  /** Fetch text from the static site (no auth needed). */
   async _fetchText(path) {
     const url = `${this.baseURL}/${path}`;
     const res = await fetch(url);
@@ -60,20 +53,28 @@ class DataStore {
 
   async _getChanges() {
     if (this.api) {
-      const result = await this.api.readJSON(PATHS.changes);
-      if (result && result.data) return result;
+      try {
+        const result = await this.api.readJSON(PATHS.changes);
+        if (result && result.data) return result;
+      } catch { /* fall through to local */ }
     }
-    // Fallback: try static file served by GitHub Pages
+
+    // Local mode: localStorage is PRIMARY. Only seed from static file if empty.
+    const lsRaw = (() => { try { return localStorage.getItem(DRAFT_KEY); } catch { return null; } })();
+    if (lsRaw) {
+      try {
+        const data = JSON.parse(lsRaw);
+        return { data, sha: null };
+      } catch { /* corrupt, ignore */ }
+    }
+
+    // Seed from static file once (first visit)
     try {
       const data = await this._fetchJSON(PATHS.changes);
       if (data && typeof data === 'object') return { data, sha: null };
-    } catch { /* not yet deployed or unavailable */ }
-    // Last resort: localStorage
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      const data = raw ? JSON.parse(raw) : { schema_version:'1.0', last_updated:null, changes:{} };
-      return { data, sha: null };
-    } catch { return { data:{ schema_version:'1.0', last_updated:null, changes:{} }, sha:null }; }
+    } catch { /* not yet deployed */ }
+
+    return { data: { schema_version: '1.0', last_updated: null, changes: {} }, sha: null };
   }
 
   async getChanges() {
@@ -81,12 +82,6 @@ class DataStore {
     return result.data.changes || {};
   }
 
-  /**
-   * Save a single question change.
-   * @param {string} id         - questionId()
-   * @param {object} changeData - { original, edited, status, needsMoreInfo }
-   * @param {string} logMessage - Human-readable description for changelog
-   */
   async saveChange(id, changeData, logMessage) {
     const result = await this._getChanges();
     const store  = result.data;
@@ -100,11 +95,10 @@ class DataStore {
     if (this.api) {
       const msg = `edit: ${logMessage} [${id}]`;
       await this.api.writeJSON(PATHS.changes, store, msg, result.sha || null);
-    } else {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(store));
     }
+    // Always persist to localStorage
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(store)); } catch { /* quota */ }
 
-    // Always log
     await this._appendLog({
       timestamp: new Date().toISOString(),
       action: 'edit',
@@ -121,18 +115,26 @@ class DataStore {
 
   async _getGroups() {
     if (this.api) {
-      const result = await this.api.readJSON(PATHS.groups);
-      if (result && result.data) return result;
+      try {
+        const result = await this.api.readJSON(PATHS.groups);
+        if (result && result.data) return result;
+      } catch { /* fall through */ }
     }
+
+    const lsRaw = (() => { try { return localStorage.getItem(GROUPS_KEY); } catch { return null; } })();
+    if (lsRaw) {
+      try {
+        const data = JSON.parse(lsRaw);
+        return { data, sha: null };
+      } catch { /* corrupt */ }
+    }
+
     try {
       const data = await this._fetchJSON(PATHS.groups);
       if (data && typeof data === 'object') return { data, sha: null };
     } catch { /* not yet deployed */ }
-    try {
-      const raw = localStorage.getItem(GROUPS_KEY);
-      const data = raw ? JSON.parse(raw) : { schema_version:'1.0', last_updated:null, groups:{} };
-      return { data, sha: null };
-    } catch { return { data:{ schema_version:'1.0', last_updated:null, groups:{} }, sha:null }; }
+
+    return { data: { schema_version: '1.0', last_updated: null, groups: {} }, sha: null };
   }
 
   async getGroups() {
@@ -152,9 +154,8 @@ class DataStore {
     if (this.api) {
       const msg = `group: create/update group ${group.id} — ${group.title || ''}`;
       await this.api.writeJSON(PATHS.groups, store, msg, result.sha || null);
-    } else {
-      localStorage.setItem(GROUPS_KEY, JSON.stringify(store));
     }
+    try { localStorage.setItem(GROUPS_KEY, JSON.stringify(store)); } catch { /* quota */ }
 
     await this._appendLog({
       timestamp: new Date().toISOString(),
@@ -177,9 +178,8 @@ class DataStore {
 
     if (this.api) {
       await this.api.writeJSON(PATHS.groups, store, `group: delete ${groupId}`, result.sha || null);
-    } else {
-      localStorage.setItem(GROUPS_KEY, JSON.stringify(store));
     }
+    try { localStorage.setItem(GROUPS_KEY, JSON.stringify(store)); } catch { /* quota */ }
 
     if (removed) {
       await this._appendLog({
@@ -199,18 +199,26 @@ class DataStore {
 
   async _getChangelog() {
     if (this.api) {
-      const result = await this.api.readJSON(PATHS.changelog);
-      if (result && result.data) return result;
+      try {
+        const result = await this.api.readJSON(PATHS.changelog);
+        if (result && result.data) return result;
+      } catch { /* fall through */ }
     }
+
+    const lsRaw = (() => { try { return localStorage.getItem(CLKEY); } catch { return null; } })();
+    if (lsRaw) {
+      try {
+        const data = JSON.parse(lsRaw);
+        return { data, sha: null };
+      } catch { /* corrupt */ }
+    }
+
     try {
       const data = await this._fetchJSON(PATHS.changelog);
       if (data && typeof data === 'object') return { data, sha: null };
     } catch { /* not yet deployed */ }
-    try {
-      const raw = localStorage.getItem(CLKEY);
-      const data = raw ? JSON.parse(raw) : { schema_version:'1.0', entries:[] };
-      return { data, sha: null };
-    } catch { return { data:{ schema_version:'1.0', entries:[] }, sha:null }; }
+
+    return { data: { schema_version: '1.0', entries: [] }, sha: null };
   }
 
   async getChangelog() {
@@ -221,18 +229,13 @@ class DataStore {
   async _appendLog(entry) {
     const result = await this._getChangelog();
     const store  = result.data;
-    store.entries.unshift(entry); // newest first
+    store.entries.unshift(entry);
 
     if (this.api) {
       await this.api.writeJSON(PATHS.changelog, store, `log: ${entry.description}`, result.sha || null);
-    } else {
-      localStorage.setItem(CLKEY, JSON.stringify(store));
     }
+    try { localStorage.setItem(CLKEY, JSON.stringify(store)); } catch { /* quota */ }
   }
-
-  // -------------------------
-  // Utility
-  // -------------------------
 
   get isOnline() { return !!this.api; }
 }
