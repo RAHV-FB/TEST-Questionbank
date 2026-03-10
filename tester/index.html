@@ -424,6 +424,44 @@
     }
 
     .sq-item-label { font-weight: 600; }
+
+    /* FORMATTING TOOLBAR */
+    .format-toolbar {
+      display: flex;
+      gap: 3px;
+      padding: 5px 6px;
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border-strong);
+      border-bottom: none;
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      flex-wrap: wrap;
+    }
+    .format-toolbar + textarea {
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    }
+    .format-toolbar button {
+      padding: 3px 7px;
+      border: 1px solid var(--color-border);
+      border-radius: 3px;
+      background: var(--color-surface);
+      cursor: pointer;
+      font-size: 0.78rem;
+      line-height: 1.2;
+      min-width: 26px;
+      text-align: center;
+      color: var(--color-text);
+      transition: all 0.12s;
+    }
+    .format-toolbar button:hover {
+      background: var(--color-accent);
+      color: #fff;
+      border-color: var(--color-accent);
+    }
+    .fmt-sep {
+      width: 1px;
+      background: var(--color-border);
+      margin: 2px 3px;
+    }
   </style>
 </head>
 <body>
@@ -563,7 +601,18 @@
           </div>
         </div>
         <div class="form-group">
-          <label>Question Text (HTML allowed)</label>
+          <label>Question Text</label>
+          <div class="format-toolbar">
+            <button type="button" onclick="fmtTag('ep-text','b')" title="Bold"><b>B</b></button>
+            <button type="button" onclick="fmtTag('ep-text','i')" title="Italic"><i>I</i></button>
+            <button type="button" onclick="fmtTag('ep-text','u')" title="Underline"><u>U</u></button>
+            <div class="fmt-sep"></div>
+            <button type="button" onclick="fmtTag('ep-text','sup')" title="Superscript">x<sup>2</sup></button>
+            <button type="button" onclick="fmtTag('ep-text','sub')" title="Subscript">x<sub>2</sub></button>
+            <div class="fmt-sep"></div>
+            <button type="button" onclick="fmtInsert('ep-text','<br>')" title="Line Break">BR</button>
+            <button type="button" onclick="fmtInsert('ep-text','<br><br>')" title="Paragraph Break">P</button>
+          </div>
           <textarea id="ep-text" rows="5" placeholder="Question text…"></textarea>
         </div>
         <div class="form-group" id="ep-mcq-options-group">
@@ -589,7 +638,19 @@
       <!-- Mark Scheme Tab -->
       <div class="ep-pane" id="ep-markscheme">
         <div class="form-group">
-          <label>Mark Scheme (HTML allowed)</label>
+          <label>Mark Scheme</label>
+          <div class="format-toolbar">
+            <button type="button" onclick="fmtTag('ep-ms','b')" title="Bold"><b>B</b></button>
+            <button type="button" onclick="fmtTag('ep-ms','i')" title="Italic"><i>I</i></button>
+            <button type="button" onclick="fmtTag('ep-ms','u')" title="Underline"><u>U</u></button>
+            <div class="fmt-sep"></div>
+            <button type="button" onclick="fmtTag('ep-ms','sup')" title="Superscript">x<sup>2</sup></button>
+            <button type="button" onclick="fmtTag('ep-ms','sub')" title="Subscript">x<sub>2</sub></button>
+            <div class="fmt-sep"></div>
+            <button type="button" onclick="fmtInsert('ep-ms','<br>')" title="Line Break">BR</button>
+            <button type="button" onclick="fmtInsert('ep-ms','<br><br>')" title="Paragraph Break">P</button>
+            <button type="button" onclick="fmtInsert('ep-ms',' [1]')" title="Mark allocation">[1]</button>
+          </div>
           <textarea id="ep-ms" rows="10" placeholder="Mark scheme text…"></textarea>
         </div>
         <div class="form-group">
@@ -677,6 +738,17 @@
         </div>
         <div class="form-group">
           <label>Combined Mark Scheme (optional override)</label>
+          <div class="format-toolbar">
+            <button type="button" onclick="fmtTag('grp-ms','b')" title="Bold"><b>B</b></button>
+            <button type="button" onclick="fmtTag('grp-ms','i')" title="Italic"><i>I</i></button>
+            <button type="button" onclick="fmtTag('grp-ms','u')" title="Underline"><u>U</u></button>
+            <div class="fmt-sep"></div>
+            <button type="button" onclick="fmtTag('grp-ms','sup')" title="Superscript">x<sup>2</sup></button>
+            <button type="button" onclick="fmtTag('grp-ms','sub')" title="Subscript">x<sub>2</sub></button>
+            <div class="fmt-sep"></div>
+            <button type="button" onclick="fmtInsert('grp-ms','<br>')" title="Line Break">BR</button>
+            <button type="button" onclick="fmtInsert('grp-ms',' [1]')" title="Mark allocation">[1]</button>
+          </div>
           <textarea id="grp-ms" rows="4" placeholder="Overall mark scheme for the group…"></textarea>
         </div>
         <div id="grp-existing-info" class="hidden" style="background:#edf7ed;border:1px solid #b8ddb8;border-radius:var(--radius-sm);padding:10px 14px;font-size:0.85rem;margin-top:8px;">
@@ -1471,6 +1543,54 @@ function showNotification(message, type = 'info') {
 function showLoading(show) {
   document.getElementById('loading-state').classList.toggle('hidden', !show);
   document.getElementById('questions-container').style.display = show ? 'none' : '';
+}
+
+/* ============================================
+   Formatting Toolbar
+   ============================================ */
+function fmtTag(id, tag) {
+  const ta = document.getElementById(id);
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.substring(s, e);
+  const rep = `<${tag}>${sel}</${tag}>`;
+  ta.setRangeText(rep, s, e, 'end');
+  ta.focus();
+  // Update preview if it's the markscheme
+  if (id === 'ep-ms') {
+    document.getElementById('ep-ms-preview').innerHTML = ta.value;
+  }
+}
+
+function fmtInsert(id, text) {
+  const ta = document.getElementById(id);
+  const s = ta.selectionStart;
+  ta.setRangeText(text, s, s, 'end');
+  ta.focus();
+  if (id === 'ep-ms') {
+    document.getElementById('ep-ms-preview').innerHTML = ta.value;
+  }
+}
+
+/* ============================================
+   localStorage Persistence
+   ============================================ */
+const LS_SUBJECT_KEY = 'qb_last_subject';
+
+function saveSubjectChoice(file) {
+  try { localStorage.setItem(LS_SUBJECT_KEY, file); } catch {}
+}
+
+function restoreSubjectChoice() {
+  try {
+    const saved = localStorage.getItem(LS_SUBJECT_KEY);
+    if (saved) {
+      const sel = document.getElementById('sel-subject');
+      if ([...sel.options].some(o => o.value === saved)) {
+        sel.value = saved;
+        onSubjectChange();
+      }
+    }
+  } catch {}
 }
 
 /* ============================================
