@@ -6,190 +6,128 @@
   <title>RAHV Question Bank — Tester</title>
   <link rel="stylesheet" href="../assets/css/style.css" />
   <style>
-    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    body { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 
     /* TOP BAR */
-    #topbar {
-      background: var(--color-primary);
-      color: #fff;
-      padding: 0 20px;
-      height: 52px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-      box-shadow: var(--shadow-md);
-      z-index: 100;
-    }
-    #topbar .brand { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
-    #topbar .brand a { color: #fff; opacity: 0.7; font-size: 0.8rem; font-weight: 400; }
-    #topbar .brand a:hover { opacity: 1; text-decoration: none; }
-    #topbar .controls { display: flex; align-items: center; gap: 8px; }
-
-    .edit-toggle {
-      display: flex; align-items: center; gap: 6px;
-      padding: 5px 12px; border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.3);
-      background: transparent; color: #fff;
-      font-size: 0.8rem; font-weight: 600; cursor: pointer;
-      transition: all 0.15s;
-    }
-    .edit-toggle:hover { background: rgba(255,255,255,0.12); }
-    .edit-toggle.active { background: var(--color-warning); border-color: var(--color-warning); }
-    .toggle-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.4); transition: background 0.15s; }
-    .edit-toggle.active .toggle-dot { background: #fff; }
+    #topbar { background:var(--color-primary); color:#fff; padding:0 20px; height:52px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; box-shadow:var(--shadow-md); z-index:100; }
+    #topbar .brand { font-size:1rem; font-weight:700; display:flex; align-items:center; gap:10px; }
+    #topbar .brand a { color:#fff; opacity:.7; font-size:.8rem; font-weight:400; }
+    #topbar .brand a:hover { opacity:1; text-decoration:none; }
+    #topbar .controls { display:flex; align-items:center; gap:8px; }
+    .edit-toggle { display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; border:1px solid rgba(255,255,255,.3); background:transparent; color:#fff; font-size:.8rem; font-weight:600; cursor:pointer; transition:all .15s; }
+    .edit-toggle:hover { background:rgba(255,255,255,.12); }
+    .edit-toggle.active { background:var(--color-warning); border-color:var(--color-warning); }
+    .toggle-dot { width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.4); transition:background .15s; }
+    .edit-toggle.active .toggle-dot { background:#fff; }
 
     /* FILTER BAR */
-    #filterbar {
-      background: var(--color-surface);
-      border-bottom: 1px solid var(--color-border);
-      padding: 8px 16px;
-      display: flex; align-items: center; gap: 10px;
-      flex-wrap: wrap; flex-shrink: 0;
-    }
-    #filterbar select { width: auto; min-width: 150px; font-size: 0.85rem; }
-    #search-input { flex: 1; min-width: 160px; max-width: 300px; font-size: 0.85rem; }
-    .filter-info { margin-left: auto; font-size: 0.78rem; color: var(--color-text-muted); }
+    #filterbar { background:var(--color-surface); border-bottom:1px solid var(--color-border); padding:8px 16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex-shrink:0; }
+    #filterbar select { width:auto; min-width:140px; font-size:.84rem; }
+    #search-input { flex:1; min-width:140px; max-width:280px; font-size:.84rem; }
+    .filter-info { margin-left:auto; font-size:.77rem; color:var(--color-text-muted); white-space:nowrap; }
 
-    /* QUESTION LIST */
-    #main { flex: 1; overflow-y: auto; padding: 14px 16px 50px; }
+    /* MAIN */
+    #main { flex:1; overflow-y:auto; padding:12px 16px 50px; }
 
     /* QUESTION CARD */
-    .q-card {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 10px; overflow: hidden;
-      transition: box-shadow 0.15s;
-    }
-    .q-card:hover { box-shadow: var(--shadow-md); }
-    .q-card.needs-info { border-color: #ffc107; }
-    .q-card.edited { border-color: #a0c8e0; }
-    .q-card.grouped { border-color: #a8d5b0; }
+    .q-card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); box-shadow:var(--shadow-sm); margin-bottom:8px; overflow:hidden; transition:box-shadow .15s; }
+    .q-card:hover { box-shadow:var(--shadow-md); }
+    .q-card.needs-info { border-color:#ffc107; }
+    .q-card.edited { border-color:#a0c8e0; }
+    .q-card.grouped { border-color:#a8d5b0; }
 
-    /* Q-CARD HEADER */
-    .q-header {
-      padding: 11px 14px 9px;
-      display: flex; align-items: flex-start;
-      justify-content: space-between; gap: 10px;
-      cursor: pointer; user-select: none;
-    }
-    .q-header:hover { background: var(--color-surface-2); }
-    .q-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-    .q-number { font-size: 0.9rem; font-weight: 700; color: var(--color-primary); min-width: 36px; }
-    .q-topic-path { font-size: 0.74rem; color: var(--color-text-muted); display: flex; align-items: center; gap: 4px; }
-    .q-topic-path span { color: var(--color-text-secondary); }
-    .q-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-    .q-marks { font-size: 0.78rem; font-weight: 600; color: var(--color-text-secondary); white-space: nowrap; }
-    .q-expand-icon { color: var(--color-text-muted); font-size: 0.8rem; transition: transform 0.15s; }
-    .q-card.open .q-expand-icon { transform: rotate(180deg); }
+    /* CARD HEADER */
+    .q-header { padding:9px 13px 8px; display:flex; align-items:flex-start; justify-content:space-between; gap:10px; cursor:pointer; user-select:none; }
+    .q-header:hover { background:var(--color-surface-2); }
+    .q-meta { display:flex; align-items:center; flex-wrap:wrap; gap:5px; min-width:0; flex:1; }
+    .q-ref { font-size:.72rem; font-weight:700; font-family:var(--font-mono); color:var(--color-text-secondary); white-space:nowrap; }
+    .q-topic-path { font-size:.73rem; color:var(--color-text-muted); display:flex; align-items:center; gap:3px; min-width:0; }
+    .q-topic-path span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .q-right { display:flex; align-items:center; gap:7px; flex-shrink:0; }
+    .q-marks { font-size:.77rem; font-weight:600; color:var(--color-text-secondary); white-space:nowrap; }
+    .q-expand-icon { color:var(--color-text-muted); font-size:.75rem; transition:transform .15s; }
+    .q-card.open .q-expand-icon { transform:rotate(180deg); }
 
-    /* Q-CARD BODY */
-    .q-body { border-top: 1px solid var(--color-border); display: none; }
-    .q-card.open .q-body { display: block; }
+    /* CARD BODY */
+    .q-body { border-top:1px solid var(--color-border); display:none; }
+    .q-card.open .q-body { display:block; }
 
-    .q-part { padding: 14px 16px; }
-    .q-part + .q-part { border-top: 1px dashed var(--color-border); }
-    .q-part-label { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--color-text-muted); margin-bottom: 8px; }
-    .q-text { font-size: 0.95rem; line-height: 1.75; color: var(--color-text); margin-bottom: 10px; user-select: text; }
-    .q-text img { max-width: 100%; }
-    .q-meta-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+    .q-part { padding:14px 16px; }
+    .q-part + .q-part { border-top:1px dashed var(--color-border); }
+    .q-part-label { font-size:.73rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--color-text-muted); margin-bottom:7px; }
 
-    /* MCQ */
-    .mcq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
-    @media (max-width: 600px) { .mcq-grid { grid-template-columns: 1fr; } }
+    .q-meta-row { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:10px; align-items:center; }
+    .q-meta-tags { display:flex; gap:4px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
+
+    /* Question body text */
+    .q-text { font-size:.95rem; line-height:1.75; color:var(--color-text); margin-bottom:10px; user-select:text; }
+    .q-text img { max-width:100%; height:auto; border-radius:4px; border:1px solid var(--color-border); display:block; margin:8px auto; }
+    .q-text p { margin-bottom:6px; }
+    .q-text p:last-child { margin-bottom:0; }
+
+    /* MCQ option styling - options are inline in the HTML */
+    /* We add .mcq-body class to MCQ question text container */
+    .mcq-body { font-size:.93rem; line-height:1.7; }
 
     /* Mark scheme */
-    .ms-toggle-btn {
-      background: transparent; border: 1px solid var(--color-border-strong);
-      border-radius: var(--radius-sm); padding: 4px 11px; font-size: 0.8rem;
-      cursor: pointer; color: var(--color-success); font-weight: 600; transition: all 0.15s;
-    }
-    .ms-toggle-btn:hover { background: #edf7ed; border-color: var(--color-success); }
-    .ms-toggle-btn.open { background: #edf7ed; }
-    .markscheme-content {
-      display: none; margin-top: 8px; background: #f4faf4;
-      border: 1px solid #c0ddc0; border-radius: var(--radius-sm);
-      padding: 12px 14px; font-size: 0.875rem; line-height: 1.8; color: #1a4d1a;
-      user-select: text;
-    }
-    .markscheme-content.open { display: block; }
+    .ms-toggle-btn { background:transparent; border:1px solid var(--color-border-strong); border-radius:var(--radius-sm); padding:4px 10px; font-size:.79rem; cursor:pointer; color:var(--color-success); font-weight:600; transition:all .15s; }
+    .ms-toggle-btn:hover { background:#edf7ed; border-color:var(--color-success); }
+    .ms-toggle-btn.open { background:#edf7ed; }
+    .markscheme-content { display:none; margin-top:8px; background:#f4faf4; border:1px solid #c0ddc0; border-radius:var(--radius-sm); padding:11px 13px; font-size:.875rem; line-height:1.8; color:#1a4d1a; user-select:text; }
+    .markscheme-content.open { display:block; }
+    .markscheme-content p { margin-bottom:5px; }
+    .markscheme-content p:last-child { margin-bottom:0; }
 
     /* CARD FOOTER */
-    .q-footer {
-      display: none; border-top: 1px solid var(--color-border);
-      padding: 8px 14px; gap: 6px; flex-wrap: wrap;
-    }
-    .q-card.open .q-footer { display: flex; }
+    .q-footer { display:none; border-top:1px solid var(--color-border); padding:7px 13px; gap:6px; flex-wrap:wrap; }
+    .q-card.open .q-footer { display:flex; }
 
-    /* NEEDS-INFO BANNER */
-    .needs-info-banner {
-      background: #fff3cd; border: 1px solid #ffc107; border-radius: var(--radius-sm);
-      padding: 7px 11px; font-size: 0.82rem; font-weight: 600; color: #856404;
-      margin-bottom: 10px; display: flex; align-items: center; gap: 7px;
-    }
-    .group-banner {
-      background: #edf7ed; border: 1px solid #b8ddb8; border-radius: var(--radius-sm);
-      padding: 6px 11px; font-size: 0.8rem; font-weight: 600; color: #1a5c1a; margin-bottom: 8px;
-    }
+    /* Banners */
+    .needs-info-banner { background:#fff3cd; border:1px solid #ffc107; border-radius:var(--radius-sm); padding:6px 10px; font-size:.81rem; font-weight:600; color:#856404; margin-bottom:9px; }
+    .group-banner { background:#edf7ed; border:1px solid #b8ddb8; border-radius:var(--radius-sm); padding:5px 10px; font-size:.79rem; font-weight:600; color:#1a5c1a; margin:8px 14px 0; }
 
     /* LOADING */
-    #loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; gap: 14px; color: var(--color-text-muted); }
-    .loading-spinner { width: 28px; height: 28px; border: 3px solid var(--color-border); border-top-color: var(--color-accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
-    #no-questions { text-align: center; padding: 50px 20px; color: var(--color-text-muted); }
+    #loading-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:200px; gap:12px; color:var(--color-text-muted); }
+    .loading-spinner { width:28px; height:28px; border:3px solid var(--color-border); border-top-color:var(--color-accent); border-radius:50%; animation:spin .7s linear infinite; }
+    #no-questions { text-align:center; padding:50px 20px; color:var(--color-text-muted); }
 
     /* STATUS BAR */
-    #statusbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--color-primary); color: rgba(255,255,255,0.65); font-size: 0.73rem; padding: 4px 16px; display: flex; align-items: center; gap: 14px; z-index: 99; }
-    #statusbar .status-online { color: #4ade80; }
-    #statusbar .status-offline { color: #fbbf24; }
-    #statusbar .status-saved { color: #60d9a0; }
+    #statusbar { position:fixed; bottom:0; left:0; right:0; background:var(--color-primary); color:rgba(255,255,255,.65); font-size:.72rem; padding:4px 16px; display:flex; align-items:center; gap:12px; z-index:99; }
+    #statusbar .status-online  { color:#4ade80; }
+    #statusbar .status-offline { color:#fbbf24; }
 
-    /* ===== RICH TEXT EDITOR TOOLBAR ===== */
-    .rte-wrap { display: flex; flex-direction: column; gap: 0; }
-    .rte-toolbar {
-      display: flex; flex-wrap: wrap; gap: 2px; padding: 5px 6px;
-      background: #f0f2f5; border: 1px solid var(--color-border-strong);
-      border-bottom: none; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    }
-    .rte-toolbar button {
-      padding: 3px 8px; font-size: 0.78rem; font-weight: 600; border: 1px solid #c8cdd5;
-      border-radius: 3px; background: #fff; cursor: pointer; color: var(--color-text);
-      transition: all 0.12s; line-height: 1.4; min-width: 26px; text-align: center;
-    }
-    .rte-toolbar button:hover { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
-    .rte-toolbar button b { font-weight: 900; }
-    .rte-toolbar .rte-sep { width: 1px; background: #c8cdd5; margin: 2px 3px; align-self: stretch; }
-    .rte-wrap textarea { border-top-left-radius: 0; border-top-right-radius: 0; }
-    .rte-preview-toggle { font-size: 0.75rem; color: var(--color-accent); cursor: pointer; margin-top: 4px; display: inline-block; }
-    .rte-preview { border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 10px 13px; background: #fafcff; font-size: 0.875rem; line-height: 1.7; min-height: 40px; display: none; margin-top: 4px; }
-    .rte-preview.visible { display: block; }
+    /* RICH TEXT TOOLBAR */
+    .rte-wrap { display:flex; flex-direction:column; }
+    .rte-toolbar { display:flex; flex-wrap:wrap; gap:2px; padding:4px 5px; background:#f0f2f5; border:1px solid var(--color-border-strong); border-bottom:none; border-radius:var(--radius-sm) var(--radius-sm) 0 0; }
+    .rte-toolbar button { padding:2px 7px; font-size:.77rem; font-weight:600; border:1px solid #c8cdd5; border-radius:3px; background:#fff; cursor:pointer; color:var(--color-text); transition:all .11s; min-width:24px; text-align:center; }
+    .rte-toolbar button:hover { background:var(--color-accent); color:#fff; border-color:var(--color-accent); }
+    .rte-toolbar .rte-sep { width:1px; background:#c8cdd5; margin:2px 2px; align-self:stretch; }
+    .rte-wrap textarea { border-top-left-radius:0; border-top-right-radius:0; }
+    .rte-preview { border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:9px 12px; background:#fafcff; font-size:.875rem; line-height:1.7; min-height:36px; display:none; margin-top:4px; }
+    .rte-preview.visible { display:block; }
 
     /* EDIT MODAL TABS */
-    .edit-panel-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--color-border); margin-bottom: 14px; }
-    .ep-tab { padding: 6px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; color: var(--color-text-secondary); transition: all 0.13s; }
-    .ep-tab:hover { color: var(--color-text); }
-    .ep-tab.active { color: var(--color-accent); border-bottom-color: var(--color-accent); }
-    .ep-pane { display: none; }
-    .ep-pane.active { display: block; }
+    .edit-panel-tabs { display:flex; border-bottom:1px solid var(--color-border); margin-bottom:13px; }
+    .ep-tab { padding:6px 13px; font-size:.81rem; font-weight:600; cursor:pointer; border-bottom:2px solid transparent; color:var(--color-text-secondary); transition:all .12s; }
+    .ep-tab:hover { color:var(--color-text); }
+    .ep-tab.active { color:var(--color-accent); border-bottom-color:var(--color-accent); }
+    .ep-pane { display:none; }
+    .ep-pane.active { display:block; }
 
     /* GROUP PICKER */
-    .group-section-header { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--color-text-muted); padding: 6px 11px 4px; background: var(--color-surface-2); border-bottom: 1px solid var(--color-border); }
-    .group-picker-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
-    .gp-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--color-border); cursor: pointer; transition: background 0.1s; }
-    .gp-item:last-child { border-bottom: none; }
-    .gp-item:hover { background: var(--color-surface-2); }
-    .gp-item.selected { background: #eaf4fc; }
-    .gp-item input[type="checkbox"] { margin-top: 3px; flex-shrink: 0; }
-    .gp-item-text { flex: 1; font-size: 0.84rem; }
-    .gp-item-title { font-weight: 600; margin-bottom: 2px; }
-    .gp-item-sub { font-size: 0.74rem; color: var(--color-text-muted); }
-    .gp-recommended { background: #fffbea; }
-    .gp-recommended .gp-item-title::after { content: ' ★'; color: #e67e22; font-size: 0.7rem; }
-
-    .selected-questions-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
-    .sq-item { display: grid; grid-template-columns: 1fr 70px 60px; gap: 6px; align-items: center; background: var(--color-surface-2); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 0.84rem; }
-    .sq-item-label { font-weight: 600; }
+    .group-section-header { font-size:.73rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--color-text-muted); padding:5px 10px 3px; background:var(--color-surface-2); border-bottom:1px solid var(--color-border); }
+    .group-picker-list { max-height:280px; overflow-y:auto; border:1px solid var(--color-border); border-radius:var(--radius-sm); }
+    .gp-item { display:flex; align-items:flex-start; gap:9px; padding:7px 11px; border-bottom:1px solid var(--color-border); cursor:pointer; transition:background .1s; }
+    .gp-item:last-child { border-bottom:none; }
+    .gp-item:hover { background:var(--color-surface-2); }
+    .gp-item.selected { background:#eaf4fc; }
+    .gp-item input[type="checkbox"] { margin-top:3px; flex-shrink:0; }
+    .gp-item-text { flex:1; font-size:.83rem; }
+    .gp-item-title { font-weight:600; margin-bottom:2px; }
+    .gp-item-sub { font-size:.73rem; color:var(--color-text-muted); }
+    .gp-recommended .gp-item-title::after { content:' ★'; color:#e67e22; font-size:.7rem; }
+    .selected-questions-list { display:flex; flex-direction:column; gap:5px; margin-top:8px; }
+    .sq-item { display:grid; grid-template-columns:1fr 65px 55px; gap:5px; align-items:center; background:var(--color-surface-2); border-radius:var(--radius-sm); padding:6px 9px; font-size:.83rem; }
   </style>
 </head>
 <body>
@@ -202,46 +140,37 @@
     <a href="../">Home</a>
   </div>
   <div class="controls">
-    <button class="btn btn-ghost btn-sm" id="btn-settings" title="GitHub Settings" style="color:#fff;border-color:rgba(255,255,255,0.3)">⚙ Settings</button>
-    <button class="edit-toggle" id="btn-edit-mode">
-      <span class="toggle-dot"></span>Edit Mode
-    </button>
+    <button class="btn btn-ghost btn-sm" id="btn-settings" style="color:#fff;border-color:rgba(255,255,255,.3)">⚙ Settings</button>
+    <button class="edit-toggle" id="btn-edit-mode"><span class="toggle-dot"></span>Edit Mode</button>
   </div>
 </div>
 
 <!-- FILTER BAR -->
 <div id="filterbar">
   <select id="sel-subject"><option value="">— Select Subject —</option></select>
+  <select id="sel-level"><option value="">All Levels</option><option value="hl">HL</option><option value="sl">SL</option></select>
   <select id="sel-topic"><option value="">All Topics</option></select>
-  <select id="sel-difficulty"><option value="">All Difficulties</option><option>Easy</option><option>Medium</option><option>Hard</option></select>
-  <select id="sel-type"><option value="">All Types</option><option>MCQ</option><option>Short Answer</option><option>Long Answer</option><option>Structured</option></select>
-  <input type="text" id="search-input" placeholder="🔍 Search…" />
+  <select id="sel-type"><option value="">All Types</option><option value="MCQ">MCQ</option><option value="Short Answer">Short Answer</option><option value="Long Answer">Long Answer</option></select>
+  <select id="sel-paper"><option value="">All Papers</option></select>
+  <input type="text" id="search-input" placeholder="🔍 Search questions…" />
   <div class="filter-info" id="filter-info">Select a subject to begin</div>
 </div>
 
 <!-- MAIN -->
 <div id="main">
-  <div id="loading-state" class="hidden">
-    <div class="loading-spinner"></div>
-    <span>Loading questions…</span>
-  </div>
-  <div id="no-questions" class="hidden">
-    <p style="font-size:2rem;margin-bottom:6px">📋</p>
-    <p>No questions match the current filters.</p>
-  </div>
+  <div id="loading-state" class="hidden"><div class="loading-spinner"></div><span>Loading questions…</span></div>
+  <div id="no-questions" class="hidden"><p style="font-size:2rem;margin-bottom:6px">📋</p><p>No questions match the current filters.</p></div>
   <div id="questions-container"></div>
 </div>
 
 <!-- STATUS BAR -->
 <div id="statusbar">
   <span id="status-mode" class="status-offline">⬤ Local Mode</span>
-  <span id="status-msg">Edits saved locally in browser — no data is lost on reload</span>
-  <span id="status-saved" class="status-saved" style="margin-left:auto;display:none">✓ Saved</span>
+  <span id="status-msg">Edits saved in browser — no reload loss</span>
+  <span id="status-saved" style="margin-left:auto;color:#60d9a0;display:none">✓ Saved</span>
 </div>
 
-<!-- =============================================
-     MODALS
-     ============================================= -->
+<!-- =====================  MODALS  ===================== -->
 
 <!-- SETTINGS MODAL -->
 <div class="modal-overlay hidden" id="modal-settings">
@@ -251,20 +180,13 @@
       <button class="btn btn-ghost btn-icon" onclick="closeModal('modal-settings')">✕</button>
     </div>
     <div class="modal-body">
-      <p class="text-muted text-small mb-12">
-        <strong>Local mode is always active.</strong> Edits are saved in your browser and survive page reloads.<br>
-        Optionally connect to GitHub to sync edits to the repository for others to see.
-      </p>
+      <p class="text-muted text-small mb-12"><strong>Local mode is always active.</strong> Edits survive page reloads.</p>
       <details style="margin-bottom:14px">
-        <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;color:var(--color-text-secondary)">GitHub Sync (optional)</summary>
+        <summary style="cursor:pointer;font-size:.85rem;font-weight:600;color:var(--color-text-secondary)">GitHub Sync (optional)</summary>
         <div style="margin-top:12px">
-          <div class="form-group">
-            <label>Personal Access Token</label>
-            <input type="password" id="gh-token" placeholder="ghp_…" />
-            <span class="text-small text-muted">Requires <code>contents:write</code> permission on this repo.</span>
-          </div>
+          <div class="form-group"><label>Personal Access Token</label><input type="password" id="gh-token" placeholder="ghp_…" /><span class="text-small text-muted">Needs <code>contents:write</code> scope.</span></div>
           <div class="form-row">
-            <div class="form-group"><label>Owner / Organisation</label><input type="text" id="gh-owner" placeholder="rahv-questionbank" /></div>
+            <div class="form-group"><label>Owner</label><input type="text" id="gh-owner" placeholder="RAHV-FB" /></div>
             <div class="form-group"><label>Repository</label><input type="text" id="gh-repo" placeholder="TEST-Questionbank" /></div>
           </div>
           <div class="form-group"><label>Branch</label><input type="text" id="gh-branch" placeholder="main" /></div>
@@ -272,14 +194,14 @@
           <span id="gh-test-result" class="text-small" style="margin-left:8px"></span>
         </div>
       </details>
-      <div style="background:#fef4e8;border:1px solid #f0c070;border-radius:var(--radius-sm);padding:10px 13px;font-size:0.82rem">
+      <div style="background:#fef4e8;border:1px solid #f0c070;border-radius:var(--radius-sm);padding:9px 12px;font-size:.82rem">
         <strong>⚠ Clear local data:</strong>
         <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="clearLocalData()">Clear All Local Edits</button>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-settings')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveGHSettings()">Save Settings</button>
+      <button class="btn btn-primary" onclick="saveGHSettings()">Save</button>
     </div>
   </div>
 </div>
@@ -292,7 +214,6 @@
       <button class="btn btn-ghost btn-icon" onclick="closeModal('modal-edit')">✕</button>
     </div>
     <div class="modal-body">
-      <!-- Tabs -->
       <div class="edit-panel-tabs">
         <div class="ep-tab active" data-pane="ep-question">Question</div>
         <div class="ep-tab" data-pane="ep-markscheme">Mark Scheme</div>
@@ -303,155 +224,113 @@
       <!-- Question Tab -->
       <div class="ep-pane active" id="ep-question">
         <div class="form-row">
-          <div class="form-group">
-            <label>Question Type</label>
-            <select id="ep-type">
-              <option value="MCQ">MCQ</option>
-              <option value="Short Answer">Short Answer</option>
-              <option value="Long Answer">Long Answer</option>
-              <option value="Structured">Structured</option>
-            </select>
+          <div class="form-group"><label>Question Type</label>
+            <select id="ep-type"><option value="MCQ">MCQ</option><option value="SFA">Short Answer</option><option value="LFA">Long Answer</option></select>
           </div>
-          <div class="form-group">
-            <label>Marks</label>
-            <input type="number" id="ep-marks" min="1" max="20" />
-          </div>
+          <div class="form-group"><label>Marks</label><input type="number" id="ep-marks" min="1" max="20" /></div>
         </div>
         <div class="form-group">
-          <label>Question Text</label>
+          <label>Question Text (HTML)</label>
           <div class="rte-wrap">
-            <div class="rte-toolbar" data-target="ep-text">
-              <button onclick="rteCmd('ep-text','bold')" title="Bold"><b>B</b></button>
-              <button onclick="rteCmd('ep-text','italic')" title="Italic"><i>I</i></button>
-              <button onclick="rteCmd('ep-text','underline')" title="Underline"><u>U</u></button>
+            <div class="rte-toolbar">
+              <button onclick="rteCmd('ep-text','bold')"><b>B</b></button>
+              <button onclick="rteCmd('ep-text','italic')"><i>I</i></button>
               <div class="rte-sep"></div>
               <button onclick="rteInsert('ep-text','<sup>','</sup>')" title="Superscript">x²</button>
               <button onclick="rteInsert('ep-text','<sub>','</sub>')" title="Subscript">x₂</button>
               <div class="rte-sep"></div>
-              <button onclick="rteInsert('ep-text','<b>','</b>')" title="Bold tag">&lt;b&gt;</button>
-              <button onclick="rteInsert('ep-text','<i>','</i>')" title="Italic tag">&lt;i&gt;</button>
-              <button onclick="rteInsert('ep-text','<br>','')" title="Line break">↵</button>
-              <button onclick="rteInsert('ep-text','• ','')" title="Bullet">•</button>
+              <button onclick="rteInsert('ep-text','<strong>','</strong>')">&lt;b&gt;</button>
+              <button onclick="rteInsert('ep-text','<em>','</em>')">&lt;i&gt;</button>
+              <button onclick="rteInsert('ep-text','<br>','')">↵</button>
+              <button onclick="rteInsert('ep-text','• ','')">•</button>
               <div class="rte-sep"></div>
-              <button onclick="rtePreview('ep-text','preview-ep-text')" title="Preview">👁</button>
+              <button onclick="rtePreview('ep-text','prev-ep-text')">👁</button>
             </div>
-            <textarea id="ep-text" rows="4" placeholder="Question text (HTML supported)…"></textarea>
+            <textarea id="ep-text" rows="5" placeholder="Question HTML…"></textarea>
           </div>
-          <div class="rte-preview" id="preview-ep-text"></div>
-        </div>
-        <div class="form-group" id="ep-mcq-options-group">
-          <label>MCQ Options (A–D)</label>
-          <input type="text" id="ep-opt-a" placeholder="Option A" class="mb-8" />
-          <input type="text" id="ep-opt-b" placeholder="Option B" class="mb-8" />
-          <input type="text" id="ep-opt-c" placeholder="Option C" class="mb-8" />
-          <input type="text" id="ep-opt-d" placeholder="Option D" class="mb-8" />
-          <div class="form-group" style="margin-bottom:0">
-            <label>Correct Option</label>
-            <select id="ep-correct"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>
-          </div>
+          <div class="rte-preview" id="prev-ep-text"></div>
         </div>
         <div class="form-group">
-          <label>Image Filename (from /images/ folder)</label>
-          <input type="text" id="ep-image" placeholder="e.g. bio_cell_01.png — leave empty if none" />
+          <label>Image ID (data-image-id value, leave blank if none)</label>
+          <input type="text" id="ep-image" placeholder="e.g. 276f5ce915be392e" />
         </div>
       </div>
 
       <!-- Mark Scheme Tab -->
       <div class="ep-pane" id="ep-markscheme">
         <div class="form-group">
-          <label>Mark Scheme</label>
+          <label>Mark Scheme (HTML)</label>
           <div class="rte-wrap">
-            <div class="rte-toolbar" data-target="ep-ms">
-              <button onclick="rteCmd('ep-ms','bold')" title="Bold"><b>B</b></button>
-              <button onclick="rteCmd('ep-ms','italic')" title="Italic"><i>I</i></button>
+            <div class="rte-toolbar">
+              <button onclick="rteCmd('ep-ms','bold')"><b>B</b></button>
+              <button onclick="rteCmd('ep-ms','italic')"><i>I</i></button>
               <div class="rte-sep"></div>
-              <button onclick="rteInsert('ep-ms','<sup>','</sup>')" title="Superscript">x²</button>
-              <button onclick="rteInsert('ep-ms','<sub>','</sub>')" title="Subscript">x₂</button>
+              <button onclick="rteInsert('ep-ms','<sup>','</sup>')">x²</button>
+              <button onclick="rteInsert('ep-ms','<sub>','</sub>')">x₂</button>
               <div class="rte-sep"></div>
-              <button onclick="rteInsert('ep-ms','<b>','</b>')" title="Bold tag">&lt;b&gt;</button>
-              <button onclick="rteInsert('ep-ms','<i>','</i>')" title="Italic tag">&lt;i&gt;</button>
-              <button onclick="rteInsert('ep-ms','<br>','')" title="Line break">↵</button>
-              <button onclick="rteInsert('ep-ms','• ','')" title="Bullet">•</button>
-              <button onclick="rteInsert('ep-ms','[1]','')" title="Award 1 mark">[1]</button>
-              <button onclick="rteInsert('ep-ms','[2]','')" title="Award 2 marks">[2]</button>
+              <button onclick="rteInsert('ep-ms','<strong>','</strong>')">&lt;b&gt;</button>
+              <button onclick="rteInsert('ep-ms','<br>','')">↵</button>
+              <button onclick="rteInsert('ep-ms','• ','')">•</button>
+              <button onclick="rteInsert('ep-ms','✓ ','')">✓</button>
+              <button onclick="rteInsert('ep-ms','[1]','') ">[1]</button>
+              <button onclick="rteInsert('ep-ms','[2]','') ">[2]</button>
               <div class="rte-sep"></div>
-              <button onclick="rtePreview('ep-ms','preview-ep-ms')" title="Preview">👁</button>
+              <button onclick="rtePreview('ep-ms','prev-ep-ms')">👁</button>
             </div>
-            <textarea id="ep-ms" rows="9" placeholder="Mark scheme (HTML supported)…"></textarea>
+            <textarea id="ep-ms" rows="9" placeholder="Mark scheme HTML…"></textarea>
           </div>
-          <div class="rte-preview" id="preview-ep-ms"></div>
+          <div class="rte-preview" id="prev-ep-ms"></div>
         </div>
       </div>
 
       <!-- Settings Tab -->
       <div class="ep-pane" id="ep-settings">
         <div class="form-row">
-          <div class="form-group">
-            <label>Difficulty</label>
-            <select id="ep-difficulty"><option>Easy</option><option>Medium</option><option>Hard</option></select>
-          </div>
-          <div class="form-group"><label>Year</label><input type="text" id="ep-year" placeholder="2023" /></div>
+          <div class="form-group"><label>Level</label><select id="ep-level"><option value="hl">HL</option><option value="sl">SL</option><option value="">Both</option></select></div>
+          <div class="form-group"><label>Paper</label><input type="text" id="ep-paper" placeholder="1A, 2, etc." /></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Paper</label><input type="text" id="ep-paper" placeholder="P1" /></div>
           <div class="form-group"><label>Topic</label><input type="text" id="ep-topic" /></div>
+          <div class="form-group"><label>Subtopic</label><input type="text" id="ep-subtopic" /></div>
         </div>
-        <div class="form-group"><label>Subtopic</label><input type="text" id="ep-subtopic" /></div>
-        <div class="form-group">
-          <label>Notes / Editor Comments</label>
-          <textarea id="ep-notes" rows="3" placeholder="Internal notes…"></textarea>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff3cd;border-radius:var(--radius-sm);margin-top:4px;">
+        <div class="form-group"><label>Reference Code</label><input type="text" id="ep-refcode" placeholder="M23.1A.HL.TZ0.2" /></div>
+        <div class="form-group"><label>Notes / Editor Comments</label><textarea id="ep-notes" rows="3" placeholder="Internal notes…"></textarea></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:#fff3cd;border-radius:var(--radius-sm);margin-top:4px;">
           <input type="checkbox" id="ep-needs-info" style="width:auto;margin:0" />
-          <label for="ep-needs-info" style="font-size:0.875rem;font-weight:600;cursor:pointer;color:#856404">⚠ Mark as "Needs More Information"</label>
+          <label for="ep-needs-info" style="font-size:.875rem;font-weight:600;cursor:pointer;color:#856404">⚠ Mark as "Needs More Information"</label>
         </div>
       </div>
 
       <!-- Grouping Tab -->
       <div class="ep-pane" id="ep-group">
-        <p class="text-muted text-small mb-12">
-          Combine this question with others into a structured multi-part question. Original CSV files are <strong>never modified</strong>.
-        </p>
+        <p class="text-muted text-small mb-12">Combine with other questions. Original CSVs are <strong>never modified</strong>.</p>
         <div class="form-row">
-          <div class="form-group">
-            <label>Group Title</label>
-            <input type="text" id="grp-title" placeholder="e.g. Cell Biology — Extended Response" />
-          </div>
-          <div class="form-group">
-            <label>Combined Marks</label>
-            <input type="number" id="grp-marks" min="1" max="30" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Overall Format</label>
-            <select id="grp-format"><option>Mixed</option><option>MCQ</option><option>Short Answer</option><option>Long Answer</option><option>Structured</option></select>
-          </div>
+          <div class="form-group"><label>Group Title</label><input type="text" id="grp-title" placeholder="e.g. Cell Biology Extended" /></div>
+          <div class="form-group"><label>Combined Marks</label><input type="number" id="grp-marks" min="1" max="30" /></div>
         </div>
         <div class="form-group">
-          <label>Add Questions to Group</label>
-          <input type="text" id="grp-search" placeholder="🔍 Filter by topic, subtopic, keyword…" style="margin-bottom:8px" />
+          <label>Add Questions</label>
+          <input type="text" id="grp-search" placeholder="🔍 Filter by topic, keyword…" style="margin-bottom:6px" />
           <div class="group-picker-list" id="grp-picker"></div>
         </div>
         <div class="form-group">
-          <label>Selected — drag to reorder, set sub-label</label>
+          <label>Selected — set label &amp; order</label>
           <div class="selected-questions-list" id="grp-selected"></div>
         </div>
         <div class="form-group">
-          <label>Combined Mark Scheme (optional override)</label>
+          <label>Group Mark Scheme (optional)</label>
           <div class="rte-wrap">
-            <div class="rte-toolbar" data-target="grp-ms">
-              <button onclick="rteInsert('grp-ms','<b>','</b>')">&lt;b&gt;</button>
+            <div class="rte-toolbar">
+              <button onclick="rteInsert('grp-ms','<strong>','</strong>')">&lt;b&gt;</button>
               <button onclick="rteInsert('grp-ms','• ','')">•</button>
-              <button onclick="rteInsert('grp-ms','[1]','')"> [1]</button>
-              <button onclick="rteInsert('grp-ms','<br>','')">↵</button>
-              <button onclick="rtePreview('grp-ms','preview-grp-ms')">👁</button>
+              <button onclick="rteInsert('grp-ms','✓ ','')">✓</button>
+              <button onclick="rtePreview('grp-ms','prev-grp-ms')">👁</button>
             </div>
-            <textarea id="grp-ms" rows="3" placeholder="Group-level mark scheme…"></textarea>
+            <textarea id="grp-ms" rows="3" placeholder="Group mark scheme…"></textarea>
           </div>
-          <div class="rte-preview" id="preview-grp-ms"></div>
+          <div class="rte-preview" id="prev-grp-ms"></div>
         </div>
-        <div id="grp-existing-info" class="hidden" style="background:#edf7ed;border:1px solid #b8ddb8;border-radius:var(--radius-sm);padding:9px 13px;font-size:0.85rem;">
+        <div id="grp-existing-info" class="hidden" style="background:#edf7ed;border:1px solid #b8ddb8;border-radius:var(--radius-sm);padding:8px 12px;font-size:.84rem;">
           <strong>Existing group:</strong> <span id="grp-existing-id"></span>
           <button class="btn btn-danger btn-sm" onclick="deleteCurrentGroup()" style="margin-left:8px">Delete Group</button>
         </div>
@@ -459,15 +338,13 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-edit')">Cancel</button>
-      <button class="btn btn-warning" id="btn-save-group" onclick="saveGroup()">Save Group</button>
+      <button class="btn btn-warning" onclick="saveGroup()">Save Group</button>
       <button class="btn btn-primary" onclick="saveEdit()">Save Edit</button>
     </div>
   </div>
 </div>
 
-<!-- =============================================
-     JAVASCRIPT
-     ============================================= -->
+<!-- =====================  SCRIPTS  ===================== -->
 <script src="../assets/js/csv-utils.js"></script>
 <script src="../assets/js/github-api.js"></script>
 <script src="../assets/js/data-store.js"></script>
@@ -477,8 +354,9 @@
    ============================================ */
 let state = {
   subjects: [],
-  currentSubject: null,
-  allRows: [],
+  currentSubject: null,   // manifest entry
+  allRows: [],            // all CSV rows for current subject
+  rootGroups: [],         // grouped root questions [{root, children, topic, subtopic}]
   allGroups: {},
   allChanges: {},
   editMode: false,
@@ -487,11 +365,9 @@ let state = {
   currentGroupId: null,
 };
 
-// BASE_URL: resolve relative to repo root regardless of sub-path
 const BASE_URL = (() => {
   const p = window.location.pathname;
-  const base = p.replace(/\/tester\/?.*$/, '');
-  return window.location.origin + base;
+  return window.location.origin + p.replace(/\/tester\/?.*$/, '');
 })();
 
 let store = new DataStore(GitHubAPI.fromSaved(), BASE_URL);
@@ -501,47 +377,38 @@ let store = new DataStore(GitHubAPI.fromSaved(), BASE_URL);
    ============================================ */
 function rteCmd(id, cmd) {
   const ta = document.getElementById(id);
-  const start = ta.selectionStart, end = ta.selectionEnd;
-  const sel = ta.value.substring(start, end);
-  const tags = { bold: ['<b>','</b>'], italic: ['<i>','</i>'], underline: ['<u>','</u>'] };
-  const [open, close] = tags[cmd] || ['',''];
-  const replacement = sel ? open + sel + close : open + close;
-  ta.value = ta.value.substring(0, start) + replacement + ta.value.substring(end);
-  const cursor = start + replacement.length - (sel ? 0 : close.length);
-  ta.setSelectionRange(cursor, cursor);
-  ta.focus();
+  const s = ta.selectionStart, e = ta.selectionEnd, sel = ta.value.substring(s,e);
+  const map = { bold:['<strong>','</strong>'], italic:['<em>','</em>'] };
+  const [o,c] = map[cmd] || ['',''];
+  const rep = sel ? o+sel+c : o+c;
+  ta.value = ta.value.substring(0,s) + rep + ta.value.substring(e);
+  const cur = s + rep.length - (sel ? 0 : c.length);
+  ta.setSelectionRange(cur,cur); ta.focus();
 }
-
 function rteInsert(id, before, after) {
   const ta = document.getElementById(id);
-  const start = ta.selectionStart, end = ta.selectionEnd;
-  const sel = ta.value.substring(start, end);
-  const replacement = before + (sel || '') + after;
-  ta.value = ta.value.substring(0, start) + replacement + ta.value.substring(end);
-  const cursor = start + before.length + (sel ? sel.length + after.length : 0);
-  ta.setSelectionRange(cursor, cursor);
-  ta.focus();
+  const s = ta.selectionStart, e = ta.selectionEnd, sel = ta.value.substring(s,e);
+  const rep = before + (sel||'') + after;
+  ta.value = ta.value.substring(0,s) + rep + ta.value.substring(e);
+  const cur = s + before.length + (sel ? sel.length + after.length : 0);
+  ta.setSelectionRange(cur,cur); ta.focus();
 }
-
 function rtePreview(srcId, previewId) {
   const ta = document.getElementById(srcId);
-  const preview = document.getElementById(previewId);
-  if (preview.classList.contains('visible')) {
-    preview.classList.remove('visible');
-  } else {
-    preview.innerHTML = ta.value || '<em style="color:#aaa">Nothing to preview</em>';
-    preview.classList.add('visible');
-  }
+  const pr = document.getElementById(previewId);
+  if (pr.classList.contains('visible')) { pr.classList.remove('visible'); return; }
+  pr.innerHTML = ta.value || '<em style="color:#aaa">Nothing to preview</em>';
+  pr.classList.add('visible');
 }
 
 /* ============================================
-   Initialisation
+   Init
    ============================================ */
 async function init() {
   updateStatusBar();
   await loadManifest();
   loadSettings();
-  setupEventListeners();
+  setupListeners();
 }
 
 async function loadManifest() {
@@ -552,33 +419,30 @@ async function loadManifest() {
     state.subjects.forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.file;
-      opt.textContent = `${s.icon || ''} ${s.name}`;
+      opt.textContent = `${s.icon||''} ${s.name}`;
       sel.appendChild(opt);
     });
-  } catch (e) {
-    showNotification('Failed to load subject manifest: ' + e.message, 'error');
-  }
+  } catch(e) { showNotification('Failed to load manifest: '+e.message, 'error'); }
 }
 
-function setupEventListeners() {
+function setupListeners() {
   document.getElementById('sel-subject').addEventListener('change', onSubjectChange);
   document.getElementById('sel-topic').addEventListener('change', renderQuestions);
   document.getElementById('sel-type').addEventListener('change', renderQuestions);
-  document.getElementById('sel-difficulty').addEventListener('change', renderQuestions);
+  document.getElementById('sel-level').addEventListener('change', renderQuestions);
+  document.getElementById('sel-paper').addEventListener('change', renderQuestions);
   document.getElementById('search-input').addEventListener('input', renderQuestions);
   document.getElementById('btn-edit-mode').addEventListener('click', toggleEditMode);
   document.getElementById('btn-settings').addEventListener('click', () => openModal('modal-settings'));
   document.getElementById('btn-test-gh').addEventListener('click', testGHConnection);
   document.getElementById('grp-search').addEventListener('input', filterGroupPicker);
-
-  // Tab switching via data-pane attribute
-  document.querySelectorAll('.ep-tab').forEach(tab => {
-    tab.addEventListener('click', () => switchEPTab(tab, tab.dataset.pane));
-  });
+  document.querySelectorAll('.ep-tab').forEach(t =>
+    t.addEventListener('click', () => switchEPTab(t, t.dataset.pane))
+  );
 }
 
 /* ============================================
-   Subject / Data Loading
+   Subject Loading
    ============================================ */
 async function onSubjectChange() {
   const file = document.getElementById('sel-subject').value;
@@ -588,119 +452,140 @@ async function onSubjectChange() {
   try {
     state.allRows = await store.loadCSV(file);
     [state.allChanges, state.allGroups] = await Promise.all([
-      store.getChanges(),
-      store.getGroups()
+      store.getChanges(), store.getGroups()
     ]);
-    populateTopicFilter();
+    state.rootGroups = groupQuestions(state.allRows);
+    populateFilters();
     renderQuestions();
-  } catch (e) {
-    showNotification('Error loading data: ' + e.message, 'error');
-  } finally {
-    showLoading(false);
-  }
+  } catch(e) {
+    showNotification('Error loading: '+e.message, 'error');
+  } finally { showLoading(false); }
 }
 
-function populateTopicFilter() {
-  const topics = [...new Set(state.allRows.map(r => r.topic).filter(Boolean))];
-  const sel = document.getElementById('sel-topic');
-  sel.innerHTML = '<option value="">All Topics</option>';
-  topics.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t; opt.textContent = t;
-    sel.appendChild(opt);
-  });
+function populateFilters() {
+  // Topics
+  const topics = [...new Set(state.allRows.map(r => r.topic).filter(Boolean))].sort();
+  const selT = document.getElementById('sel-topic');
+  selT.innerHTML = '<option value="">All Topics</option>';
+  topics.forEach(t => { const o = document.createElement('option'); o.value=o.textContent=t; selT.appendChild(o); });
+
+  // Papers
+  const papers = [...new Set(state.allRows.map(r => r.paper).filter(Boolean))].sort();
+  const selP = document.getElementById('sel-paper');
+  selP.innerHTML = '<option value="">All Papers</option>';
+  papers.forEach(p => { const o = document.createElement('option'); o.value=o.textContent=p; selP.appendChild(o); });
 }
 
 /* ============================================
    Render Questions
    ============================================ */
 function renderQuestions() {
-  const topicFilter = document.getElementById('sel-topic').value;
-  const typeFilter  = document.getElementById('sel-type').value;
-  const diffFilter  = document.getElementById('sel-difficulty').value;
-  const search      = document.getElementById('search-input').value.toLowerCase().trim();
-  const container   = document.getElementById('questions-container');
+  const topicF  = document.getElementById('sel-topic').value;
+  const typeF   = document.getElementById('sel-type').value;
+  const levelF  = document.getElementById('sel-level').value.toLowerCase();
+  const paperF  = document.getElementById('sel-paper').value;
+  const search  = document.getElementById('search-input').value.toLowerCase().trim();
+  const container = document.getElementById('questions-container');
   container.innerHTML = '';
 
-  if (!state.allRows.length) {
+  if (!state.rootGroups.length) {
     document.getElementById('no-questions').classList.remove('hidden');
     document.getElementById('filter-info').textContent = '';
     return;
   }
 
-  let rows = state.allRows.filter(row => {
-    if (topicFilter && row.topic !== topicFilter) return false;
-    if (typeFilter && normaliseType(row.question_type) !== typeFilter) return false;
-    if (diffFilter && (row.difficulty || '') !== diffFilter) return false;
+  const filtered = state.rootGroups.filter(qg => {
+    const r = qg.root;
+    if (topicF && r.topic !== topicF) return false;
+    if (typeF  && normaliseType(r.question_type) !== typeF) return false;
+    if (levelF && (r.level||'').toLowerCase() !== levelF) return false;
+    if (paperF && r.paper !== paperF) return false;
     if (search) {
-      const hay = [row.question_text, row.topic, row.subtopic,
-                   row.question_index, row.sub_index, row.notes].join(' ').toLowerCase();
+      const hay = [
+        r.text_body, r.topic, r.subtopic, r.path,
+        r.reference_code, r.exam, r.uniqueid
+      ].join(' ').toLowerCase().replace(/<[^>]+>/g,' ');
       if (!hay.includes(search)) return false;
     }
     return true;
   });
 
-  const grouped = groupQuestions(rows);
-
-  if (grouped.length === 0) {
+  if (filtered.length === 0) {
     document.getElementById('no-questions').classList.remove('hidden');
     document.getElementById('filter-info').textContent = '0 questions';
     return;
   }
 
   document.getElementById('no-questions').classList.add('hidden');
-  document.getElementById('filter-info').textContent = `${grouped.length} question${grouped.length !== 1 ? 's' : ''}`;
+  document.getElementById('filter-info').textContent =
+    `${filtered.length.toLocaleString()} question${filtered.length !== 1 ? 's' : ''}`;
 
-  grouped.forEach(qGroup => {
-    container.appendChild(buildQuestionCard(qGroup));
-  });
+  // Render in batches for performance
+  renderBatch(filtered, container, 0, 50);
+}
+
+function renderBatch(items, container, offset, batchSize) {
+  const end = Math.min(offset + batchSize, items.length);
+  for (let i = offset; i < end; i++) {
+    container.appendChild(buildQuestionCard(items[i]));
+  }
+  if (end < items.length) {
+    // Render remaining after a tick so the UI stays responsive
+    requestAnimationFrame(() => renderBatch(items, container, end, batchSize));
+  }
 }
 
 /* ============================================
    Build Question Card
    ============================================ */
-function buildQuestionCard(qGroup) {
-  const { mainIndex, topic, subtopic, parts } = qGroup;
+function buildQuestionCard(qg) {
+  const { root, children, topic, subtopic } = qg;
+  const pid = questionId(root);
   const card = document.createElement('div');
   card.className = 'q-card';
-  card.id = `card-${mainIndex}`;
+  card.id = `card-${pid}`;
 
-  const partIds = parts.map(p => questionId(p));
-  const anyChange = partIds.some(id => state.allChanges[id]);
-  const anyNeedsInfo = partIds.some(id => state.allChanges[id]?.needsMoreInfo);
+  const change = state.allChanges[pid];
   const relatedGroup = Object.values(state.allGroups).find(g =>
-    g.questions && g.questions.some(q => partIds.includes(q.question_id))
+    g.questions && g.questions.some(q => q.question_id === pid)
   );
 
-  if (anyNeedsInfo)      card.classList.add('needs-info');
-  else if (relatedGroup) card.classList.add('grouped');
-  else if (anyChange)    card.classList.add('edited');
+  if (change?.needsMoreInfo) card.classList.add('needs-info');
+  else if (relatedGroup)     card.classList.add('grouped');
+  else if (change)           card.classList.add('edited');
 
-  const totalMarks = parts.reduce((sum, p) => {
-    const ch = state.allChanges[questionId(p)];
-    return sum + parseInt((ch?.edited?.marks) || p.marks || 0, 10);
-  }, 0);
-
+  const eff = change ? { ...root, ...change.edited } : root;
+  const typLabel = normaliseType(eff.question_type);
   const subjectColour = state.currentSubject?.color || '#3498db';
+
+  // Marks: sum root + children (effective)
+  let totalMarks = parseInt(eff.marks || 0, 10);
+  children.forEach(ch => {
+    const chChange = state.allChanges[questionId(ch)];
+    totalMarks += parseInt((chChange?.edited?.marks) || ch.marks || 0, 10);
+  });
 
   // HEADER
   const header = document.createElement('div');
   header.className = 'q-header';
   header.onclick = () => toggleCard(card);
+  const refCode = eff.reference_code || eff.exam || '';
+  const levelBadge = eff.level ? `<span class="badge" style="background:#f0f2f5;color:#5a6a7a;font-size:.68rem">${eff.level.toUpperCase()}</span>` : '';
   header.innerHTML = `
     <div class="q-meta">
-      <span class="q-number" style="color:${subjectColour}">Q${mainIndex}</span>
-      ${buildTypeBadges(parts)}
-      ${anyNeedsInfo   ? '<span class="badge badge-needs-info">⚠ Needs Info</span>' : ''}
-      ${relatedGroup   ? '<span class="badge badge-grouped">🔗 Grouped</span>'      : ''}
-      ${anyChange && !anyNeedsInfo ? '<span class="badge badge-edited">✎ Edited</span>' : ''}
+      <span class="badge ${typeBadgeClass(typLabel)}">${typLabel}</span>
+      ${levelBadge}
+      ${change?.needsMoreInfo ? '<span class="badge badge-needs-info">⚠ Needs Info</span>' : ''}
+      ${relatedGroup         ? '<span class="badge badge-grouped">🔗 Grouped</span>' : ''}
+      ${change && !change.needsMoreInfo ? '<span class="badge badge-edited">✎ Edited</span>' : ''}
+      ${refCode ? `<span class="q-ref">${refCode}</span>` : ''}
       <span class="q-topic-path">
-        <span>${topic || ''}</span>
-        ${subtopic ? `<span style="color:var(--color-text-muted)">›</span><span>${subtopic}</span>` : ''}
+        <span>${topic||''}</span>
+        ${subtopic && subtopic !== topic ? `<span style="color:var(--color-text-muted)">›</span><span>${subtopic}</span>` : ''}
       </span>
     </div>
     <div class="q-right">
-      <span class="q-marks">${totalMarks || '?'} mk</span>
+      <span class="q-marks">${totalMarks||'?'} mk</span>
       <span class="q-expand-icon">▼</span>
     </div>`;
 
@@ -709,26 +594,27 @@ function buildQuestionCard(qGroup) {
   body.className = 'q-body';
 
   if (relatedGroup) {
-    body.innerHTML += `<div class="group-banner" style="margin:10px 16px 0">🔗 Part of group: <strong>${relatedGroup.title || relatedGroup.id}</strong></div>`;
+    body.innerHTML = `<div class="group-banner">🔗 Part of group: <strong>${relatedGroup.title||relatedGroup.id}</strong></div>`;
   }
 
-  parts.forEach((part, i) => {
-    const pid = questionId(part);
-    const change = state.allChanges[pid];
-    const effective = change ? { ...part, ...change.edited } : part;
-    body.appendChild(buildPartElement(part, effective, change, parts.length > 1, i));
+  // Render root question
+  body.appendChild(buildPartEl(root, change, false));
+
+  // Render children (sub-parts)
+  children.forEach((ch, i) => {
+    const chChange = state.allChanges[questionId(ch)];
+    body.appendChild(buildPartEl(ch, chChange, true, i));
   });
 
-  // FOOTER (edit controls)
+  // FOOTER
   const footer = document.createElement('div');
   footer.className = 'q-footer';
-  if (parts.length > 1) {
-    parts.forEach((p, i) => {
-      const lbl = p.sub_index ? `(${p.sub_index})` : `Part ${i+1}`;
-      footer.innerHTML += `<button class="btn btn-sm btn-ghost" onclick="openEditModal('${mainIndex}','${p.sub_index || ''}')">✎ Edit ${lbl}</button>`;
+  footer.innerHTML = `<button class="btn btn-sm btn-outline" onclick="openEditModal('${pid}')">✎ Edit Question</button>`;
+  if (children.length > 0) {
+    children.forEach((ch, i) => {
+      const chId = questionId(ch);
+      footer.innerHTML += `<button class="btn btn-sm btn-ghost" onclick="openEditModal('${chId}')">✎ Part ${i+1}</button>`;
     });
-  } else {
-    footer.innerHTML = `<button class="btn btn-sm btn-outline" onclick="openEditModal('${mainIndex}', '')">✎ Edit Q${mainIndex}</button>`;
   }
 
   card.appendChild(header);
@@ -737,93 +623,62 @@ function buildQuestionCard(qGroup) {
   return card;
 }
 
-function buildTypeBadges(parts) {
-  const types = [...new Set(parts.map(p => normaliseType(p.question_type)))];
-  return types.map(t => `<span class="badge ${typeBadgeClass(t)}">${t}</span>`).join('');
-}
-
-function buildPartElement(original, effective, change, isMultiPart, partIdx) {
-  const pid = questionId(original);
+function buildPartEl(row, change, isChild, partIdx) {
+  const pid = questionId(row);
+  const eff = change ? { ...row, ...change.edited } : row;
   const el = document.createElement('div');
   el.className = 'q-part';
   el.id = `part-${pid}`;
 
-  const type = normaliseType(effective.question_type);
+  const subjectKey = state.currentSubject?.key || '';
   let html = '';
 
-  if (isMultiPart) {
-    const label = effective.sub_index ? `(${effective.sub_index})` : `Part ${partIdx + 1}`;
-    html += `<div class="q-part-label">${label}</div>`;
+  if (isChild) {
+    html += `<div class="q-part-label">Part ${partIdx + 1}</div>`;
   }
 
   if (change?.needsMoreInfo) {
-    html += `<div class="needs-info-banner">⚠ Needs more information. <em>${change.edited?.notes || ''}</em></div>`;
+    html += `<div class="needs-info-banner">⚠ Needs more information. <em>${change.edited?.notes||''}</em></div>`;
   }
 
+  // Meta tags
   html += `<div class="q-meta-row">
-    <span class="badge ${typeBadgeClass(type)}">${type}</span>
-    <span class="badge badge-difficulty-${(effective.difficulty||'medium').toLowerCase()}">${effective.difficulty || ''}</span>
-    ${effective.year   ? `<span class="badge" style="background:#f0f2f5;color:#5a6a7a">${effective.year}</span>`  : ''}
-    ${effective.paper  ? `<span class="badge" style="background:#f0f2f5;color:#5a6a7a">${effective.paper}</span>` : ''}
-    <span class="q-marks" style="margin-left:auto">${effective.marks || '?'} mark${effective.marks != 1 ? 's' : ''}</span>
+    <span class="badge badge-difficulty-medium" style="display:${eff.level?'inline-flex':'none'}">${(eff.level||'').toUpperCase()}</span>
+    ${eff.paper    ? `<span class="badge" style="background:#f0f2f5;color:#5a6a7a">Paper ${eff.paper}</span>` : ''}
+    ${eff.command_term ? `<span class="badge" style="background:#f0eafe;color:#5a1aa0">${eff.command_term}</span>` : ''}
+    <span class="q-marks" style="margin-left:auto">${eff.marks||'?'} mark${eff.marks!=1?'s':''}</span>
   </div>`;
 
-  // Image — use BASE_URL for absolute resolution
-  if (effective.image_path && effective.image_path.trim()) {
-    const imgSrc = `${BASE_URL}/images/${effective.image_path.trim()}`;
-    html += `<div class="question-image"><img src="${imgSrc}" alt="Question diagram" loading="lazy" onerror="this.parentElement.innerHTML='<span style=\\'font-size:0.8rem;color:#aaa\\'>Image not found: ${effective.image_path}</span>'" /></div>`;
-  }
+  // Inject images and clean HTML
+  let textHTML = cleanHTML(injectImageSrc(eff.text_body || '', BASE_URL, subjectKey));
+  const isMCQ = normaliseType(eff.question_type) === 'MCQ';
+  html += `<div class="q-text ${isMCQ ? 'mcq-body' : ''}">${textHTML}</div>`;
 
-  html += `<div class="q-text">${effective.question_text || ''}</div>`;
-
-  if (type === 'MCQ') {
-    html += buildMCQHTML(effective);
-  }
-
-  const msContent = effective.markscheme || '';
-  html += `<div>
-    <button class="ms-toggle-btn" onclick="toggleMS(this,'${pid}')">▶ Show Mark Scheme</button>
-    <div class="markscheme-content" id="ms-${pid}">
-      <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--color-success);margin-bottom:6px">Mark Scheme</div>
-      ${msContent || '<em style="color:#888">No mark scheme provided.</em>'}
-    </div>
-  </div>`;
+  // Mark scheme toggle
+  const msHTML = cleanHTML(injectImageSrc(eff.mark_scheme || '', BASE_URL, subjectKey));
+  html += `
+    <div>
+      <button class="ms-toggle-btn" onclick="toggleMS(this,'ms-${pid}')">▶ Show Mark Scheme</button>
+      <div class="markscheme-content" id="ms-${pid}">
+        <div style="font-size:.69rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--color-success);margin-bottom:6px">Mark Scheme</div>
+        ${msHTML || '<em style="color:#888">No mark scheme provided.</em>'}
+      </div>
+    </div>`;
 
   if (state.editMode) {
-    html += `<div style="margin-top:8px">
-      <button class="btn btn-sm btn-warning" onclick="openEditModal('${original.question_index}','${original.sub_index || ''}')">✎ Edit This Part</button>
-    </div>`;
+    html += `<div style="margin-top:8px"><button class="btn btn-sm btn-warning" onclick="openEditModal('${pid}')">✎ Edit</button></div>`;
   }
 
   el.innerHTML = html;
   return el;
 }
 
-function buildMCQHTML(q) {
-  const opts = [
-    { key: 'A', text: q.option_a },
-    { key: 'B', text: q.option_b },
-    { key: 'C', text: q.option_c },
-    { key: 'D', text: q.option_d },
-  ].filter(o => o.text);
-
-  const correct = (q.correct_option || '').toUpperCase();
-
-  return `<div class="mcq-grid">${opts.map(o => `
-    <div class="mcq-option ${o.key === correct && state.editMode ? 'correct-answer' : ''}">
-      <span class="option-label">${o.key}.</span>
-      <span>${o.text}</span>
-      ${o.key === correct && state.editMode ? '<span style="margin-left:auto;color:var(--color-success)">✓</span>' : ''}
-    </div>`).join('')}</div>`;
-}
-
 /* ============================================
    Card Interaction
    ============================================ */
 function toggleCard(card) { card.classList.toggle('open'); }
-
-function toggleMS(btn, pid) {
-  const ms = document.getElementById(`ms-${pid}`);
+function toggleMS(btn, id) {
+  const ms = document.getElementById(id);
   ms.classList.toggle('open');
   btn.classList.toggle('open');
   btn.textContent = ms.classList.contains('open') ? '▼ Hide Mark Scheme' : '▶ Show Mark Scheme';
@@ -838,112 +693,75 @@ function toggleEditMode() {
   const btn = document.getElementById('btn-edit-mode');
   btn.classList.toggle('active', state.editMode);
   btn.innerHTML = `<span class="toggle-dot"></span>${state.editMode ? 'Exit Edit Mode' : 'Edit Mode'}`;
-  if (state.allRows.length) renderQuestions();
+  if (state.rootGroups.length) renderQuestions();
 }
 
 /* ============================================
    Edit Modal
    ============================================ */
-function openEditModal(questionIndex, subIndex) {
-  let row;
-  if (subIndex !== '' && subIndex !== null && subIndex !== undefined) {
-    row = state.allRows.find(r =>
-      String(r.question_index) === String(questionIndex) && String(r.sub_index) === String(subIndex)
-    );
-  }
-  if (!row) {
-    row = state.allRows.find(r => String(r.question_index) === String(questionIndex));
-  }
+function openEditModal(uid) {
+  const row = state.allRows.find(r => r.uniqueid === uid);
   if (!row) { showNotification('Question not found', 'error'); return; }
-
   state.currentEditRow = row;
-  state.currentEditId  = questionId(row);
+  state.currentEditId  = uid;
 
-  const change = state.allChanges[state.currentEditId];
+  const change = state.allChanges[uid];
   const eff = change ? { ...row, ...change.edited } : row;
 
   document.getElementById('modal-edit-title').textContent =
-    `Edit Q${row.question_index}${row.sub_index ? '(' + row.sub_index + ')' : ''} — ${row.topic}`;
+    `Edit: ${(eff.reference_code||eff.uniqueid||'').slice(0,40)} — ${eff.topic||''}`;
 
-  document.getElementById('ep-type').value      = normaliseType(eff.question_type);
-  document.getElementById('ep-marks').value     = eff.marks || '';
-  document.getElementById('ep-text').value      = eff.question_text || '';
-  document.getElementById('ep-opt-a').value     = eff.option_a || '';
-  document.getElementById('ep-opt-b').value     = eff.option_b || '';
-  document.getElementById('ep-opt-c').value     = eff.option_c || '';
-  document.getElementById('ep-opt-d').value     = eff.option_d || '';
-  document.getElementById('ep-correct').value   = (eff.correct_option || 'A').toUpperCase();
-  document.getElementById('ep-image').value     = eff.image_path || '';
-  document.getElementById('ep-ms').value        = eff.markscheme || '';
-  document.getElementById('ep-difficulty').value= eff.difficulty || 'Medium';
-  document.getElementById('ep-year').value      = eff.year || '';
-  document.getElementById('ep-paper').value     = eff.paper || '';
-  document.getElementById('ep-topic').value     = eff.topic || '';
-  document.getElementById('ep-subtopic').value  = eff.subtopic || '';
-  document.getElementById('ep-notes').value     = (change?.edited?.notes) || eff.notes || '';
+  document.getElementById('ep-type').value    = eff.question_type || 'SFA';
+  document.getElementById('ep-marks').value   = eff.marks || '';
+  document.getElementById('ep-text').value    = eff.text_body || '';
+  document.getElementById('ep-image').value   = '';  // image id editing not needed usually
+  document.getElementById('ep-ms').value      = eff.mark_scheme || '';
+  document.getElementById('ep-level').value   = (eff.level||'').toLowerCase();
+  document.getElementById('ep-paper').value   = eff.paper || '';
+  document.getElementById('ep-topic').value   = eff.topic || '';
+  document.getElementById('ep-subtopic').value= eff.subtopic || '';
+  document.getElementById('ep-refcode').value = eff.reference_code || '';
+  document.getElementById('ep-notes').value   = change?.edited?.notes || eff.notes || '';
   document.getElementById('ep-needs-info').checked = !!(change?.needsMoreInfo);
 
-  // Hide previews
   document.querySelectorAll('.rte-preview').forEach(p => p.classList.remove('visible'));
 
-  const isMCQ = normaliseType(eff.question_type) === 'MCQ';
-  document.getElementById('ep-mcq-options-group').style.display = isMCQ ? '' : 'none';
-
   buildGroupPicker(row);
-  checkExistingGroup(state.currentEditId);
+  checkExistingGroup(uid);
   switchEPTab(document.querySelector('.ep-tab'), 'ep-question');
   openModal('modal-edit');
 }
-
-// MCQ toggle
-document.getElementById('ep-type').addEventListener('change', e => {
-  document.getElementById('ep-mcq-options-group').style.display =
-    e.target.value === 'MCQ' ? '' : 'none';
-});
 
 async function saveEdit() {
   const row = state.currentEditRow;
   if (!row) return;
 
-  const type  = document.getElementById('ep-type').value;
-  const isMCQ = type === 'MCQ';
-
   const edited = {
-    question_type: type,
+    question_type: document.getElementById('ep-type').value,
     marks:         document.getElementById('ep-marks').value,
-    question_text: document.getElementById('ep-text').value,
-    markscheme:    document.getElementById('ep-ms').value,
-    difficulty:    document.getElementById('ep-difficulty').value,
-    year:          document.getElementById('ep-year').value,
+    text_body:     document.getElementById('ep-text').value,
+    mark_scheme:   document.getElementById('ep-ms').value,
+    level:         document.getElementById('ep-level').value,
     paper:         document.getElementById('ep-paper').value,
     topic:         document.getElementById('ep-topic').value,
     subtopic:      document.getElementById('ep-subtopic').value,
+    reference_code:document.getElementById('ep-refcode').value,
     notes:         document.getElementById('ep-notes').value,
-    image_path:    document.getElementById('ep-image').value,
   };
 
-  if (isMCQ) {
-    edited.option_a       = document.getElementById('ep-opt-a').value;
-    edited.option_b       = document.getElementById('ep-opt-b').value;
-    edited.option_c       = document.getElementById('ep-opt-c').value;
-    edited.option_d       = document.getElementById('ep-opt-d').value;
-    edited.correct_option = document.getElementById('ep-correct').value;
-  }
-
   const needsMoreInfo = document.getElementById('ep-needs-info').checked;
+  const changeData = { original:{...row}, edited, needsMoreInfo, status:'edited' };
 
   try {
-    const changeData = { original: { ...row }, edited, needsMoreInfo, status: 'edited' };
-    const logMsg = `Q${row.question_index}${row.sub_index ? '('+row.sub_index+')' : ''}: edited`;
-    await store.saveChange(state.currentEditId, changeData, logMsg);
+    await store.saveChange(state.currentEditId, changeData, `Edited ${state.currentEditId}`);
     state.allChanges[state.currentEditId] = changeData;
+    // Update rootGroups so re-render picks up changes
+    state.rootGroups = groupQuestions(state.allRows);
     flashSaved();
-    showNotification('Edit saved' + (store.isOnline ? ' to GitHub' : ' locally'), 'success');
+    showNotification('Saved'+(store.isOnline?' to GitHub':' locally'), 'success');
     closeModal('modal-edit');
     renderQuestions();
-  } catch (e) {
-    showNotification('Save failed: ' + e.message, 'error');
-  }
+  } catch(e) { showNotification('Save failed: '+e.message, 'error'); }
 }
 
 /* ============================================
@@ -953,9 +771,7 @@ let pickerSelections = {};
 
 function buildGroupPicker(currentRow) {
   pickerSelections = {};
-  pickerSelections[questionId(currentRow)] = {
-    row: currentRow, order: 1, subIndexLabel: 'a'
-  };
+  pickerSelections[questionId(currentRow)] = { row:currentRow, order:1, subIndexLabel:'a' };
   renderGroupPicker('');
   renderSelectedList();
 }
@@ -963,123 +779,96 @@ function buildGroupPicker(currentRow) {
 function renderGroupPicker(filter) {
   const container = document.getElementById('grp-picker');
   const f = filter.toLowerCase();
-  const currentTopic    = state.currentEditRow?.topic    || '';
-  const currentSubtopic = state.currentEditRow?.subtopic || '';
-  const currentIdx      = String(state.currentEditRow?.question_index || '');
+  const curTopic    = state.currentEditRow?.topic    || '';
+  const curSubtopic = state.currentEditRow?.subtopic || '';
 
-  // Group rows by question_index
-  const byIdx = {};
-  state.allRows.forEach(r => {
-    const idx = r.question_index;
-    if (!byIdx[idx]) byIdx[idx] = [];
-    byIdx[idx].push(r);
-  });
-
-  // Score for recommendations
-  const scoredEntries = Object.entries(byIdx).map(([idx, parts]) => {
-    const r = parts[0];
+  // Score and filter root questions
+  const scored = state.rootGroups.map(qg => {
+    const r = qg.root;
     let score = 0;
-    if (r.topic    === currentTopic)    score += 3;
-    if (r.subtopic === currentSubtopic) score += 2;
-    // Same question_index with different sub_indexes → high priority
-    if (String(r.question_index) === currentIdx && parts.some(p => p.sub_index)) score += 5;
-    return { idx, parts, score };
-  });
+    if (r.topic    === curTopic)    score += 3;
+    if (r.subtopic === curSubtopic) score += 2;
+    if (f) {
+      const hay = [r.text_body, r.topic, r.subtopic, r.reference_code].join(' ').toLowerCase().replace(/<[^>]+>/g,' ');
+      if (!hay.includes(f)) return null;
+    }
+    return { qg, score };
+  }).filter(Boolean);
 
-  // Filter first
-  const filtered = scoredEntries.filter(({ idx, parts }) => {
-    if (!f) return true;
-    const hay = [parts[0].question_text, parts[0].topic, parts[0].subtopic, idx].join(' ').toLowerCase();
-    return hay.includes(f);
-  });
-
-  // Sort: recommended (score > 0) first, then by question_index
-  filtered.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return parseInt(a.idx, 10) - parseInt(b.idx, 10);
-  });
+  scored.sort((a,b) => b.score !== a.score ? b.score - a.score : 0);
 
   container.innerHTML = '';
-
-  let lastWasRecommended = null;
-  filtered.forEach(({ idx, parts, score }) => {
-    const pid = questionId(parts[0]);
+  let lastRec = null;
+  scored.forEach(({ qg, score }) => {
+    const { root } = qg;
+    const pid = questionId(root);
     const isSel = !!pickerSelections[pid];
     const isRec = score > 0;
 
-    // Section dividers
-    if (lastWasRecommended !== isRec) {
+    if (lastRec !== isRec) {
       const div = document.createElement('div');
       div.className = 'group-section-header';
-      div.textContent = isRec ? '★ Recommended (same topic / related)' : 'Other questions';
+      div.textContent = isRec ? '★ Recommended (same topic/subtopic)' : 'Other questions';
       container.appendChild(div);
-      lastWasRecommended = isRec;
+      lastRec = isRec;
     }
 
     const item = document.createElement('div');
-    item.className = 'gp-item' + (isSel ? ' selected' : '') + (isRec ? ' gp-recommended' : '');
+    item.className = `gp-item${isSel?' selected':''}${isRec?' gp-recommended':''}`;
+    const preview = (root.text_body||'').replace(/<[^>]+>/g,'').slice(0,55);
     item.innerHTML = `
-      <input type="checkbox" ${isSel ? 'checked' : ''} />
+      <input type="checkbox" ${isSel?'checked':''} />
       <div class="gp-item-text">
-        <div class="gp-item-title">Q${idx} — ${parts.map(p => normaliseType(p.question_type)).join('/')} &nbsp;<span style="color:var(--color-text-muted);font-weight:400;font-size:0.73rem">${parts[0].marks || '?'} mk</span></div>
-        <div class="gp-item-sub">${parts[0].topic} › ${parts[0].subtopic} &nbsp;|&nbsp; ${(parts[0].question_text||'').replace(/<[^>]+>/g,'').slice(0,55)}…</div>
+        <div class="gp-item-title">${normaliseType(root.question_type)} — ${root.marks||'?'}mk</div>
+        <div class="gp-item-sub">${root.topic||''} › ${root.subtopic||''} | ${preview}…</div>
       </div>`;
-    item.querySelector('input').addEventListener('change', e => togglePickerSelect(idx, e.target));
+    item.querySelector('input').addEventListener('change', e => togglePickerSelect(pid, e.target, root));
     item.addEventListener('click', e => {
       if (e.target.tagName !== 'INPUT') {
         const cb = item.querySelector('input');
         cb.checked = !cb.checked;
-        togglePickerSelect(idx, cb);
+        togglePickerSelect(pid, cb, root);
       }
     });
     container.appendChild(item);
   });
 }
 
-function togglePickerSelect(questionIndex, checkbox) {
-  const row = state.allRows.find(r => String(r.question_index) === String(questionIndex));
-  if (!row) return;
-  const pid = questionId(row);
+function togglePickerSelect(pid, checkbox, row) {
   if (checkbox.checked) {
     const order = Object.keys(pickerSelections).length + 1;
     const labels = 'abcdefghijklmnop';
-    pickerSelections[pid] = { row, order, subIndexLabel: labels[order - 1] || String(order) };
+    pickerSelections[pid] = { row, order, subIndexLabel: labels[order-1]||String(order) };
   } else {
     delete pickerSelections[pid];
-    // Re-number
-    Object.values(pickerSelections).sort((a,b) => a.order - b.order).forEach((sel, i) => { sel.order = i + 1; });
+    Object.values(pickerSelections).sort((a,b)=>a.order-b.order).forEach((s,i)=>s.order=i+1);
   }
   renderSelectedList();
   renderGroupPicker(document.getElementById('grp-search').value);
 }
 
-function filterGroupPicker() {
-  renderGroupPicker(document.getElementById('grp-search').value);
-}
+function filterGroupPicker() { renderGroupPicker(document.getElementById('grp-search').value); }
 
 function renderSelectedList() {
   const container = document.getElementById('grp-selected');
-  const sorted = Object.values(pickerSelections).sort((a,b) => a.order - b.order);
+  const sorted = Object.values(pickerSelections).sort((a,b)=>a.order-b.order);
   container.innerHTML = sorted.map(sel => `
     <div class="sq-item">
       <div>
-        <div class="sq-item-label">Q${sel.row.question_index}${sel.row.sub_index ? '('+sel.row.sub_index+')' : ''} — ${sel.row.topic}</div>
-        <div class="text-small text-muted">${(sel.row.question_text||'').replace(/<[^>]+>/g,'').slice(0,40)}…</div>
+        <div style="font-weight:600;font-size:.82rem">${sel.row.reference_code||sel.row.uniqueid.slice(-8)}</div>
+        <div style="font-size:.72rem;color:var(--color-text-muted)">${(sel.row.text_body||'').replace(/<[^>]+>/g,'').slice(0,40)}…</div>
       </div>
-      <input type="text" value="${sel.subIndexLabel}" placeholder="label"
-        onchange="updatePickerLabel('${questionId(sel.row)}', this.value)"
-        style="font-size:0.8rem;padding:3px 7px" title="Sub-index label (a, b, c…)" />
+      <input type="text" value="${sel.subIndexLabel}" placeholder="a, b…"
+        onchange="updatePickerLabel('${questionId(sel.row)}',this.value)"
+        style="font-size:.79rem;padding:3px 6px" />
       <input type="number" value="${sel.order}" min="1"
-        onchange="updatePickerOrder('${questionId(sel.row)}', this.value)"
-        style="font-size:0.8rem;padding:3px 7px" title="Order" />
-    </div>
-  `).join('') || '<div class="text-muted text-small">No questions selected yet</div>';
+        onchange="updatePickerOrder('${questionId(sel.row)}',this.value)"
+        style="font-size:.79rem;padding:3px 6px" />
+    </div>`).join('') || '<div class="text-muted text-small">No questions selected</div>';
 }
 
-function updatePickerLabel(pid, val) { if (pickerSelections[pid]) pickerSelections[pid].subIndexLabel = val; }
-function updatePickerOrder(pid, val) {
-  if (pickerSelections[pid]) { pickerSelections[pid].order = parseInt(val,10); renderSelectedList(); }
-}
+function updatePickerLabel(pid,val) { if(pickerSelections[pid]) pickerSelections[pid].subIndexLabel=val; }
+function updatePickerOrder(pid,val) { if(pickerSelections[pid]){pickerSelections[pid].order=parseInt(val,10);renderSelectedList();} }
 
 function checkExistingGroup(pid) {
   const existing = Object.values(state.allGroups).find(g =>
@@ -1089,15 +878,14 @@ function checkExistingGroup(pid) {
   if (existing) {
     state.currentGroupId = existing.id;
     document.getElementById('grp-existing-id').textContent = existing.id;
-    document.getElementById('grp-title').value  = existing.title || '';
-    document.getElementById('grp-format').value = existing.format || 'Mixed';
-    document.getElementById('grp-marks').value  = existing.combined_marks || '';
-    document.getElementById('grp-ms').value     = existing.markscheme || '';
+    document.getElementById('grp-title').value = existing.title||'';
+    document.getElementById('grp-marks').value = existing.combined_marks||'';
+    document.getElementById('grp-ms').value    = existing.markscheme||'';
     info.classList.remove('hidden');
     pickerSelections = {};
     existing.questions.forEach(q => {
       const row = state.allRows.find(r => questionId(r) === q.question_id);
-      if (row) pickerSelections[q.question_id] = { row, order: q.order, subIndexLabel: q.sub_index_label || '' };
+      if (row) pickerSelections[q.question_id] = { row, order:q.order, subIndexLabel:q.sub_index_label||'' };
     });
     renderSelectedList();
   } else {
@@ -1110,129 +898,93 @@ function checkExistingGroup(pid) {
 }
 
 async function saveGroup() {
-  const selections = Object.values(pickerSelections);
-  if (selections.length < 2) {
-    showNotification('Select at least 2 questions to create a group', 'warning');
-    return;
-  }
-
+  const sels = Object.values(pickerSelections);
+  if (sels.length < 2) { showNotification('Select at least 2 questions', 'warning'); return; }
   const group = {
-    id: state.currentGroupId || ('group_' + Date.now()),
-    subject: state.currentSubject?.name || '',
-    title: document.getElementById('grp-title').value || 'Untitled Group',
-    format: document.getElementById('grp-format').value,
-    combined_marks: parseInt(document.getElementById('grp-marks').value, 10) || null,
+    id: state.currentGroupId || ('group_'+Date.now()),
+    subject: state.currentSubject?.name||'',
+    title: document.getElementById('grp-title').value||'Untitled Group',
+    combined_marks: parseInt(document.getElementById('grp-marks').value,10)||null,
     markscheme: document.getElementById('grp-ms').value,
-    questions: selections.sort((a,b) => a.order - b.order).map(sel => ({
+    questions: sels.sort((a,b)=>a.order-b.order).map(sel=>({
       question_id: questionId(sel.row),
       sub_index_label: sel.subIndexLabel,
-      order: sel.order,
-      type_override: null
+      order: sel.order
     })),
     created_at: new Date().toISOString()
   };
-
   try {
     await store.saveGroup(group);
     state.allGroups[group.id] = group;
     flashSaved();
-    showNotification('Group saved' + (store.isOnline ? ' to GitHub' : ' locally'), 'success');
+    showNotification('Group saved', 'success');
     closeModal('modal-edit');
     renderQuestions();
-  } catch (e) {
-    showNotification('Failed to save group: ' + e.message, 'error');
-  }
+  } catch(e) { showNotification('Group save failed: '+e.message, 'error'); }
 }
 
 async function deleteCurrentGroup() {
-  if (!state.currentGroupId) return;
-  if (!confirm('Delete this group? This cannot be undone.')) return;
+  if (!state.currentGroupId || !confirm('Delete this group?')) return;
   try {
     await store.deleteGroup(state.currentGroupId);
     delete state.allGroups[state.currentGroupId];
     state.currentGroupId = null;
-    showNotification('Group deleted', 'success');
+    showNotification('Group deleted','success');
     closeModal('modal-edit');
     renderQuestions();
-  } catch (e) {
-    showNotification('Failed to delete group: ' + e.message, 'error');
-  }
+  } catch(e) { showNotification('Delete failed: '+e.message, 'error'); }
 }
 
 /* ============================================
-   Settings
+   Settings & Status
    ============================================ */
 function loadSettings() {
   const cfg = GitHubAPI.loadConfig();
   if (!cfg) return;
-  document.getElementById('gh-token').value  = cfg.token  || '';
-  document.getElementById('gh-owner').value  = cfg.owner  || '';
-  document.getElementById('gh-repo').value   = cfg.repo   || '';
-  document.getElementById('gh-branch').value = cfg.branch || '';
+  ['gh-token','gh-owner','gh-repo','gh-branch'].forEach(id => {
+    const key = id.replace('gh-','');
+    document.getElementById(id).value = cfg[key]||'';
+  });
 }
-
 function saveGHSettings() {
-  const cfg = {
-    token:  document.getElementById('gh-token').value.trim(),
-    owner:  document.getElementById('gh-owner').value.trim(),
-    repo:   document.getElementById('gh-repo').value.trim(),
-    branch: document.getElementById('gh-branch').value.trim()
-  };
+  const cfg = { token:document.getElementById('gh-token').value.trim(), owner:document.getElementById('gh-owner').value.trim(), repo:document.getElementById('gh-repo').value.trim(), branch:document.getElementById('gh-branch').value.trim() };
   GitHubAPI.saveConfig(cfg);
   store.api = cfg.token ? new GitHubAPI(cfg) : null;
   updateStatusBar();
   closeModal('modal-settings');
-  showNotification('Settings saved', 'success');
+  showNotification('Settings saved','success');
 }
-
 async function testGHConnection() {
-  const cfg = {
-    token:  document.getElementById('gh-token').value.trim(),
-    owner:  document.getElementById('gh-owner').value.trim(),
-    repo:   document.getElementById('gh-repo').value.trim(),
-    branch: document.getElementById('gh-branch').value.trim()
-  };
-  const result = document.getElementById('gh-test-result');
-  result.textContent = '⏳ Testing…';
+  const cfg = { token:document.getElementById('gh-token').value.trim(), owner:document.getElementById('gh-owner').value.trim(), repo:document.getElementById('gh-repo').value.trim(), branch:document.getElementById('gh-branch').value.trim() };
+  const res = document.getElementById('gh-test-result');
+  res.textContent = '⏳ Testing…';
   try {
     const ok = await new GitHubAPI(cfg).testConnection();
-    result.textContent  = ok ? '✅ Connected!' : '❌ Connection failed';
-    result.style.color  = ok ? 'var(--color-success)' : 'var(--color-danger)';
-  } catch (e) {
-    result.textContent = '❌ Error: ' + e.message;
-    result.style.color = 'var(--color-danger)';
-  }
+    res.textContent = ok ? '✅ Connected!' : '❌ Failed';
+    res.style.color = ok ? 'var(--color-success)' : 'var(--color-danger)';
+  } catch(e) { res.textContent='❌ Error: '+e.message; res.style.color='var(--color-danger)'; }
 }
-
 function clearLocalData() {
-  if (!confirm('Clear ALL locally saved edits and groups? This cannot be undone.')) return;
-  try {
-    localStorage.removeItem('qb_draft_changes');
-    localStorage.removeItem('qb_draft_groups');
-    localStorage.removeItem('qb_draft_changelog');
-  } catch { /* */ }
-  showNotification('Local data cleared. Reload to refresh.', 'info');
+  if (!confirm('Clear ALL locally saved edits?')) return;
+  ['qb_draft_changes','qb_draft_groups','qb_draft_changelog'].forEach(k => { try{localStorage.removeItem(k);}catch{} });
+  showNotification('Local data cleared — reload to refresh','info');
 }
-
 function updateStatusBar() {
   const mode = document.getElementById('status-mode');
   const msg  = document.getElementById('status-msg');
   if (store.api) {
     const cfg = GitHubAPI.loadConfig();
-    mode.className  = 'status-online';
-    mode.textContent = '⬤ GitHub Connected';
-    msg.textContent  = `${cfg.owner}/${cfg.repo} @ ${cfg.branch}`;
+    mode.className='status-online'; mode.textContent='⬤ GitHub Connected';
+    msg.textContent=`${cfg.owner}/${cfg.repo} @ ${cfg.branch}`;
   } else {
-    mode.className  = 'status-offline';
-    mode.textContent = '⬤ Local Mode';
-    msg.textContent  = 'Edits saved in browser — no reload loss';
+    mode.className='status-offline'; mode.textContent='⬤ Local Mode';
+    msg.textContent='Edits saved in browser';
   }
 }
-
 function flashSaved() {
   const el = document.getElementById('status-saved');
-  el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 3000);
+  el.style.display='block';
+  setTimeout(()=>{el.style.display='none';},3000);
 }
 
 /* ============================================
@@ -1240,43 +992,29 @@ function flashSaved() {
    ============================================ */
 function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
 function switchEPTab(tabEl, paneId) {
-  document.querySelectorAll('.ep-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.ep-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ep-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.ep-pane').forEach(p=>p.classList.remove('active'));
   tabEl.classList.add('active');
   document.getElementById(paneId)?.classList.add('active');
 }
-
-// Close modals on overlay click
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', e => {
-    if (e.target === overlay) overlay.classList.add('hidden');
-  });
-});
+document.querySelectorAll('.modal-overlay').forEach(o =>
+  o.addEventListener('click', e => { if(e.target===o) o.classList.add('hidden'); })
+);
 
 /* ============================================
-   Notifications
+   Notifications & Loading
    ============================================ */
-function showNotification(message, type = 'info') {
+function showNotification(msg, type='info') {
   const el = document.createElement('div');
-  el.className = `notification notification-${type}`;
-  const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
-  el.innerHTML = `<span>${icons[type] || 'ℹ'}</span><span>${message}</span>`;
+  el.className=`notification notification-${type}`;
+  el.innerHTML=`<span>${{success:'✓',error:'✕',warning:'⚠',info:'ℹ'}[type]||'ℹ'}</span><span>${msg}</span>`;
   document.body.appendChild(el);
-  setTimeout(() => {
-    el.style.opacity = '0';
-    el.style.transition = 'opacity 0.3s';
-    setTimeout(() => el.remove(), 320);
-  }, 3500);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),320); },3500);
 }
-
-/* ============================================
-   Loading State
-   ============================================ */
 function showLoading(show) {
-  document.getElementById('loading-state').classList.toggle('hidden', !show);
-  document.getElementById('questions-container').style.display = show ? 'none' : '';
+  document.getElementById('loading-state').classList.toggle('hidden',!show);
+  document.getElementById('questions-container').style.display=show?'none':'';
 }
 
 /* Boot */

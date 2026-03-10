@@ -1,8 +1,15 @@
 {
   "subjects": [
-    { "name": "Biology", "file": "biology.csv", "color": "#27ae60", "icon": "🧬" },
-    { "name": "Chemistry", "file": "chemistry.csv", "color": "#e74c3c", "icon": "⚗️" },
-    { "name": "Physics", "file": "physics.csv", "color": "#3498db", "icon": "⚛️" }
+    { "name": "Biology",              "file": "bio_2025.csv",    "key": "bio_2025",    "color": "#27ae60", "icon": "🧬" },
+    { "name": "Chemistry",            "file": "chem_2025.csv",   "key": "chem_2025",   "color": "#e74c3c", "icon": "⚗️" },
+    { "name": "Physics",              "file": "phy_2025.csv",    "key": "phy_2025",    "color": "#3498db", "icon": "⚛️" },
+    { "name": "Mathematics AA",       "file": "mathaa_2021.csv", "key": "mathaa_2021", "color": "#9b59b6", "icon": "∑" },
+    { "name": "Mathematics AI",       "file": "mathai_2021.csv", "key": "mathai_2021", "color": "#8e44ad", "icon": "📊" },
+    { "name": "Economics",            "file": "econ_2022.csv",   "key": "econ_2022",   "color": "#e67e22", "icon": "📈" },
+    { "name": "Geography",            "file": "geo_2019.csv",    "key": "geo_2019",    "color": "#16a085", "icon": "🌍" },
+    { "name": "Business Management",  "file": "busman_2024.csv", "key": "busman_2024", "color": "#2980b9", "icon": "💼" },
+    { "name": "ESS",                  "file": "ess_2017.csv",    "key": "ess_2017",    "color": "#27ae60", "icon": "🌿" }
   ],
-  "version": "1.0"
+  "schema": "ib_2025",
+  "version": "2.0"
 }
