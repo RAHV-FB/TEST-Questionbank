@@ -79,6 +79,12 @@ HTML_TAG = re.compile(
     r"<(/?)(div|span|p|br|b|i|em|strong|a|img|ul|li|table|code|pre)\b", re.IGNORECASE
 )
 WORD = re.compile(r"[A-Za-z0-9'’_-]+")
+SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+ROUTE_TOKEN = re.compile(r"[A-Za-z0-9_~-]+")
+MORE_LINES = re.compile(r"\(… \d+ more lines?\)")
+QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
+COUNT_LINE = re.compile(r"( *)(\d+) ")
+LONG_OUTPUT = 40
 
 
 class Report:
@@ -145,6 +151,98 @@ def ids_ok(rep: Report, where: str, value: Any, pattern: str) -> bool:
         rep.err(where, f"id {value!r} does not match {pattern}")
         return False
     return True
+
+
+def validate_walkthrough(rep: Report, walk: Any) -> None:
+    """The solved lab (`lab_walkthrough`): a title, the file note, a summary list of steps and
+    exercises of steps. A step is a question, the one pipeline that answers it, its real output
+    and the answer. Ids are unique; outputs follow the GNU conventions of brief/VERIFY.md."""
+    where = "lab_walkthrough"
+    if not isinstance(walk, dict):
+        rep.err(where, "must be an object")
+        return
+    ids: Counter[str] = Counter()
+    for key in ("title", "source"):
+        if not isinstance(walk.get(key), str) or not walk[key].strip():
+            rep.err(where, f"{key} missing or not a string")
+    if ids_ok(rep, f"{where}.id", walk.get("id"), ROUTE_TOKEN.pattern):
+        ids[walk["id"]] += 1
+    check_md(rep, f"{where}.file_note_md", walk.get("file_note_md"))
+    check_md(rep, f"{where}.summary_intro_md", walk.get("summary_intro_md"), required=False)
+
+    def check_steps(label: str, steps: Any) -> None:
+        if not isinstance(steps, list) or not steps:
+            rep.err(label, "steps must be a non-empty list")
+            return
+        for i, step in enumerate(steps):
+            sw = f"{label}.step[{i}]"
+            if not isinstance(step, dict):
+                rep.err(sw, "a step must be an object")
+                continue
+            if ids_ok(rep, sw, step.get("id"), SLUG.pattern):
+                sw = f"{label}.{step['id']}"
+                ids[step["id"]] += 1
+            check_md(rep, f"{sw}.prompt_md", step.get("prompt_md"))
+            check_md(rep, f"{sw}.answer_md", step.get("answer_md"))
+            check_walk_command(rep, sw, step.get("pipeline"), step.get("output"))
+
+    check_steps(f"{where}.summary_steps", walk.get("summary_steps"))
+    exercises = walk.get("exercises")
+    if not isinstance(exercises, list) or not exercises:
+        rep.err(where, "exercises must be a non-empty list")
+        exercises = []
+    for i, ex in enumerate(exercises):
+        ew = f"{where}.exercise[{i}]"
+        if not isinstance(ex, dict):
+            rep.err(ew, "an exercise must be an object")
+            continue
+        if ids_ok(rep, ew, ex.get("id"), SLUG.pattern):
+            ew = f"{where}.{ex['id']}"
+            ids[ex["id"]] += 1
+        if not isinstance(ex.get("title"), str) or not ex["title"].strip():
+            rep.err(ew, "title missing")
+        check_md(rep, f"{ew}.intro_md", ex.get("intro_md"))
+        check_steps(ew, ex.get("steps"))
+    for key, n in ids.items():
+        if n > 1:
+            rep.err(where, f"id {key!r} used {n} times (ids must be unique)")
+
+
+def check_walk_command(rep: Report, where: str, pipeline: Any, output: Any) -> None:
+    """One step's pipeline and output: strings, no padding that macOS adds, `uniq -c` counts in
+    a 7-wide field, long outputs trimmed with a '(… N more lines)' line."""
+    if not isinstance(pipeline, str) or not pipeline.strip():
+        rep.err(where, "pipeline missing or not a string")
+        return
+    commands = pipeline.split("\n")
+    if any(not c.strip() for c in commands) or pipeline != pipeline.strip():
+        rep.err(where, "pipeline has an empty line or surrounding blank space")
+    if not isinstance(output, str):
+        rep.err(where, "output missing or not a string")
+        return
+    if output.endswith("\n"):
+        rep.err(where, "output ends with a newline (the page adds its own line ends)")
+    last = QUOTED.sub("", commands[-1])
+    if output == "":
+        if ">" not in last:
+            rep.err(where, "empty output, but the last command does not redirect its output")
+        return
+    if re.fullmatch(r"\s+\d+", output):
+        rep.err(where, "a padded count: GNU wc prints the bare number (VERIFY.md)")
+    rows = output.split("\n")
+    for k, row in enumerate(rows):
+        if row.startswith("(…") and not MORE_LINES.fullmatch(row):
+            rep.err(where, f"line {k + 1} looks like a trim marker but is not '(… N more lines)'")
+        if row.startswith("(…") and k == 0:
+            rep.err(where, "a trim marker cannot be the first line")
+    if "uniq -c" in pipeline:
+        for row in rows:
+            m = COUNT_LINE.match(row)
+            if m and len(m.group(1)) + len(m.group(2)) != 7:
+                rep.err(where, f"uniq -c count not right-aligned in 7 columns (GNU): {row!r}")
+                break
+    if len(rows) > LONG_OUTPUT:
+        rep.warn(where, f"output of {len(rows)} lines (trim it to its first and last lines)")
 
 
 def validate_module(path: Path, all_ids: Counter[str]) -> Report:
@@ -438,6 +536,8 @@ def validate_module(path: Path, all_ids: Counter[str]) -> Report:
                     if not s.get("cmd") or "output" not in s:
                         rep.err(w, "stage needs cmd and output")
                     check_md(rep, f"{w}.explain_md", s.get("explain_md"))
+    if "lab_walkthrough" in mod:
+        validate_walkthrough(rep, mod["lab_walkthrough"])
     if mid == "history":
         commits = mod.get("commits")
         real = []

@@ -241,6 +241,27 @@ def convert(node: Any) -> Any:
     return out
 
 
+def pipeline_html(pipeline: str) -> list[str]:
+    """A step's pipeline for the page: one highlighted (Bash) HTML string per command line, so
+    the page can put a prompt in front of each line. The output stays plain text."""
+    return [
+        highlight(line, LEXERS["bash"], FORMATTER).rstrip("\n") for line in pipeline.split("\n")
+    ]
+
+
+def attach_pipelines(modules: list[dict[str, Any]]) -> None:
+    """Give every step of a module's `lab_walkthrough` a `pipeline_html` (see pipeline_html)."""
+    for mod in modules:
+        walk = mod.get("lab_walkthrough")
+        if not isinstance(walk, dict):
+            continue
+        steps = list(walk.get("summary_steps", []))
+        for exercise in walk.get("exercises", []):
+            steps.extend(exercise.get("steps", []))
+        for step in steps:
+            step["pipeline_html"] = pipeline_html(step["pipeline"])
+
+
 # ---------------------------------------------------------------------------- loading
 
 
@@ -358,7 +379,7 @@ def check_papers(
 
 PRACTICE_MODES = ("next10", "weak", "new", "sample")
 PRACTICE_TYPES = ("any", "mcq", "open", "sort")
-LABS = ("pipes", "perms", "paths", "chains")
+LABS = ("pipes", "perms", "paths", "chains", "lab10")
 TOP_LEVEL = ("home", "plan", "learn", "practice", "exam", "cards", "glossary", "labs", "more")
 
 
@@ -671,6 +692,7 @@ def data_blob(
     modules: list[dict[str, Any]], papers: list[dict[str, Any]], plan: Any, fixture: bool
 ) -> str:
     mods = convert(sorted(modules, key=lambda m: (m.get("order", 99), m["id"])))
+    attach_pipelines(mods)
     data = {
         "meta": {
             "exam": EXAM,

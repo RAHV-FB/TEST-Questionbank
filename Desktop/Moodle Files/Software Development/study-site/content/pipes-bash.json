@@ -115,6 +115,25 @@
    ]
   },
   {
+   "id": "pipes-bash-s10",
+   "heading": "Lab 10, the answers in brief",
+   "body_md": "Lab 10 asks seven groups of questions about `expenses.csv` and one `awk` line to read. The page [Lab 10, solved](#labs.lab10) in the Terminal lab solves every one of them on the real file, a step at a time. These are the results to know.\n\n```console\n$ tail -n +2 expenses.csv | wc -l\n420\n$ tail -n +2 expenses.csv | cut -d, -f3 | sort | uniq -c | sort -rn | head -n 3\n    119 groceries\n     86 dining\n     76 transport\n$ tail -n +2 expenses.csv | cut -d, -f2 | sort -u | wc -l\n33\n$ tail -n +2 expenses.csv | sort | uniq -d | wc -l\n6\n$ wc -l clean.csv\n415 clean.csv\n```\n\nThe five biggest expenses are all in `home`; the largest is `2025-11-17,Ferreteria Mas,home,296.49`. Repsol has 23 rows, all in `transport`: a `sort | uniq -c` that prints one line means that every row shares one value. September 2025 has 67 expenses. Two chained `grep`s, `grep '^2025-12' expenses.csv | grep -c ',dining,'`, find 11 dining expenses in December. `cut -c1-7` gives the month of each line, and November is the busiest with 85; start with `tail -n +2`, or the header turns up as a month called `date,me`. The tracker and `paste -sd+ | bc` both say 6401.78 for groceries, because both count the six duplicate rows.\n\nThree ideas run through the lab.\n\n**Sort before uniq.** `uniq` only collapses neighbours. Without the `sort`, the category count becomes 333 short runs instead of 8 groups, and `uniq -d` finds five duplicates, not six.\n\n**Numbers are not text.** `sort -rn` ranks amounts by size, while `sort -r` puts `97.92` before `296.49`. On a CSV, `-k4` needs `-t,`: without it sort splits at blanks, finds no fourth field and orders the whole lines instead. The awk stretch makes the same point about ranking: `groceries` leads in rows and in money, but by average amount `home` leads with 143.43.\n\n**`>` overwrites, `>>` appends.** `clean.csv` is built with `>` for the header and `>>` for the rows. Use `>` twice and the header is gone: 414 lines, the first one an expense.\n\nOne habit from the exercises: look past the cut-off of a ranking. Condis and Bonpreu have 26 rows each, and Repsol and Lidl share 23, so `head -n 3` has to cut through a tie.",
+   "key_points": [
+    "Sort before `uniq`: it only collapses neighbours, so an unsorted category count has 333 runs, not 8 groups.",
+    "Numeric against text: `-n` for amounts, and `-t,` together with `-k4` on a CSV.",
+    "`>` overwrites and `>>` appends; a second `>` in the `clean.csv` recipe deletes the header.",
+    "The real file: 420 expenses, 8 categories, 33 merchants, 6 duplicate rows, 415 lines in `clean.csv`.",
+    "A ranking can hide a tie at the cut-off: Repsol and Lidl are both on 23."
+   ],
+   "exam_note_md": "The real-file numbers (420, 119, 33, 6, 415) are what you check a pipeline against. Explain-the-wrong-output questions have four usual causes: a header left in, `uniq` without `sort`, a text sort of numbers, and `-k` without `-t,`.",
+   "source_ref": "labs/10-wrangling.md; S10 slides 4 and 6–9; run on the real expenses.csv at expense-tracker v0.5 (runs/lab10.log)",
+   "check": [
+    "pipes-bash-q15",
+    "pipes-bash-q73",
+    "pipes-bash-q65"
+   ]
+  },
+  {
    "id": "pipes-bash-s6",
    "heading": "Exit codes and chaining: $?, &&, || and ;",
    "body_md": "Session 5: \"0 means success; anything else means failure.\" Every command leaves a number behind, and `echo $?` shows the last one. \"Every tool downstream reads that number: the shell, `&&`, CI. A program that prints an error and exits 0 is a program that lies.\"\n\ngrep uses three values, and the middle one surprises people:\n\n```console\n$ grep clothing expenses.csv\n$ echo $?\n1\n$ grep dining nosuch.csv\ngrep: nosuch.csv: No such file or directory\n$ echo $?\n2\n```\n\n`0` means it found at least one line, `1` means it ran fine and found nothing, `2` means trouble such as a missing file. For the shell, 1 is still not 0, so a script treats \"no match\" as a failure. That matters in the next section.\n\nThree operators join commands on one line:\n\n- `a && b`: b runs only if a exited 0. Run the next check only if this one passed.\n- `a || b`: b runs only if a exited non-zero. Print a fallback message.\n- `a ; b`: b runs regardless.\n\nThe line's exit code is that of the last command that ran.\n\n```console\n$ uv run expenses report nosuch.csv && echo \"report ok\" || echo \"report failed\"\ncould not read nosuch.csv\nreport failed\n```\n\nThe partial rubric's \"Check yourself\" chains its four checks with `&&`, so the first failing check stops the line and the line exits non-zero. Written with `;`, every check runs whatever happens, and the exit code is the last command's: a lint error followed by passing tests exits 0, and anything that trusts the exit code sees green.\n\nA pipeline has one exit code too: by default, the last command's.\n\n```console\n$ grep clothing expenses.csv | wc -l\n0\n$ echo $?\n0\n$ set -o pipefail\n$ grep clothing expenses.csv | wc -l\n0\n$ echo $?\n1\n```\n\nwc happily counted zero lines and exited 0, hiding grep's 1. With `pipefail` the pipeline fails if any stage fails. Notice the two zeros in the first run: the `0` on the screen is wc's output, the `0` from `echo $?` is the exit code. They are different things.",
@@ -3502,6 +3521,228 @@
     }
    ],
    "lines": "5–8"
+  },
+  {
+   "id": "pipes-bash-q71",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "concept"
+   ],
+   "stem_md": "On the real `expenses.csv` (420 expenses, 76 of them in `transport`):\n\n```console\n$ grep -c ',Repsol,' expenses.csv\n23\n$ grep ',Repsol,' expenses.csv | cut -d, -f3 | sort | uniq -c\n     23 transport\n```\n\nWhat do the two commands tell you together?",
+   "explanation_md": "`grep -c ',Repsol,'` counts the lines whose merchant field is Repsol: 23 expenses. The second pipeline keeps the same rows, cuts out their category and counts the groups. `uniq -c` prints one line for each different value, so one line, `23 transport`, means that all 23 rows share a category. Had one Repsol row been filed under `home`, a second line would have appeared. The count is a number of rows, never an amount, and it is not the size of the category either: `transport` has 76 rows, and the other 53 belong to Bicing, Cabify, TMB and Renfe.",
+   "section_ref": "pipes-bash-s10",
+   "source_ref": "labs/10-wrangling.md exercise 3; run on the real expenses.csv at expense-tracker v0.5 (runs/lab10.log)",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Repsol is one of 23 merchants in the `transport` category",
+     "correct": false,
+     "why_md": "`grep -c` counts lines, and each line is one expense. The 23 is a number of rows, not of merchants."
+    },
+    {
+     "text_md": "The merchant Repsol has 23 rows, and every one of them is in `transport`",
+     "correct": true,
+     "why_md": "`uniq -c` printed a single line, so column 3 has a single value in these rows, and its count matches the 23 of `grep -c`."
+    },
+    {
+     "text_md": "Repsol is the only merchant in `transport`, which has 23 rows",
+     "correct": false,
+     "why_md": "`transport` has 76 rows. Repsol's 23 are one share of them, next to Bicing, Cabify, TMB and Renfe."
+    },
+    {
+     "text_md": "The amounts at Repsol add up to 23, all of them in `transport`",
+     "correct": false,
+     "why_md": "The 23 is a count of rows. Amounts are in column 4, and nothing in these commands adds them up."
+    }
+   ]
+  },
+  {
+   "id": "pipes-bash-q72",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "The lab asks which month has the most expenses. On the real `expenses.csv` you build the monthly counts from `cut -c1-7`, the first seven characters of each line:\n\n```console\n$ cut -c1-7 expenses.csv | sort | uniq -c\n     67 2025-07\n     73 2025-08\n     67 2025-09\n     69 2025-10\n     85 2025-11\n     59 2025-12\n      1 date,me\n```\n\nWhat is the last line, and how do you get rid of it?",
+   "explanation_md": "`cut -c1-7` keeps the first seven characters of every line, and the header is a line too: `date,merchant,category,amount` becomes `date,me`. `sort` puts it after the months, because letters come after digits, and `uniq -c` counts it as a group with one line. The six real months add up to 420, the number of expenses. Starting with `tail -n +2 expenses.csv |` leaves the header out, as in every other pipeline of the lab, and `sort -rn | head -n 1` then names November 2025, with 85 expenses.",
+   "section_ref": "pipes-bash-s10",
+   "source_ref": "labs/10-wrangling.md exercise 4; run on the real expenses.csv at expense-tracker v0.5 (runs/lab10.log)",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "A row with a damaged date: find it with `grep -n 'date,me' expenses.csv` and delete it",
+     "correct": false,
+     "why_md": "No expense has a date like that. The text `date,me` is the first seven characters of the header, `date,merchant,category,amount`."
+    },
+    {
+     "text_md": "A total that `uniq -c` adds at the end: it is not an expense, so ignore it",
+     "correct": false,
+     "why_md": "`uniq -c` never adds a total. Each line it prints is one group of identical lines, and this group has one line in it."
+    },
+    {
+     "text_md": "A line that `sort` could not place: put `-n` on the `sort` to move it",
+     "correct": false,
+     "why_md": "`sort` placed every line. The header comes last only because letters sort after digits, and `-n` would not remove it."
+    },
+    {
+     "text_md": "The header, cut to its first seven characters: start the pipeline with `tail -n +2 expenses.csv |`",
+     "correct": true,
+     "why_md": "`cut -c1-7` treats the header like any other line. `tail -n +2` starts at line 2, so the header never reaches `cut`."
+    }
+   ]
+  },
+  {
+   "id": "pipes-bash-q73",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "compare"
+   ],
+   "stem_md": "You want the biggest expenses of the real `expenses.csv`. The first command is the lab's. In the second, the `-t,` is missing:\n\n```console\n$ tail -n +2 expenses.csv | sort -t, -k4 -rn | head -n 3\n2025-11-17,Ferreteria Mas,home,296.49\n2025-11-23,Ikea,home,275.95\n2025-10-21,Leroy Merlin,home,252.28\n$ tail -n +2 expenses.csv | sort -k4 -rn | head -n 3\n2025-12-30,Can Recasens,dining,54.78\n2025-12-30,Can Recasens,dining,17.10\n2025-12-29,Teatre Lliure,entertainment,48.90\n```\n\nWhy does the second command not give the biggest expenses?",
+   "explanation_md": "`sort -k4` sorts on the fourth field, and unless you say `-t,` fields are separated by blanks, not commas. A line such as `2025-12-30,Can Recasens,dining,54.78` has one blank, so it has no fourth field. Every key is empty and equal, so `sort` compares the whole lines, in reverse because of `-r`: the latest date comes first. `sort -r` on its own prints the same three lines (run). Nothing fails and nothing warns, which is why the output looks plausible. Give `-t,` whenever you use `-k` on a CSV, and check the first lines against what you expect.",
+   "section_ref": "pipes-bash-s10",
+   "source_ref": "labs/10-wrangling.md tools table and exercise 5; run on the real expenses.csv at expense-tracker v0.5 (runs/lab10.log)",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Without `-t,` sort splits fields at blanks and finds no fourth field, so every key is empty and the whole lines decide",
+     "correct": true,
+     "why_md": "Fields are separated by commas only when you say `-t,`. These lines have at most two blanks, so `-k4` is empty for all of them and sort falls back on the whole line, reversed by `-r`."
+    },
+    {
+     "text_md": "`-k4` counts fields from zero, so sort used the fifth field, which does not exist",
+     "correct": false,
+     "why_md": "Fields are counted from 1: `-k1` is the first field. The lab's `-k4` is the amount."
+    },
+    {
+     "text_md": "`-n` only works together with `-t,`, so it was ignored and the text order won",
+     "correct": false,
+     "why_md": "`-n` works on any key. Here the key was empty, so there was nothing to compare as a number."
+    },
+    {
+     "text_md": "The header was left in, so sort stopped at the first line",
+     "correct": false,
+     "why_md": "The command starts with `tail -n +2`, so the header is gone. And `sort` never stops at a line: it orders all of them."
+    }
+   ]
+  },
+  {
+   "id": "pipes-bash-q74",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "predict-output",
+    "compare"
+   ],
+   "stem_md": "On the real `expenses.csv`, 59 expenses were made in December 2025 and 86 expenses in all are in the `dining` category. Each line is `date,merchant,category,amount`.\n\nWhich command prints `11`, the number of dining expenses made in December 2025?",
+   "explanation_md": "Chaining two `grep`s keeps what both patterns accept. `^2025-12` anchors the pattern to the start of the line, where the date is, so it keeps the 59 December rows; `,dining,` keeps the rows whose category is `dining`, and `-c` counts them. All four commands were run on the real file and printed `0`, nothing, `11` and `59`. One filter cannot do the job: `wc -l` after only the date counts every category, and a pattern that runs the date into the category fails because the merchant is in between.",
+   "section_ref": "pipes-bash-s10",
+   "source_ref": "labs/10-wrangling.md exercise 4; run on the real expenses.csv at expense-tracker v0.5 (runs/lab10.log)",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`grep -c '^2025-12,dining' expenses.csv`",
+     "correct": false,
+     "why_md": "The merchant sits between the date and the category, so `2025-12,dining` never occurs and `grep -c` prints `0`."
+    },
+    {
+     "text_md": "`grep -c dining expenses.csv | grep 2025-12`",
+     "correct": false,
+     "why_md": "The first `grep` prints a number, `86`. The second looks for a date in that number, finds none and prints nothing."
+    },
+    {
+     "text_md": "`grep '^2025-12' expenses.csv | grep -c ',dining,'`",
+     "correct": true,
+     "why_md": "The first `grep` keeps the December rows, the second counts those in the `dining` category: `11`."
+    },
+    {
+     "text_md": "`grep '^2025-12' expenses.csv | wc -l`",
+     "correct": false,
+     "why_md": "This counts every December row whatever its category and prints `59`. The second filter is missing."
+    }
+   ]
+  },
+  {
+   "id": "pipes-bash-q75",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-code",
+    "predict-output"
+   ],
+   "stem_md": "The lab's stretch is to read one `awk` line. This version keeps a count for each category as well, and prints the average amount instead of the total:\n\n```bash\nawk -F, 'NR>1 {sum[$3]+=$4; n[$3]++} END {for (c in sum) printf \"%s %.2f\\n\", c, sum[c]/n[c]}' expenses.csv | sort -k2 -rn\n```\n\nOn the real file, the rows and the total of each category are:\n\n| Category | Rows | Total |\n|---|---|---|\n| groceries | 119 | 6401.78 |\n| utilities | 32 | 3474.15 |\n| home | 24 | 3442.26 |\n| dining | 86 | 3345.66 |\n| transport | 76 | 2928.81 |\n| health | 22 | 1928.13 |\n| education | 18 | 1780.66 |\n| entertainment | 43 | 1395.58 |\n\nWhat is the first line of the output?",
+   "explanation_md": "`sum[$3]+=$4` totals the amounts of each category and `n[$3]++` counts its rows, so `sum[c]/n[c]` is the average. Dividing each total by its rows gives home 143.43, utilities 108.57, education 98.93, health 87.64, groceries 53.80, dining 38.90, transport 38.54 and entertainment 32.46 (run), and `sort -k2 -rn` ranks that second column as numbers, largest first. Groceries leads the totals only because it has 119 rows. The average amount and the total answer different questions, like rows and money in the lab's own line.",
+   "section_ref": "pipes-bash-s10",
+   "source_ref": "labs/10-wrangling.md stretch; run on the real expenses.csv at expense-tracker v0.5 (runs/lab10.log)",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`groceries 6401.78`, the biggest total",
+     "correct": false,
+     "why_md": "That is the first line of the lab's own line, which prints totals. This version divides each total by its rows."
+    },
+    {
+     "text_md": "`groceries 53.80`, the category with the most rows",
+     "correct": false,
+     "why_md": "53.80 is the groceries average, but averages are not ranked by the number of rows: 119 small rows make a small average."
+    },
+    {
+     "text_md": "`entertainment 32.46`, the smallest average",
+     "correct": false,
+     "why_md": "That is the last line. `sort -k2 -rn` puts the largest number in column 2 first."
+    },
+    {
+     "text_md": "`home 143.43`, the biggest total divided by its rows",
+     "correct": true,
+     "why_md": "3442.26 / 24 = 143.43. Few rows and large amounts make the largest average, so `home` is first."
+    }
+   ]
+  },
+  {
+   "id": "pipes-bash-q76",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "The lab asks for the three merchants that appear most often. On the real `expenses.csv` the top of the ranking looks like this:\n\n```console\n$ tail -n +2 expenses.csv | cut -d, -f2 | sort | uniq -c | sort -rn | head -n 5\n     26 Condis\n     26 Bonpreu\n     23 Repsol\n     23 Lidl\n     22 Mercadona\n```\n\nA report says: \"The three most frequent merchants are Condis, Bonpreu and Repsol.\" What is wrong with it?",
+   "explanation_md": "`sort -rn` orders the lines by their count. Lines with equal counts stay in a fixed but arbitrary order (here the reverse of their text), which puts Repsol before Lidl and Condis before Bonpreu. `head -n 3` cuts the list after three lines and cannot tell you that the next line is level with the last. Lidl also has 23 rows, so Repsol and Lidl share third place. A ranking can hide a tie at the cut-off: look a line or two past it, then say that Condis and Bonpreu lead on 26 and Repsol and Lidl follow on 23.",
+   "section_ref": "pipes-bash-s10",
+   "source_ref": "labs/10-wrangling.md exercise 3; run on the real expenses.csv at expense-tracker v0.5 (runs/lab10.log)",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Nothing: `head -n 3` always gives the three most frequent merchants",
+     "correct": false,
+     "why_md": "It gives the first three lines of the ranking. When the third and fourth counts are equal, it cuts through a tie."
+    },
+    {
+     "text_md": "Lidl has as many rows as Repsol, so third place is shared and the report named only one of the two",
+     "correct": true,
+     "why_md": "Both have 23 rows. `head -n 3` has to stop somewhere, and it stopped after Repsol."
+    },
+    {
+     "text_md": "The equal counts of Condis and Bonpreu show that `sort -rn` failed, because equal counts cannot be ranked",
+     "correct": false,
+     "why_md": "`sort -rn` ranks by count, and lines with equal counts simply come out in some fixed order."
+    },
+    {
+     "text_md": "`uniq -c` counted the header as a merchant, so every count is one too high",
+     "correct": false,
+     "why_md": "`tail -n +2` removes the header before `cut`, and `uniq -c` only counts the groups it is given."
+    }
+   ]
   }
  ],
  "sample_files": {
@@ -3804,5 +4045,317 @@
    ],
    "takeaway_md": "On the real file the same pipeline prints `6401.78`, exactly what `uv run expenses report --category groceries` shows. Both count the duplicate rows; `sort -u` before the `cut` would give `6156.31`."
   }
- ]
+ ],
+ "lab_walkthrough": {
+  "id": "lab10",
+  "title": "Lab 10 — Text Wrangling, solved",
+  "source": "labs/10-wrangling.md",
+  "file_note_md": "`expenses.csv` is the expense-tracker's data file at `v0.5`: 421 lines, a header and 420 expenses, with four columns, `date,merchant,category,amount`. Six rows are exact copies of another row (session 8). Every output below was produced by running the command on that file in a sandbox copy, with `LC_ALL=C` so that `sort` uses plain byte order, and is shown as Linux prints it. The lab's own commands are kept. Where a question asks you to change a command, the changed command is shown.",
+  "summary_intro_md": "The lab's checklist: one pipeline for each question, and you can say what every `|` in it does. Predict the output, then reveal it.",
+  "summary_steps": [
+   {
+    "id": "sum-q1",
+    "prompt_md": "How many expenses are in the file?",
+    "pipeline": "tail -n +2 expenses.csv | wc -l",
+    "output": "420",
+    "answer_md": "420. The file has 421 lines, and `tail -n +2` prints everything from line 2, so the header is left out. The `|` hands those lines to `wc -l`, which counts them."
+   },
+   {
+    "id": "sum-q2",
+    "prompt_md": "Which category has the most rows?",
+    "pipeline": "tail -n +2 expenses.csv | cut -d, -f3 | sort | uniq -c | sort -rn | head -n 1",
+    "output": "    119 groceries",
+    "answer_md": "`groceries`, with 119 rows. `tail -n +2` drops the header, `cut -d, -f3` keeps the category column, `sort` puts equal names side by side, `uniq -c` collapses each group into one line with its count, `sort -rn` puts the largest count first and `head -n 1` keeps that first line."
+   },
+   {
+    "id": "sum-q3",
+    "prompt_md": "How many distinct merchants are there?",
+    "pipeline": "tail -n +2 expenses.csv | cut -d, -f2 | sort -u | wc -l",
+    "output": "33",
+    "answer_md": "33. `tail -n +2` drops the header, `cut -d, -f2` keeps the merchant column, `sort -u` sorts the names and keeps one copy of each, and `wc -l` counts the names that are left."
+   },
+   {
+    "id": "sum-q4",
+    "prompt_md": "Which are the five biggest expenses?",
+    "pipeline": "tail -n +2 expenses.csv | sort -t, -k4 -rn | head -n 5",
+    "output": "2025-11-17,Ferreteria Mas,home,296.49\n2025-11-23,Ikea,home,275.95\n2025-10-21,Leroy Merlin,home,252.28\n2025-08-14,Leroy Merlin,home,250.83\n2025-10-01,Leroy Merlin,home,248.56",
+    "answer_md": "Ferreteria Mas at 296.49, Ikea at 275.95 and three Leroy Merlin rows between 248 and 253. All five are `home` expenses. `sort -t, -k4 -rn` sorts the rows on the fourth comma-separated field as a number, largest first, and `head -n 5` keeps the first five lines. `tail -n +2` keeps the header out of the sort."
+   },
+   {
+    "id": "sum-q5",
+    "prompt_md": "Which rows are exact duplicates?",
+    "pipeline": "tail -n +2 expenses.csv | sort | uniq -d",
+    "output": "2025-08-19,Bar Alegria,dining,52.71\n2025-11-07,Renfe,transport,52.24\n2025-11-10,Movistar,utilities,69.10\n2025-11-29,Condis,groceries,93.02\n2025-11-29,Mercadona,groceries,90.60\n2025-12-23,Lidl,groceries,61.85",
+    "answer_md": "Six rows, each of which appears twice. `sort` puts identical rows next to each other, and `uniq -d` prints one copy of every line that occurs more than once. Leave the `sort` out and `uniq -d` finds only five, because the two Condis rows of 2025-11-29 are not neighbours."
+   }
+  ],
+  "exercises": [
+   {
+    "id": "ex1",
+    "title": "Exercise 1 — Look at the file",
+    "intro_md": "Three commands look at the file before any question is asked. `head -n 3` prints its first three lines, `wc -l` counts lines and `tail -n +2` prints everything from line 2.",
+    "steps": [
+     {
+      "id": "ex1-q1",
+      "prompt_md": "What are the four columns?",
+      "pipeline": "head -n 3 expenses.csv",
+      "output": "date,merchant,category,amount\n2025-07-01,Cabify,transport,36.25\n2025-07-01,Ferreteria Mas,home,29.49",
+      "answer_md": "`date`, `merchant`, `category` and `amount`. The first line is the header, which names the columns. Every line below it is one expense: a date, where it was spent, one of eight categories and the amount."
+     },
+     {
+      "id": "ex1-q2",
+      "prompt_md": "The first count and the second differ by one. Why? Which is the number of expenses?",
+      "pipeline": "wc -l expenses.csv\ntail -n +2 expenses.csv | wc -l",
+      "output": "421 expenses.csv\n420",
+      "answer_md": "`wc -l expenses.csv` counts every line, and the header is a line but not an expense. `tail -n +2` prints from line 2, so the header is skipped and `wc -l` counts 420. The number of expenses is 420."
+     }
+    ]
+   },
+   {
+    "id": "ex2",
+    "title": "Exercise 2 — Count by category",
+    "intro_md": "Run the four lines one at a time and read each output before you add the next stage. Each line is the one before with one more stage on the end. The first two outputs are 420 lines long, so only their first and last lines are shown here.",
+    "steps": [
+     {
+      "id": "ex2-q1a",
+      "prompt_md": "What does each added stage do to the output? Line 1 of 4: `tail -n +2` and `cut -d, -f3`.",
+      "pipeline": "tail -n +2 expenses.csv | cut -d, -f3",
+      "output": "transport\nhome\ngroceries\neducation\ngroceries\n(… 412 more lines)\nentertainment\ndining\ndining",
+      "answer_md": "`tail -n +2` drops the header. `cut -d, -f3` splits every line at the commas and keeps the third field, so what comes out is 420 category names, one per expense, in the order of the file."
+     },
+     {
+      "id": "ex2-q1b",
+      "prompt_md": "Line 2 of 4: add `sort`.",
+      "pipeline": "tail -n +2 expenses.csv | cut -d, -f3 | sort",
+      "output": "dining\ndining\ndining\ndining\ndining\n(… 412 more lines)\nutilities\nutilities\nutilities",
+      "answer_md": "`sort` puts equal lines next to each other. The output is still 420 lines long, but equal names now sit together: all 86 `dining` lines first, `utilities` last. Nothing has been counted yet."
+     },
+     {
+      "id": "ex2-q1c",
+      "prompt_md": "Line 3 of 4: add `uniq -c`.",
+      "pipeline": "tail -n +2 expenses.csv | cut -d, -f3 | sort | uniq -c",
+      "output": "     86 dining\n     18 education\n     43 entertainment\n    119 groceries\n     22 health\n     24 home\n     76 transport\n     32 utilities",
+      "answer_md": "`uniq -c` collapses each run of identical neighbouring lines into one line and puts the length of the run in front. Because `sort` made every category a single run, there are now 8 lines and their counts add up to 420. They are in alphabetical order, not in order of size."
+     },
+     {
+      "id": "ex2-q1d",
+      "prompt_md": "Line 4 of 4: add `sort -rn`.",
+      "pipeline": "tail -n +2 expenses.csv | cut -d, -f3 | sort | uniq -c | sort -rn",
+      "output": "    119 groceries\n     86 dining\n     76 transport\n     43 entertainment\n     32 utilities\n     24 home\n     22 health\n     18 education",
+      "answer_md": "`sort -rn` sorts the lines as numbers (`-n`), largest first (`-r`). The count is at the start of each line, so the largest count comes first. The same 8 lines, now ranked."
+     },
+     {
+      "id": "ex2-q2",
+      "prompt_md": "Which category has the most rows? Which has the fewest?",
+      "pipeline": "tail -n +2 expenses.csv | cut -d, -f3 | sort | uniq -c | sort -rn",
+      "output": "    119 groceries\n     86 dining\n     76 transport\n     43 entertainment\n     32 utilities\n     24 home\n     22 health\n     18 education",
+      "answer_md": "`groceries` has the most rows, 119, and `education` the fewest, 18. They are the first and the last line of the ranked output."
+     },
+     {
+      "id": "ex2-q3",
+      "prompt_md": "Add one more stage so that only the top three categories are shown.",
+      "pipeline": "tail -n +2 expenses.csv | cut -d, -f3 | sort | uniq -c | sort -rn | head -n 3",
+      "output": "    119 groceries\n     86 dining\n     76 transport",
+      "answer_md": "Add `head -n 3`, which keeps only the first three lines: `groceries` (119), `dining` (86) and `transport` (76). It goes after `sort -rn`, because the order decides which lines are first."
+     },
+     {
+      "id": "ex2-q4",
+      "prompt_md": "Remove the `sort` in the middle and run it again. What breaks, and why?",
+      "pipeline": "tail -n +2 expenses.csv | cut -d, -f3 | uniq -c | sort -rn",
+      "output": "      7 groceries\n      4 groceries\n      4 groceries\n      4 groceries\n      3 utilities\n      3 transport\n      3 transport\n      3 groceries\n(… 325 more lines)",
+      "answer_md": "The counts are wrong, and nothing tells you. `uniq` only collapses neighbouring lines. Without `sort`, equal categories are scattered through the file, so `uniq -c` finds 333 short runs instead of 8 groups (`groceries` alone turns up on 81 separate lines). Each count is the length of one run, and the longest run is 7. With `sort`, equal lines are neighbours and `uniq -c` counts whole categories."
+     }
+    ]
+   },
+   {
+    "id": "ex3",
+    "title": "Exercise 3 — Distinct merchants",
+    "intro_md": "Merchants are column 2, so these are the pipelines of Exercise 2 with `-f2` in place of `-f3`.",
+    "steps": [
+     {
+      "id": "ex3-q1",
+      "prompt_md": "How many distinct merchants are there? (Hint: `sort -u`, or `sort | uniq`, then `wc -l`.)",
+      "pipeline": "tail -n +2 expenses.csv | cut -d, -f2 | sort -u | wc -l",
+      "output": "33",
+      "answer_md": "33. `sort -u` sorts the names and keeps one copy of each, and `wc -l` counts the names that are left. `sort | uniq | wc -l` prints the same number. Leave out `tail -n +2` and the header's word `merchant` is counted too: 34."
+     },
+     {
+      "id": "ex3-q2",
+      "prompt_md": "Which three merchants appear most often?",
+      "pipeline": "tail -n +2 expenses.csv | cut -d, -f2 | sort | uniq -c | sort -rn | head -n 3",
+      "output": "     26 Condis\n     26 Bonpreu\n     23 Repsol",
+      "answer_md": "Condis and Bonpreu with 26 rows each, then Repsol with 23. Lidl also has 23, so third place is a tie and `head -n 3` cuts through it: `sort -rn` breaks the tie by reversing the text order of the lines, so Repsol is printed and Lidl is not. Look at `head -n 5` before you name a third merchant."
+     },
+     {
+      "id": "ex3-q3",
+      "prompt_md": "How many rows are there for the merchant `Repsol`? Which category are they all in?",
+      "pipeline": "grep ',Repsol,' expenses.csv | cut -d, -f3 | sort | uniq -c",
+      "output": "     23 transport",
+      "answer_md": "23 rows, all in `transport`. `grep ',Repsol,'` keeps the rows whose merchant is Repsol, `cut -d, -f3` keeps their category, and `sort | uniq -c` groups the categories and counts them. A single line means that all 23 rows share one category. `grep -c ',Repsol,' expenses.csv` gives the 23 on its own."
+     }
+    ]
+   },
+   {
+    "id": "ex4",
+    "title": "Exercise 4 — Filter rows",
+    "intro_md": "        `grep` keeps the lines that match a pattern, and `-c` counts them instead of printing them. The commas around `dining` make the pattern match the category column and nothing else.\n\n        ```console\n        $ grep ',dining,' expenses.csv | head -n 3\n        2025-07-03,Can Recasens,dining,33.02\n2025-07-05,Can Recasens,dining,27.81\n2025-07-06,Can Recasens,dining,6.18\n        ```",
+    "steps": [
+     {
+      "id": "ex4-q1",
+      "prompt_md": "How many dining rows are there?",
+      "pipeline": "grep -c ',dining,' expenses.csv",
+      "output": "86",
+      "answer_md": "86. `-c` makes `grep` print the number of matching lines, so no `wc -l` is needed. The commas keep the pattern to the category column."
+     },
+     {
+      "id": "ex4-q2",
+      "prompt_md": "How many expenses were made in September 2025? (`^` means \"at the start of the line\".)",
+      "pipeline": "grep '^2025-09' expenses.csv | wc -l",
+      "output": "67",
+      "answer_md": "67. Every line starts with its date, so `^2025-09` matches only the expenses of September 2025. The header starts with `date`, so it never matches. `wc -l` counts the lines that `grep` kept."
+     },
+     {
+      "id": "ex4-q3",
+      "prompt_md": "How many dining expenses were made in December 2025? Chain two `grep`s.",
+      "pipeline": "grep '^2025-12' expenses.csv | grep -c ',dining,'",
+      "output": "11",
+      "answer_md": "11. The first `grep` keeps the 59 expenses of December 2025 and passes them on. The second counts the ones in the `dining` category. Each filter keeps what the one before it let through, so here the order of the two does not matter."
+     },
+     {
+      "id": "ex4-q4",
+      "prompt_md": "Which month has the most expenses? Build it from `cut -c1-7` (the first seven characters of each line), then `sort | uniq -c`.",
+      "pipeline": "tail -n +2 expenses.csv | cut -c1-7 | sort | uniq -c | sort -rn",
+      "output": "     85 2025-11\n     73 2025-08\n     69 2025-10\n     67 2025-09\n     67 2025-07\n     59 2025-12",
+      "answer_md": "November 2025, with 85 expenses. `tail -n +2` drops the header, `cut -c1-7` keeps the first seven characters of each line, which are the year and the month, `sort | uniq -c` counts each month and `sort -rn` puts the largest count first. July and September are level on 67. Leave out `tail -n +2` and the header adds a stray line, `1 date,me`."
+     }
+    ]
+   },
+   {
+    "id": "ex5",
+    "title": "Exercise 5 — The five biggest",
+    "intro_md": "Column 4 is the amount. In `sort -t, -k4 -rn`, `-t,` says that fields are separated by commas, `-k4` sorts on the fourth field, `-n` compares it as a number and `-r` puts the largest first.",
+    "steps": [
+     {
+      "id": "ex5-q1",
+      "prompt_md": "Which five expenses are the biggest? What do they have in common?",
+      "pipeline": "tail -n +2 expenses.csv | sort -t, -k4 -rn | head -n 5",
+      "output": "2025-11-17,Ferreteria Mas,home,296.49\n2025-11-23,Ikea,home,275.95\n2025-10-21,Leroy Merlin,home,252.28\n2025-08-14,Leroy Merlin,home,250.83\n2025-10-01,Leroy Merlin,home,248.56",
+      "answer_md": "Ferreteria Mas 296.49, Ikea 275.95 and three Leroy Merlin rows: 252.28, 250.83 and 248.56. All five are in the `home` category, and none is below 248. `tail -n +2` keeps the header out, `sort` ranks the rows by amount and `head -n 5` keeps the top five."
+     },
+     {
+      "id": "ex5-q2",
+      "prompt_md": "What happens if you drop `-n` from `sort`? Try it and explain the order you see.",
+      "pipeline": "tail -n +2 expenses.csv | sort -t, -k4 -r | head -n 5",
+      "output": "2025-11-27,Farmacia Gala,health,97.92\n2025-10-10,Movistar,utilities,94.84\n2025-08-22,Condis,groceries,93.58\n2025-12-25,Condis,groceries,93.43\n2025-12-10,Carrefour,groceries,93.25",
+      "answer_md": "Without `-n`, `sort` compares the amounts as text, one character at a time from the left. `97.92` comes before `296.49` because `9` is greater than `2`, so the order follows the first digit, then the second, and says nothing about size. None of the five biggest expenses appears. Use `-n` whenever the key is a number."
+     },
+     {
+      "id": "ex5-q3",
+      "prompt_md": "Show only the merchant and amount of those five. Add one stage.",
+      "pipeline": "tail -n +2 expenses.csv | sort -t, -k4 -rn | head -n 5 | cut -d, -f2,4",
+      "output": "Ferreteria Mas,296.49\nIkea,275.95\nLeroy Merlin,252.28\nLeroy Merlin,250.83\nLeroy Merlin,248.56",
+      "answer_md": "Add `cut -d, -f2,4`, which keeps fields 2 and 4 (merchant and amount) and puts the comma back between them. `cut` takes several fields at once."
+     }
+    ]
+   },
+   {
+    "id": "ex6",
+    "title": "Exercise 6 — Duplicates",
+    "intro_md": "A duplicate here is a line that is exactly the same as another line. `uniq -d` prints one copy of each line that is repeated, but it only compares neighbours, so the lines must be sorted first.",
+    "steps": [
+     {
+      "id": "ex6-q1",
+      "prompt_md": "Which rows are duplicates? How many are there?",
+      "pipeline": "tail -n +2 expenses.csv | sort | uniq -d",
+      "output": "2025-08-19,Bar Alegria,dining,52.71\n2025-11-07,Renfe,transport,52.24\n2025-11-10,Movistar,utilities,69.10\n2025-11-29,Condis,groceries,93.02\n2025-11-29,Mercadona,groceries,90.60\n2025-12-23,Lidl,groceries,61.85",
+      "answer_md": "Six rows: Bar Alegria 52.71, Renfe 52.24, Movistar 69.10, Condis 93.02, Mercadona 90.60 and Lidl 61.85. Each appears twice, so there are 6 extra copies: 420 expenses, 414 different ones, as session 8 said."
+     },
+     {
+      "id": "ex6-q2",
+      "prompt_md": "Remove the duplicates, keep one copy of each, and write the result to `clean.csv` (header included).",
+      "pipeline": "head -n 1 expenses.csv > clean.csv\ntail -n +2 expenses.csv | sort -u >> clean.csv\nwc -l clean.csv",
+      "output": "415 clean.csv",
+      "answer_md": "`head -n 1 expenses.csv > clean.csv` writes the header into a new file. `tail -n +2 expenses.csv | sort -u >> clean.csv` takes the rows without the header, sorts them, keeps one copy of each (`-u`) and appends them after the header. `wc -l clean.csv` counts the lines of the new file: 415. The original is only read, never changed."
+     },
+     {
+      "id": "ex6-q3",
+      "prompt_md": "How many rows does `clean.csv` have? Explain the difference from the original.",
+      "pipeline": "tail -n +2 clean.csv | wc -l",
+      "output": "414",
+      "answer_md": "415 lines: the header and 414 rows. The original has 421 lines, and the difference of 6 is the six extra copies that `sort -u` dropped (420 rows less 6 is 414). The rows also come out in text order, which for lines that start with a date means by date."
+     },
+     {
+      "id": "ex6-q4",
+      "prompt_md": "What is the difference between `>` and `>>`, and what would happen to `clean.csv` if the second line used `>` instead?",
+      "pipeline": "head -n 1 expenses.csv > clean.csv\ntail -n +2 expenses.csv | sort -u > clean.csv\nwc -l clean.csv\nhead -n 1 clean.csv",
+      "output": "414 clean.csv\n2025-07-01,Cabify,transport,36.25",
+      "answer_md": "`>` empties the file and then writes, so it creates or overwrites. `>>` writes after what is already there, so it appends. With `>` on the second line, the 414 rows replace the header that the first line wrote: `clean.csv` has 414 lines and its first line is an expense. Nothing warns you. That is why you work in a sandbox and never aim a `>` at `expenses.csv`."
+     }
+    ]
+   },
+   {
+    "id": "ex7",
+    "title": "Exercise 7 — Two tools, one answer",
+    "intro_md": "Two tools should agree: the tracker reads the CSV with Python, the shell reads it with `grep` and `cut`. The tracker was run in a clone of the repository at `v0.5`.",
+    "steps": [
+     {
+      "id": "ex7-q1a",
+      "prompt_md": "Do the two answers agree? First ask the tracker.",
+      "pipeline": "cd ~/code/expense-tracker\nuv run expenses report --category groceries",
+      "output": "Expense report for expenses.csv\ncategory: groceries\n----------------------------------------\ngroceries              6401.78\n----------------------------------------\nTOTAL                  6401.78\n\nLargest single expense:\nFerreteria Mas (home) on 2025-11-17 for 296.49",
+      "answer_md": "The tracker's `TOTAL` for groceries is 6401.78. The \"Largest single expense\" at the bottom is taken from every row of the file, whatever the category, which is why it names a `home` expense."
+     },
+     {
+      "id": "ex7-q1b",
+      "prompt_md": "Now ask the shell.",
+      "pipeline": "grep ',groceries,' expenses.csv | cut -d, -f4 | paste -sd+ | bc",
+      "output": "6401.78",
+      "answer_md": "6401.78, the same as the tracker's `TOTAL`, so the two answers agree. `grep ',groceries,'` keeps the 119 groceries rows, `cut -d, -f4` keeps their amounts, `paste -sd+` joins the amounts into one sum and `bc` works it out."
+     },
+     {
+      "id": "ex7-q1c",
+      "prompt_md": "What does `paste -sd+` do to the column of numbers?",
+      "pipeline": "grep ',groceries,' expenses.csv | cut -d, -f4 | head -n 4 | paste -sd+",
+      "output": "56.77+55.22+64.77+21.50",
+      "answer_md": "`paste -s` joins the lines of its input into a single line instead of putting them side by side, and `-d+` uses `+` as the separator between them. A column of numbers becomes a sum written as text, here the first four amounts. `bc` is a calculator that reads that text and prints the result: 198.26 for these four, 6401.78 for all 119."
+     },
+     {
+      "id": "ex7-q2",
+      "prompt_md": "Does the tracker count the duplicate rows? Does your pipeline?",
+      "pipeline": "grep ',groceries,' expenses.csv | sort -u | cut -d, -f4 | paste -sd+ | bc",
+      "output": "6156.31",
+      "answer_md": "Both count them. The tracker's `report` reads every row of the file: `remove_duplicates` exists in `report.py`, but `report` never calls it. The pipeline of the lab has no `sort -u` either. Three of the six duplicated rows are groceries (Condis 93.02, Mercadona 90.60 and Lidl 61.85, 245.47 in all). The pipeline shown here adds `sort -u` before the `cut`, and the total drops to 6156.31, which is 6401.78 less 245.47. The two tools agreed because they make the same choice about repeated rows, not because the number was checked."
+     }
+    ]
+   },
+   {
+    "id": "stretch",
+    "title": "Stretch — one awk line",
+    "intro_md": "`awk` is a small language for columns. You do not need to write it, you read it. The first step is the lab's own line, run on the real file.",
+    "steps": [
+     {
+      "id": "st-q1",
+      "prompt_md": "What is `-F,`? What is `NR>1`? What is `$3` and what is `$4`?",
+      "pipeline": "awk -F, 'NR>1 {sum[$3]+=$4} END {for (c in sum) printf \"%s %.2f\\n\", c, sum[c]}' expenses.csv | sort -k2 -rn",
+      "output": "groceries 6401.78\nutilities 3474.15\nhome 3442.26\ndining 3345.66\ntransport 2928.81\nhealth 1928.13\neducation 1780.66\nentertainment 1395.58",
+      "answer_md": "`-F,` sets the field separator to a comma, so awk splits each line into `$1` to `$4`. `NR` is the number of the line being read, so `NR>1` is true from line 2 on and skips the header. `$3` is the category and `$4` the amount. The block `{sum[$3]+=$4}` adds each amount to a running total kept for its category. `END {...}` runs once, after the last line, and prints one `category total` line each, with two decimals. `for (c in sum)` visits the categories in no fixed order, so the output goes through `sort -k2 -rn`: sort on the second column, as numbers, largest first."
+     },
+     {
+      "id": "st-q2",
+      "prompt_md": "Which category costs the most? Does it match the category with the most **rows**?",
+      "pipeline": "awk -F, 'NR>1 {n[$3]++; sum[$3]+=$4} END {for (c in sum) printf \"%s %d %.2f\\n\", c, n[c], sum[c]}' expenses.csv | sort -k3 -rn",
+      "output": "groceries 119 6401.78\nutilities 32 3474.15\nhome 24 3442.26\ndining 86 3345.66\ntransport 76 2928.81\nhealth 22 1928.13\neducation 18 1780.66\nentertainment 43 1395.58",
+      "answer_md": "`groceries` costs the most, 6401.78, and it also has the most rows, 119 (Exercise 2). The match stops there. `dining` has the second most rows (86) but is fourth in money, while `utilities` has 32 rows and is second with 3474.15. The line shown adds a count, `n[$3]++`, to the lab's line so that rows and totals sit side by side. How often you spend and how much you spend are different questions."
+     },
+     {
+      "id": "st-q3",
+      "prompt_md": "Change it to show the **average** amount per category.",
+      "pipeline": "awk -F, 'NR>1 {sum[$3]+=$4; n[$3]++} END {for (c in sum) printf \"%s %.2f\\n\", c, sum[c]/n[c]}' expenses.csv | sort -k2 -rn",
+      "output": "home 143.43\nutilities 108.57\neducation 98.93\nhealth 87.64\ngroceries 53.80\ndining 38.90\ntransport 38.54\nentertainment 32.46",
+      "answer_md": "Keep a count per category and divide by it: `n[$3]++` counts the rows and `sum[c]/n[c]` is the average. The ranking changes. `home` is first with 143.43 over 24 rows, and `groceries` falls to fifth place at 53.80, because its large total is spread over 119 small rows."
+     }
+    ]
+   }
+  ]
+ }
 }

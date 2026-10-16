@@ -5,7 +5,7 @@
     ["#plan", "Study plan", "The eight days to the exam, with today's block."],
     ["#cards", "Flashcards", "Leitner boxes: due cards first."],
     ["#history", "Expense-tracker history", "All 25 commits, diff by diff."],
-    ["#labs", "Terminal lab", "Pipelines, permissions, paths and exit codes."],
+    ["#labs", "Terminal lab", "Pipelines, permissions, paths, exit codes and Lab 10 solved."],
     ["#glossary", "Glossary", "Every term, A–Z."],
   ];
 

@@ -1,5 +1,5 @@
-// Terminal lab (#labs, #labs.pipes[.<id>], #labs.perms, #labs.paths, #labs.chains): the index of
-// the four labs, and the route that hands each one its page (lab-*.js).
+// Terminal lab (#labs, #labs.pipes[.<id>], #labs.perms, #labs.paths, #labs.chains, #labs.lab10): the
+// index of the five labs, and the route that hands each one its page (lab-*.js).
 (() => {
   const { h } = SD.dom;
   const ABOUT = {
@@ -7,9 +7,16 @@
     perms: "Switches, numbers and `ls -l` letters, the four modes from the slides, and a drill.",
     paths: "A fixed tree and a `cd` command: say what `pwd` prints, or explore with `cd`, `pwd` and `ls`.",
     chains: "`&&`, `||` and `;` with given exit statuses, and scripts with and without `set -e`.",
+    lab10: "Every question of the wrangling lab answered on the real `expenses.csv`: the pipeline, the output, the reason.",
   };
 
   function progressText(id) {
+    if (id === "lab10") {
+      const walk = SD.data.module("pipes-bash")?.lab_walkthrough;
+      if (!walk) return "Not in this build";
+      const read = (stepId) => SD.lab10.read(SD.store.draft(SD.lab10.draftKey(stepId)));
+      return SD.lab10.tallyText(SD.lab10.tally(walk, read));
+    }
     if (id !== "pipes") return SD.labs.tallyText(id);
     const mod = SD.data.module("pipes-bash");
     if (!mod) return "Not in this build";
@@ -69,7 +76,7 @@
             h("h1", { text: "No such lab" }),
             SD.ui.empty(
               `There is no lab called "${args[0]}".`,
-              "The terminal lab has four parts.",
+              "The terminal lab has five parts.",
               SD.ui.linkButton("Terminal lab", "#labs", "primary"),
             ),
           ),

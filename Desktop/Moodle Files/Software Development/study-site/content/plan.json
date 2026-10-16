@@ -82,6 +82,7 @@
    "note_md": "Finish the last module, drill the terminal, read the expense-tracker history, then sit your first full mock paper under time.",
    "items": [
     {"id": "mon-19-pipes", "label": "Learn the pipes and bash module", "link": "#learn.pipes-bash"},
+    {"id": "mon-19-lab10", "label": "Lab 10, solved: predict each pipeline on the real expenses.csv, then reveal", "link": "#labs.lab10"},
     {"id": "mon-19-labs", "label": "Terminal lab: pipelines, permissions, paths and exit codes", "link": "#labs"},
     {"id": "mon-19-history", "label": "Walk through the expense-tracker history", "link": "#history"},
     {"id": "mon-19-paper-a", "label": "Sit Paper A (60 min)", "link": "#exam.paper-a"},

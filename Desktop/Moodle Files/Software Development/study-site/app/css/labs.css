@@ -153,8 +153,20 @@ button.perm-bit:disabled { cursor: default; }
   .chain-given { grid-column: 2; }
   .term-form { grid-template-columns: auto minmax(0, 1fr); }
   .term-form .btn { grid-column: 1 / -1; }
+  /* five labs no longer fit in one row: wrap them rather than hide the last behind a scroll */
+  .lab-nav { flex-wrap: wrap; overflow-x: visible; }
 }
 @media (pointer: coarse) {
   .lab-nav a { min-height: 44px; }
 }
 .tick-verdict { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------------------------------------------------------------- Lab 10, solved */
+.walk-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 0 0 8px; }
+.walk-meta .meta-line { margin: 0; }
+.walk-jump { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 4px; }
+.walk-q { margin: 4px 0 10px; font-weight: 600; }
+.walk-q code { white-space: nowrap; }
+.walk-result:focus-visible { outline-offset: 6px; }
+.walk-result .note { margin: 14px 0 10px; }
+.walk-step .actions { margin-top: 14px; }

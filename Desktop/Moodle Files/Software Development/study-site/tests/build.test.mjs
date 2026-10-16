@@ -136,6 +136,30 @@ test("real content build", { skip: !hasRealContent && "no content modules yet" }
   assert.equal(data.meta.fixture, false);
   const history = data.modules.find((m) => m.id === "history");
   if (history) assert.equal(history.commits.length, 25);
+
+  // The solved lab: *_md became *_html, each step's pipeline is also highlighted line by line
+  // (Bash), and its output stays plain text.
+  const walk = data.modules.find((m) => m.id === "pipes-bash")?.lab_walkthrough;
+  if (walk) {
+    assert.equal(typeof walk.file_note_html, "string");
+    const steps = [...walk.summary_steps, ...walk.exercises.flatMap((e) => e.steps)];
+    assert.ok(steps.length >= 30);
+    for (const step of steps) {
+      assert.equal(typeof step.prompt_html, "string", step.id);
+      assert.equal(typeof step.answer_html, "string", step.id);
+      assert.equal(typeof step.output, "string", step.id);
+      assert.ok(Array.isArray(step.pipeline_html), step.id);
+      assert.equal(step.pipeline_html.length, step.pipeline.split("\n").length, `${step.id}: a line each`);
+      const plain = step.pipeline_html.map((l) => l.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#x27;/g, "'"));
+      assert.equal(plain.join("\n"), step.pipeline, `${step.id}: the highlighted text is the pipeline`);
+      for (const line of step.pipeline_html) {
+        assert.equal((line.match(/<span\b/g) || []).length, (line.match(/<\/span>/g) || []).length, `${step.id}: spans balance`);
+      }
+    }
+    const lines = steps.find((s) => s.id === "ex5-q1").pipeline_html;
+    assert.match(lines[0], /<span class="p">\|<\/span>/, "the pipes are highlighted as Bash");
+    assert.match(steps.find((s) => s.id === "ex4-q1").pipeline_html[0], /<span class="s1">',dining,'<\/span>/, "strings too");
+  }
 });
 
 test("an unknown option fails loudly", () => {

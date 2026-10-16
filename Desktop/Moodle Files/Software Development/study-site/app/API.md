@@ -74,7 +74,7 @@ passes nothing else). Never put user text in a route.
 | `#cards`, `#cards.<module>` | foundation |
 | `#exam`, `#exam.<paper id>`, `#exam.sample`, `#exam.bank`, `#exam.attempt.<attempt id>` | Exam (plan and Home link `#exam`, `#exam.sample`, `#exam.paper-a` … `#exam.paper-d`). `#exam.<paper>` is the rules screen; `#exam.attempt.<id>` is one sitting: the answer paper while it runs, its results once handed in |
 | `#history`, `#history.<hash>`, `#history.guess`, `#history.guess.<hash>` | History view (plan links `#history`) |
-| `#labs`, `#labs.pipes`, `#labs.pipes.<pipeline id>`, `#labs.perms`, `#labs.paths`, `#labs.chains` | Terminal lab (plan links `#labs`) |
+| `#labs`, `#labs.pipes`, `#labs.pipes.<pipeline id>`, `#labs.perms`, `#labs.paths`, `#labs.chains`, `#labs.lab10` | Terminal lab (plan links `#labs`); `#labs.lab10` is "Lab 10, solved", the wrangling lab answered step by step on the real `expenses.csv` |
 
 Practice modes: `next10`, `weak`, `new`, `sample`; scope: `all`, a module id or a section id;
 type: `any`, `mcq`, `open`, `sort`. Example: `#practice.weak.testing-tdd.open`.
@@ -127,6 +127,14 @@ Module extras (only on those modules):
 - `pipes-bash`: `sample_files` (`{name: text}`) and `pipelines[]` = `{id, title, goal_html,
   stages: [{cmd, output, explain_html}], takeaway_html}`. `cmd` and `output` are plain text:
   put them in the DOM with `text`, never `html`.
+- `pipes-bash` also has `lab_walkthrough` (labs/10-wrangling.md solved on the real file, shown at
+  `#labs.lab10`): `{id, title, source, file_note_html, summary_intro_html,
+  summary_steps[], exercises: [{id, title, intro_html, steps[]}]}`. A step is `{id, prompt_html,
+  pipeline, pipeline_html, output, answer_html}`: `pipeline` is the command text (one or more
+  lines), `pipeline_html` the same lines highlighted as Bash at build time (a list with one HTML
+  string per line, the page puts `$ ` before each), `output` the real output as plain text (put it
+  in the DOM with `text`; a long one keeps its first and last lines and has a line `(… N more lines)`
+  between). `tools/validate.py` checks the shape and the GNU output conventions.
 - `sample-paper`: originals have `origin: "teacher-sample"` (ids `sample-paper-q01` … `q09`, in
   paper order) and `dissection_html`; variants have `origin: "teacher-variant"` and `variant_of`.
 
@@ -150,7 +158,7 @@ a tab that was only reading never erases work done in another (a running exam, a
 | `fc` | `{[cardId]: {box: 1..5, due: ts, last: ts, n: reviews}}` |
 | `sec` | `{[sectionId]: ts last opened}` |
 | `exams` | `[exam records]`, see below |
-| `drafts` | `{[key]: {v: any JSON, last: ts}}`; open-answer drafts use `open.<qid>.<label>`; `history.guess` is `{[hash]: "right" \| "wrong" \| "written"}`, `labs.perms` / `labs.paths` / `labs.chains` are `{right, total}`, `labs.pipes` is `{[pipelineId]: ts}` |
+| `drafts` | `{[key]: {v: any JSON, last: ts}}`; open-answer drafts use `open.<qid>.<label>`; `history.guess` is `{[hash]: "right" \| "wrong" \| "written"}`, `labs.perms` / `labs.paths` / `labs.chains` are `{right, total}`, `labs.pipes` is `{[pipelineId]: ts}`, `labs.lab10.<step id>` is `{s: answer shown, p: the prediction typed}` (one draft per step, so two devices only clash over the same step) |
 | `plan` | `{[planItemId]: {done: bool, last: ts}}` (per item, so two devices merge cleanly) |
 | `prefs` | device-local settings: `theme`, `timerHidden`, `practice`, `cardsLength`, … |
 | `last` | `{route, label, ts}` for Home's "Continue" |
@@ -271,6 +279,12 @@ names the paper and the time left.
   `ifApplied(message)`, `next(commits, record, random, current)`, `tally(commits, record)`.
 - `SD.pipes`: `upTo(stages, i)` (the command line so far), `lines(text)`,
   `compare(predicted, actual)` → `{exact, matched, total, rows}` (a line diff, spacing ignored).
+- `SD.lab10`: `groups(walk)` (the checklist, then each exercise: `{id, title, short, intro_html,
+  steps}`), `steps(walk)` (every step in page order with its block and number), `draftKey(stepId)`,
+  `read(stored)` / `write({shown, prediction})` (what the store holds for a step; damaged values
+  read as not shown), `tally(walk, readStep)` and `tallyText` ("7 of 35 answers shown"),
+  `isTrimmed(output)` (a `(… N more lines)` line is in it, so it cannot be compared with a
+  prediction), `stepLabel`.
 - `SD.perms`: `toOctal`, `parseOctal`, `toLetters`, `toLs(mode, type)`, `parseLetters`, `has`,
   `toggle`, `sum(mode, who)` (`"7 = 4 + 2 + 1"`), `rights`, `common`, `task(random, previous)`,
   `check(task, answer)`; `COMMON` holds slide 21's 644 / 755 / 600 / 777.
@@ -343,6 +357,12 @@ and `SD.q.verdictSlot()` build the frame and the pieces if a view needs a varian
   `planItems(items)` (a checklist: the tick box is its own control, the item's words are the link,
   a small hint says how far the student got; an item with a `dayLabel` shows it first),
   `moduleGroups()`, `groupLabel(code)`.
+- `SD.labs` (`labs-ui.js`, the Terminal lab's shared pieces; each `lab-*.js` adds its page as
+  `SD.labs.<id>` with `render(root, args)`, and `LABS` lists them for the switch and the index):
+  `head(current, title, crumbs?)` (lab switch and `h1`), `term(lines)` (a `$` transcript;
+  `{cmd}` may hold nodes), `outputBlock(text)` (command output as plain text, or "(no output)"),
+  `comparison(prediction, output)` (the verdict and line diff of a typed prediction),
+  `codeText`, `tally` / `count` / `tallyText`, `random`.
 - `SD.stats`: `module(id)` → `{status, pass, fail, part, total, sections}`, `section(id)`, `weakIds()`,
   `cards(moduleId?)`, `lastExam()`, `exam()` (before / during / after the real exam).
 - `SD.claude`: `capability(name)` (memoised, resolves `null` when absent or never answered),

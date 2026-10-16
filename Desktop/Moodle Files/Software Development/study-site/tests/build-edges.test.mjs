@@ -100,10 +100,10 @@ good = ["#home", "#plan", "#more", "#learn", "#learn.scrum", "#learn.scrum.s1", 
         "#practice.next10.scrum-s1", "#practice.sample", "#q.scrum-q01", "#q.paper-a-q01",
         "#cards", "#cards.scrum", "#exam", "#exam.sample", "#exam.bank", "#exam.paper-a",
         "#history", "#history.guess", "#history.3e0834f", "#history.guess.3e0834f",
-        "#labs", "#labs.perms", "#labs.chains", "#labs.pipes", "#labs.pipes.p1", "#glossary"]
+        "#labs", "#labs.perms", "#labs.chains", "#labs.lab10", "#labs.pipes", "#labs.pipes.p1", "#glossary"]
 bad = ["#learn.nope", "#learn.scrum.s9", "#learn.scrum.s1.x", "#practice.bogus", "#practice.next10.nope",
        "#practice.next10.scrum.weird", "#q.nope", "#cards.nope", "#exam.paper-z", "#exam.a.b",
-       "#history.deadbee", "#labs.nothing", "#labs.pipes.nope", "#home.x", "#nowhere"]
+       "#history.deadbee", "#labs.nothing", "#labs.pipes.nope", "#labs.lab10.x", "#home.x", "#nowhere"]
 print(json.dumps([[l for l in good if not build.plan_link_known(l, known)],
                   [l for l in bad if build.plan_link_known(l, known)]]))
 `);

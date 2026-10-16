@@ -12,67 +12,10 @@
     SD.store.setDraft("labs.pipes", { ...doneMap(), [id]: Date.now() });
   }
 
-  function outputBlock(text) {
-    if (text === "") return h("p", { class: "pipe-empty", text: "(no output)" });
-    return h(
-      "div",
-      { class: "code" },
-      h("span", { class: "code-lang", "aria-hidden": "true", text: "output" }),
-      h("pre", { tabindex: "0" }, h("code", { text })),
-    );
-  }
-
   // The command so far, the newest stage marked.
   function commandLine(stages, i) {
     const before = i > 0 ? SD.pipes.upTo(stages, i - 1) + " " : "";
     return SD.labs.term([{ cmd: [before, h("mark", { class: "pipe-new", text: stages[i].cmd.trim() })] }]);
-  }
-
-  function comparison(prediction, output) {
-    const c = SD.pipes.compare(prediction, output);
-    const text = c.exact
-      ? "Your prediction matches the output."
-      : c.total
-        ? `${c.matched} of ${SD.util.plural(c.total, "line")} as you predicted.`
-        : "There is no output at all.";
-    return h(
-      "div",
-      { class: "pipe-compare" },
-      SD.ui.verdict(c.exact, text),
-      c.exact
-        ? null
-        : h(
-            "div",
-            {},
-            h(
-              "div",
-              { class: "code" },
-              h("span", { class: "code-lang", "aria-hidden": "true", text: "prediction vs output" }),
-              h(
-                "pre",
-                { tabindex: "0" },
-                h(
-                  "code",
-                  {},
-                  c.rows.map((row) => {
-                    const [cls, sign] = {
-                      same: ["d-ctx", " "],
-                      missing: ["d-add", "+"],
-                      extra: ["d-del", "-"],
-                    }[row.kind];
-                    return h("span", { class: `dline ${cls}`, text: `${sign} ${row.text}` });
-                  }),
-                ),
-              ),
-            ),
-            h("p", {
-              class: "fine",
-              text:
-                "- a line you predicted that is not in the output · + a line of the output you did not " +
-                "predict. Spacing is ignored.",
-            }),
-          ),
-    );
   }
 
   function renderList(root) {
@@ -166,8 +109,8 @@
           { class: "pipe-stage" },
           label,
           commandLine(p.stages, i),
-          outputBlock(stage.output),
-          prediction.trim() ? comparison(prediction, stage.output) : null,
+          SD.labs.outputBlock(stage.output),
+          prediction.trim() ? SD.labs.comparison(prediction, stage.output) : null,
           h("div", { class: "prose pipe-explain", html: stage.explain_html }),
         );
       }
