@@ -1,0 +1,68 @@
+<script>
+/* Apply a chosen theme before anything paints (the same key and shape as store.js). */
+(() => {
+  try {
+    const theme = JSON.parse(localStorage.getItem("swdev-midterm-v1") || "null")?.prefs?.theme;
+    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  } catch {
+    /* storage blocked or damaged: the system theme applies */
+  }
+})();
+</script>
+<button type="button" class="skip" id="skip">Skip to content</button>
+<header class="topbar">
+  <a class="brand" href="#home">Software Development <span class="brand-sub">mid-term</span></a>
+  <nav class="topnav" aria-label="Main">
+    <a href="#home" data-nav="home">Home</a>
+    <a href="#plan" data-nav="plan">Plan</a>
+    <a href="#learn" data-nav="learn">Learn</a>
+    <a href="#practice" data-nav="practice">Practice</a>
+    <a href="#exam" data-nav="exam">Exam</a>
+    <a href="#cards" data-nav="cards">Flashcards</a>
+    <a href="#history" data-nav="history">History</a>
+    <a href="#labs" data-nav="labs">Terminal lab</a>
+    <a href="#glossary" data-nav="glossary">Glossary</a>
+  </nav>
+  <a class="leave-paper" id="leave-paper" href="#exam">Leave the paper <span class="leave-note">(the clock keeps running)</span></a>
+  <p class="countdown" id="countdown"></p>
+</header>
+<section class="shortcuts" id="shortcuts" aria-labelledby="shortcuts-title" hidden>
+  <div class="shortcuts-inner">
+    <h2 id="shortcuts-title">Keyboard shortcuts</h2>
+    <dl class="keys">
+      <div><dt><kbd>?</kbd></dt><dd>Show or hide this list</dd></div>
+      <div><dt><kbd>a</kbd>–<kbd>d</kbd> or <kbd>1</kbd>–<kbd>4</kbd></dt><dd>Choose a multiple-choice option. Click or Tab into a question first when a page has several; in Guess the message they choose a message</dd></div>
+      <div><dt><kbd>Enter</kbd></dt><dd>Check the answer (or show the next output), then go on to the next one. Not on a page heading or a code block</dd></div>
+      <div><dt><kbd>1</kbd>–<kbd>5</kbd></dt><dd>Sort question: place the focused item; <kbd>↑</kbd> <kbd>↓</kbd> move between items</dd></div>
+      <div><dt><kbd>F</kbd> or <kbd>Space</kbd></dt><dd>Flashcards: flip the card</dd></div>
+      <div><dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Flashcards: again, good, easy</dd></div>
+      <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Learn: previous and next section; History: previous and next commit. A focused code block or table scrolls sideways with them instead</dd></div>
+      <div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Paths lab: earlier commands in the terminal; Sort questions: move between items</dd></div>
+      <div><dt><kbd>Esc</kbd></dt><dd>Close this list</dd></div>
+      <div><dt><kbd>Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>Pipelines: show the output while you type a prediction (<kbd>⌘</kbd>+<kbd>Enter</kbd> on a Mac)</dd></div>
+    </dl>
+    <button type="button" class="btn btn-quiet" id="shortcuts-close">Close</button>
+  </div>
+</section>
+<div class="layout">
+  <nav class="rail" id="rail" aria-label="Modules"></nav>
+  <div class="main-col">
+    <a class="sitting-chip" id="sitting-chip" href="#exam" hidden></a>
+    <main id="main" tabindex="-1"></main>
+    <footer class="statusbar">
+      <span id="save-status"></span>
+      <span id="build-info"></span>
+      <button type="button" class="link-btn" id="shortcuts-open" aria-controls="shortcuts" aria-expanded="false">Keyboard shortcuts</button>
+      <button type="button" class="link-btn" id="theme-toggle">Theme: system</button>
+    </footer>
+  </div>
+</div>
+<nav class="tabbar" aria-label="Main">
+  <a href="#home" data-nav="home">Home</a>
+  <a href="#learn" data-nav="learn">Learn</a>
+  <a href="#practice" data-nav="practice">Practice</a>
+  <a href="#exam" data-nav="exam">Exam</a>
+  <a href="#more" data-nav="more">More</a>
+</nav>
+<div id="live" class="vh" aria-live="polite"></div>
+<noscript><p class="noscript">This study site needs JavaScript to run.</p></noscript>

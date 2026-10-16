@@ -1,0 +1,2532 @@
+{
+ "id": "project-anatomy",
+ "order": 3,
+ "module": "M1",
+ "title": "Setup, environments and the anatomy of a project",
+ "sessions": [
+  3,
+  4
+ ],
+ "predicted": false,
+ "sources": [
+  "slides-session-3",
+  "slides-session-4 (slides 17–27)",
+  "labs/00-setup.md",
+  "labs/01-scaffold.md",
+  "moodle/project-pages.md",
+  "partial-rubric",
+  "expense-tracker a953d05",
+  "expense-tracker v0.4 (pyproject.toml, uv.lock, .gitignore, .github/workflows/check.yml)"
+ ],
+ "summary_md": "Session 3 set up one environment for everyone, because \"works on my machine\" is the problem this\ncourse exists to solve, and made a CI check on GitHub (`ruff`, `mypy`, `pytest`) the referee.\nSession 4 took a project apart file by file: what a script lacks, what `pyproject.toml`,\n`uv.lock`, `.gitignore`, `src/` and `tests/` are each for, and why `uv run expenses report`\n(installed) beats `python tracker.py` (merely present). This module teaches the six tools, what a\nvirtual environment really is, the git survival kit, the eight troubleshooting cases of lab 00,\nand how to diagnose the usual ways a project works on one laptop and fails everywhere else. It\nmatters because every checkpoint is marked at a tag, as a clean clone shows it, and a red\nreferee at the `v0.5` tag caps the Tests mark.",
+ "exam_focus_md": "- A real uv error (a TOML parse error, `--locked` refusing a stale lockfile, a Python version clash)\n  and \"what should you do next?\", with distractors such as deleting `.venv`, reinstalling uv or\n  `--upgrade`.\n- A \"works on my machine\" story: green on one laptop, red in CI or in a clean clone. You name the\n  cause (lockfile not committed, file never added, package installed by hand, a different Python)\n  and the fix.\n- Reading a project tree or `pyproject.toml`: which file does which job, what `[project.scripts]`\n  produces, what a stranger would need to install and run it.\n- Why the `src/` layout, why `.venv` is ignored but `uv.lock` is committed, why CI runs\n  `uv sync --locked`.\n- Survival-kit git output (`git status`, a rejected push): what has been recorded where, and what\n  to do next.\n- A public repository and a leaked key: whether deleting the file removes it from history.\n- The partial rubric's CI gate: red at the `v0.5` tag caps Tests at 1, and a fix after the tag\n  counts only once the tag is moved.",
+ "sections": [
+  {
+   "id": "project-anatomy-s1",
+   "heading": "Why we standardise: one referee for everyone",
+   "body_md": "\"Works on my machine\" is the single problem this whole course is built to solve. Code that\nruns on one laptop and nowhere else is not finished: a teammate, the marker and CI cannot use\nit. Session 1 put it first among the ways working code still fails. The answer, in session 3's\nwords, is to systematise how dependencies and builds happen, so that the artefacts the code\nproduces are reproducible: the same repository at the same commit gives the same environment\nand the same result on any machine.\n\nThe contract in session 3 and lab 00 gives you freedom and two rules. You may use any operating\nsystem and any editor. Two things are not negotiable:\n\n1. **Your work passes the CI check**: the automated `ruff` + `mypy` + `pytest` run on GitHub,\n   every time anyone pushes. That is the referee. The machine that decides is one none of us\n   owns, so \"it passes on mine\" settles nothing.\n2. **The recommended path is the only one the lecturer supports.** Going off-path is allowed,\n   but the time it costs is yours: off-path help is office hours, not the lab.\n\nThe project brief sets the same bar for the group project. A stranger can install and run it\nfrom your repository with no help from you; a type checker accepts it; its tests pass on a\nmachine none of you owns. Every tool in this module serves that bar. uv makes the environment\nidentical everywhere, git and GitHub carry exactly what you committed, and CI is the neutral\nmachine that checks it.\n\nThe project pages add the phrase you will hear all term: the check is \"the referee, not the\njudge\". It is not marked itself, but a red check means the submission is not mechanically\nvalid, and at the partial submission it caps a criterion (section 9).",
+   "key_points": [
+    "\"Works on my machine\" is the problem the course exists to solve; the cure is reproducible artefacts.",
+    "Any OS and any editor; the CI check and the supported path are not negotiable.",
+    "CI runs `ruff`, `mypy` and `pytest` on GitHub: a machine none of us owns decides.",
+    "The referee, not the judge: CI is not marked, but red means not mechanically valid."
+   ],
+   "exam_note_md": "Expect a scenario in which something passes on one laptop. The judgement is always what the\nreferee sees on a clean machine, never \"but it works for me\".",
+   "source_ref": "S3 slides 2–3; labs/00-setup.md (The contract); S1 slides 6 and 8; moodle/project-pages.md",
+   "check": [
+    "project-anatomy-q01",
+    "project-anatomy-q02"
+   ]
+  },
+  {
+   "id": "project-anatomy-s2",
+   "heading": "The six tools and what each is for",
+   "body_md": "You install six things once. Each answers one question, and the slide gives each one sentence.\n\n| Tool | What it is for |\n|---|---|\n| WSL2 | A real Linux kernel inside Windows. The course lives in a Linux shell; macOS and Linux already have one. |\n| VS Code | The editor. On Windows it runs outside WSL and reaches in through the WSL (Remote-WSL) extension. |\n| uv | Installs Python itself and your project's dependencies, so everyone gets the same versions. |\n| git | Records the history of your code. Session 3 only needs it working; module 4 explains it. |\n| GitHub | Where your group's repository lives. You authenticate to it with an SSH key. |\n| Docker | Runs your project in a container. Not needed until the Docker module. |\n\nThree details from lab 00 decide whether the tools work together.\n\n- On Windows, everything happens in the Ubuntu shell, inside your Linux home `~`, not under\n  `/mnt/c/...`. Files on `/mnt/c` sit on the Windows filesystem, so every git and uv command\n  there is several times slower, and a repository cloned from the Windows side gets Windows line\n  endings (section 5).\n- In VS Code on Windows, connect to WSL first (`code .` from Ubuntu; the bottom-left corner shows\n  `WSL: Ubuntu`) and only then install the Python and Ruff extensions. An extension installed\n  before you connect lands on the Windows side and does not run in a WSL window: Ruff lints\n  nothing, and the editor never flags what CI rejects.\n- Docker Desktop is a large download. Do not start it on the ESADE wifi during the lab; a red\n  Docker line on your setup report is expected, and the lab says to install it at home before\n  session 15.\n\nNotice what is not on the list: a system Python. uv installs Python itself\n(`uv python install 3.13`), which is why the Python on your laptop is the same as your\nteammates' and CI's.",
+   "key_points": [
+    "WSL2 gives Windows a real Linux shell; work in `~`, never under `/mnt/c`.",
+    "uv installs Python itself and the project's dependencies: the same versions for everyone.",
+    "git records history; GitHub hosts the repository and you reach it with an SSH key.",
+    "In VS Code on Windows, connect to WSL before installing extensions, or Ruff lints nothing.",
+    "Docker comes later; a red Docker line on the setup report is expected."
+   ],
+   "exam_note_md": "Matching a need to the right tool, or diagnosing why the editor and CI disagree, is fair game.\nInstall commands are not: no flag trivia.",
+   "source_ref": "S3 slide 5; labs/00-setup.md (The recommended path; Windows steps 1–2)",
+   "check": [
+    "project-anatomy-q03",
+    "project-anatomy-q04"
+   ]
+  },
+  {
+   "id": "project-anatomy-s3",
+   "heading": "What a virtual environment actually is",
+   "body_md": "The slide promises three minutes and no magic.\n\nPython looks up packages in a fixed list of directories. A virtual environment is just another\nsuch directory, one per project, that Python is told to look in first. So \"install a package\"\nmeans \"put it in this project's directory\", not \"change the whole computer\". uv makes and fills\nthat directory (`.venv`) from your `pyproject.toml`, and `uv run` uses it.\n\nYou can watch it happen in a clone of the expense-tracker. After `uv sync`, `typer` sits inside\n`.venv`, but a bare `python3.13` (the same interpreter, which `uv python install 3.13` put on\nyour `PATH`) was never told to look there:\n\n```console\n$ uv sync -q\n$ python3.13 -c \"import typer\"\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import typer\nModuleNotFoundError: No module named 'typer'\n$ uv run python -c \"import typer; print(typer.__file__)\"\n/home/alice/expense-tracker/.venv/lib/python3.13/site-packages/typer/__init__.py\n```\n\nSame machine, same Python 3.13, different answer. The only difference is which directories\nPython searched.\n\nTwo consequences follow. First, `.venv` is disposable. Deleting it loses nothing that\n`uv sync` cannot rebuild from `pyproject.toml` and `uv.lock`, and `git status --short` prints\nnothing afterwards, because no file of the repository changed:\n\n```console\n$ rm -rf .venv\n$ uv sync\nUsing CPython 3.13.15\nCreating virtual environment at: .venv\nResolved 20 packages in 5ms\nInstalled 19 packages in 24ms\n$ git status --short\n```\n\nSecond, `.venv` never goes into git. It is the product, not the recipe. In a clone of the\nexpense-tracker it is about 100 MB, its compiled files are built for one operating system, and\nits `python` is a link to an interpreter installed on that one computer. The recipe,\n`pyproject.toml` plus `uv.lock`, is small, is committed, and rebuilds an identical `.venv`\nanywhere. That is why `.venv/` is the first line of the expense-tracker's `.gitignore`.\n\nA practical corollary: deleting `.venv` is never the fix for an error uv prints about\n`pyproject.toml` or `uv.lock`. Those errors happen while uv reads the recipe, before it touches\nthe environment.",
+   "key_points": [
+    "A virtual environment is one more directory per project that Python is told to look in first.",
+    "Installing means putting a package in this project's `.venv`, not changing the computer.",
+    "uv makes and fills `.venv` from `pyproject.toml` and `uv.lock`; `uv run` uses it.",
+    "Deleting `.venv` loses nothing `uv sync` cannot rebuild, and it is never committed."
+   ],
+   "exam_note_md": "\"Delete `.venv`\" is a distractor the teacher has already used (sample Q1, option a). It is\nright only when the environment itself is the problem, which an error about `pyproject.toml`\nor the lockfile never is.",
+   "source_ref": "S3 slide 6; expense-tracker .gitignore (a953d05); runs in a clone of v0.4",
+   "check": [
+    "project-anatomy-q05",
+    "project-anatomy-q06",
+    "project-anatomy-q07"
+   ]
+  },
+  {
+   "id": "project-anatomy-s4",
+   "heading": "The setup lab: check, branch, push, watch CI",
+   "body_md": "Session 3 had one goal: a working environment, and a first file pushed to the group repository\nand checked by CI. Two repositories are involved.\n\nFirst, the course materials. You clone them and run `bash scripts/setup-check.sh`. Every line\nit prints is pass or fail with a fix; it writes `setup-report.md` and prints your next commands\nwith your GitHub username already filled in. **A red line is a ticket**: a to-do item you work\ndown before the next session, at office hours, on a lab machine or with a neighbour. It is not a\nreason to stop.\n\nSecond, your group's repository, which already exists. Four of you push to it in the same\ntwenty minutes, and on `main` only the first push would succeed; the others are rejected because\nGitHub now holds a commit they do not have. So each person takes a branch.\n`git switch -c setup/<your-github-username>` means \"make a new branch and move onto it\". It is\nyours alone, and nobody can collide with you on it.\n\nThe git survival kit, by what each command records:\n\n| Command | What it does |\n|---|---|\n| `git clone <url>` | Copies a repository down, with its whole history |\n| `git switch -c <name>` | Starts your own branch and moves you onto it |\n| `git status` | Says what you have changed: untracked, not staged, staged, or commits not yet pushed |\n| `git add <file>` | Stages a change: puts it in the next commit |\n| `git commit -m \"...\"` | Records the staged changes as one commit, on your laptop only |\n| `git push` | Sends your commits to GitHub |\n| `git tag -a v0.1 ...` | Gives one commit a permanent name; checkpoints are marked at tags |\n\nThe loop of the day was switch, status, add, commit, push. Mechanics now, meaning in module 4.\n\nAfter the push, open the repository on GitHub, then the Actions tab. A workflow called `check`\nruns on your branch. Green means the referee accepts your repository. This check now runs on\nevery push all term, and from module 4 a red check blocks a merge. Red lines on your report but\ngreen on Actions is fine: the report is your to-do list, and Actions checks the repository.",
+   "key_points": [
+    "A red line on the setup report is a ticket: push the report anyway and work it down.",
+    "One branch per person, because four pushes to `main` at once means only the first succeeds.",
+    "`add` stages, `commit` records on your laptop, `push` sends to GitHub.",
+    "A tag is a permanent name for one commit; checkpoints are marked at tags.",
+    "Green on Actions means the referee accepts the repository."
+   ],
+   "exam_note_md": "Expect a `git status` or `git push` output and a question about what has, or has not, been\nrecorded yet, or why a teammate cannot see your work.",
+   "source_ref": "S3 slides 9–14; labs/00-setup.md (Run the check; Push your first file); labs/01-scaffold.md §9",
+   "check": [
+    "project-anatomy-q08",
+    "project-anatomy-q09",
+    "project-anatomy-q12"
+   ]
+  },
+  {
+   "id": "project-anatomy-s5",
+   "heading": "Troubleshooting: the eight that actually happen",
+   "body_md": "Lab 00's rule: search the troubleshooting table for the text your machine actually printed, not\nfor what you think the problem is. The slide lists eight cases. For the exam you need the\ndiagnosis (what the message means and where the fix lives), not the commands.\n\n| What you see | What it means | The fix, in words |\n|---|---|---|\n| `wsl --install` fails, or Ubuntu never appears | Virtualisation is off in the BIOS/UEFI | Enable it in the firmware settings, then retry |\n| `docker: command not found` inside WSL while Docker Desktop runs | Docker and WSL are not sharing | Turn on Docker Desktop's WSL integration for Ubuntu |\n| `Permission denied (publickey)`, or `git push` asks for a password | Your SSH key is not on GitHub, or you cloned with an `https://` URL | Add the key; switch the remote to the `git@` URL |\n| `uv: command not found` after installing | This shell started before the installer edited your startup file | Open a new terminal; if it persists, add uv to `PATH` in the file your shell reads (`~/.bashrc` for bash, `~/.zshrc` for zsh) |\n| Everything times out | A corporate VPN, proxy or managed laptop blocks the downloads | Disconnect the VPN, use SSH over port 443, or a lab machine or neighbour for today |\n| `$'\\r': command not found` | Cloned with Git for Windows, so the scripts have Windows line endings | Delete the clone and clone again from the Ubuntu shell into `~` |\n| Docker Desktop \"cannot be opened because the developer cannot be verified\" | macOS Gatekeeper | Allow it under Privacy & Security |\n| `! [rejected] ... (non-fast-forward)` | You pushed to `main` after a teammate did | On setup day: do not merge; switch to your own branch and push that |\n\nSome red text is not an error. `Failed to connect to system scope bus` during `apt upgrade` on\nWSL is harmless noise. SSH's question `Are you sure you want to continue connecting\n(yes/no/[fingerprint])?` appears the first time your machine talks to `github.com`: type `yes`.\nPermission errors from the uv installer about `~/.bash_profile` or fish files are harmless if\n`uv --version` works in a new terminal. The lab insists these are the exception: everywhere else\nin the course, red text means something is wrong and you read it.\n\nIf you did not finish, re-run the check and work down the red lines. Nothing downstream is\nblocked on any one laptop.",
+   "key_points": [
+    "Search for the text your machine printed, not for what you think is wrong.",
+    "`Permission denied (publickey)` is about your SSH key or an `https://` remote, not your code.",
+    "`uv: command not found` right after installing usually needs only a new terminal.",
+    "`$'\\r'` errors mean the repository was cloned from the Windows side.",
+    "On setup day, a rejected push to `main` means a teammate pushed first: push your own branch."
+   ],
+   "exam_note_md": "The judgement tested is diagnosis: which message is harmless, which points at your machine,\nwhich at GitHub access, and which at how you cloned or pushed.",
+   "source_ref": "S3 slide 15; labs/00-setup.md (Troubleshooting §1–§11); labs/02-docker-setup.md (§1, §3)",
+   "check": [
+    "project-anatomy-q13",
+    "project-anatomy-q16",
+    "project-anatomy-q17"
+   ]
+  },
+  {
+   "id": "project-anatomy-s6",
+   "heading": "From script to project: every file and its job",
+   "body_md": "The expense-tracker began, in February, as a script: two files, `tracker.py` and\n`expenses.csv`. It runs with `python tracker.py`. It has no name, no version, no dependencies\nand no home for tests. Fine for a weekend project; not something a stranger can install or four\npeople can share.\n\nA project is the same code with a defined shape, and every file has one job:\n\n```text\npyproject.toml          the single source of truth\nuv.lock                 exact versions, pinned\nREADME.md               what it is, how to run it\nLICENSE                 what others may do with it\n.gitignore              what git must never see\nsrc/expense_tracker/    the package\n  cli.py                the command-line interface\n  __main__.py           makes python -m expense_tracker work\ntests/                  mirrors src/\n```\n\n`tests/` mirrors `src/`: the tests for `report.py` live in `tests/test_report.py`. The\nexpense-tracker's `.gitignore` lists `.venv/`, `__pycache__/`, the tool caches, and `data/`, the\nfolder where `expenses add` writes real spending. The repository is public on purpose: it is a\nportfolio piece, it makes copying visible rather than tempting, and the tooling (automated\nchecks, container hosting) is free on public repositories. The price is that nothing personal\never goes in: no credentials, no keys, no data about real people.\n\nThe moment the script became a project is one commit:\n\n```console\n$ git show --stat --format=\"%h %s\" a953d05\na953d05 Turn the script into a uv package\n\n .gitignore                      |  6 ++++++\n .python-version                 |  1 +\n README.md                       |  0\n pyproject.toml                  | 17 +++++++++++++++++\n src/expense_tracker/__init__.py |  2 ++\n uv.lock                         |  8 ++++++++\n 6 files changed, 34 insertions(+)\n```\n\nIn the slide's words: `uv init --package`, and one edit. No code changed; the code became\ninstallable. `tracker.py` is not in the list, so it was not touched. What arrived is a name and\na version (`pyproject.toml`), a Python version for uv to use (`.python-version` says 3.13), a\nlockfile, a `.gitignore`, an empty README and a package folder. The next commit, `2ecad20`, moved\nthe report into the package behind a typer CLI.\n\nYour group repository already has all of it: it was generated from `project-template` with\n`pyproject.toml`, `src/app/`, `tests/`, CI and a licence, and lab 01 renamed `app` to your\nproject.",
+   "key_points": [
+    "A script has no name, no version, no dependencies and no home for tests.",
+    "`pyproject.toml` is the single source of truth; `uv.lock` pins exact versions.",
+    "`.gitignore` lists what git must never see: `.venv/`, caches, `data/`.",
+    "`a953d05`: `uv init --package` and one edit. No code changed; the code became installable.",
+    "Public repository: portfolio, visible copying, free tooling, and never anything personal."
+   ],
+   "exam_note_md": "You may be shown a project tree and asked what is missing for a stranger to install and run it,\nor a commit's file list and asked what it changed.",
+   "source_ref": "S4 slides 19–20, 25–27; expense-tracker a953d05 and 2ecad20; moodle/project-pages.md (public repository)",
+   "check": [
+    "project-anatomy-q18",
+    "project-anatomy-q19",
+    "project-anatomy-q21"
+   ]
+  },
+  {
+   "id": "project-anatomy-s7",
+   "heading": "pyproject.toml line by line, and why src/",
+   "body_md": "The slide's version of the expense-tracker's `pyproject.toml`:\n\n```toml\n[project]\nname = \"expense-tracker\"\nversion = \"0.1.0\"\nrequires-python = \">=3.13\"\ndependencies = [\"typer>=0.12\"]\n\n[project.scripts]\nexpenses = \"expense_tracker.cli:app\"\n\n[build-system]\nrequires = [\"hatchling\"]\n```\n\nRead it as four answers: identity, what it needs, what it installs as a command, how it is built.\n\n- `[project]`: identity (`name`, `version`) and needs (`requires-python`, the Pythons it\n  accepts; `dependencies`, the packages and the range of versions it accepts).\n- `[project.scripts]`: `expenses` is the command you type, `expense_tracker.cli` the module,\n  `app` the object inside it. On install, uv writes a small wrapper called `expenses` into\n  `.venv/bin`; it does `from expense_tracker.cli import app` and calls `app()`. Rename either\n  side and the command disappears.\n- `[build-system]`: how the project is packaged into something installable, here by `hatchling`.\n\n`__main__.py` is the other door (session 5): it makes `python -m expense_tracker` run the CLI\nwithout going through the installed command. The slide's tree lists one, but the demo\nrepository at `v0.4` has none; your template ships one, and it is the file everyone forgets to\nrename.\n\nThe two spellings are not interchangeable: `expense-tracker` (hyphens) names the project,\n`expense_tracker` (underscores) is the package folder that Python imports, because Python names\ncannot contain hyphens.\n\n**The reason for `src/`.** Without it, `import expense_tracker` finds the folder you are\nstanding in, whether or not the package is installed. A real run, with the package moved to the\ntop of the repository and nothing installed (no `.venv` at all):\n\n```console\n$ ls\nLICENSE  README.md  expense_tracker  expenses.csv  pyproject.toml  tests  uv.lock\n$ python3 -c \"import expense_tracker; print(expense_tracker.__file__)\"\n/home/alice/expense-tracker/expense_tracker/__init__.py\n```\n\nWith `src/`, the same command fails with `ModuleNotFoundError: No module named\n'expense_tracker'`. Only Python started through the project's environment, after the project\nis installed (`uv run python -c ...`), can import it. That is the point: the import only works\nif the project is installed, so the tests exercise what a user would get, not what happens to be\nlying next to them. The layout also separates the deployable code in `src/` from the tests in\n`tests/`, which are typically not included in the build.\n\nThe layout is marked. CP1's Definition of Done, checked at your `v0.1` tag, has three binary\nitems: `uv sync && uv run <your-app> --help` works from a clean clone; `src/` layout, package\nimportable; the README says what the program does and how to run it. The partial rubric scores\nStructure 0 for \"a script, or code outside `src/`\".",
+   "key_points": [
+    "`[project]` is identity and needs; `[project.scripts]` the command; `[build-system]` how it is built.",
+    "`expenses = \"expense_tracker.cli:app\"`: command `expenses`, module `expense_tracker.cli`, object `app`.",
+    "Without `src/`, Python imports the folder you stand in, installed or not.",
+    "With `src/`, only the installed package imports, so tests exercise what a user gets.",
+    "`python -m` needs `__main__.py`; the installed command needs `[project.scripts]`."
+   ],
+   "exam_note_md": "Typical questions: what a `[project.scripts]` line produces, what breaks when one side of it is\nrenamed, and what you lose by moving the package out of `src/`.",
+   "source_ref": "S4 slides 17 and 20–22; S5 slides 5–6 and 14; labs/01-scaffold.md §2 and §10; partial-rubric (Structure); runs (flat vs src layout, .venv/bin wrapper, v0.4 has no __main__.py)",
+   "check": [
+    "project-anatomy-q45",
+    "project-anatomy-q27",
+    "project-anatomy-q26"
+   ]
+  },
+  {
+   "id": "project-anatomy-s8",
+   "heading": "Installed, not just present: uv run and the lockfile",
+   "body_md": "Two ways to run the same code:\n\n```bash\npython tracker.py                # needs the file, and the right directory\nuv run expenses report           # needs the project, from anywhere\n```\n\nThe first runs a file with whatever Python and packages this computer happens to have, and only\nfrom the folder that holds it; from anywhere else Python answers `can't open file ... No such\nfile or directory`. The second runs an installed command, from any folder inside the project.\n`uv run` resolves the environment from `pyproject.toml` and `uv.lock`, installs what is missing,\nand runs the command. In a fresh clone, with no `.venv` yet, one command does all of it:\n\n```console\n$ uv run expenses report\nUsing CPython 3.13.15\nCreating virtual environment at: .venv\n   Building expense-tracker @ file:///home/alice/expense-tracker\n      Built expense-tracker @ file:///home/alice/expense-tracker\nInstalled 19 packages in 20ms\nExpense report for expenses.csv\n----------------------------------------\ngroceries              6401.78\nutilities              3474.15\n```\n\nThe lockfile is what makes \"same versions for every teammate and for CI\" true.\n`pyproject.toml` says `typer>=0.12`, a range. `uv.lock` says exactly which typer, and which of\nits dependencies, down to the hash. From the expense-tracker's real lockfile (the entry goes on\nwith download URLs and `sha256` hashes):\n\n```toml\n[[package]]\nname = \"typer\"\nversion = \"0.27.2\"\nsource = { registry = \"https://pypi.org/simple\" }\ndependencies = [\n    { name = \"annotated-doc\" },\n    { name = \"colorama\", marker = \"sys_platform == 'win32'\" },\n    { name = \"rich\" },\n    { name = \"shellingham\" },\n]\n```\n\nThe lockfile also records the project itself. The 8-line `uv.lock` of `a953d05`, committed\nbefore there was a single dependency, holds only the project's own entry:\n\n```toml\nversion = 1\nrevision = 2\nrequires-python = \">=3.13\"\n\n[[package]]\nname = \"expense-tracker\"\nversion = \"0.1.0\"\nsource = { editable = \".\" }\n```\n\nSo `uv.lock` goes stale whenever you change something it records: a dependency,\n`requires-python`, or the project's own `name` or `version`. Command names under\n`[project.scripts]` are not in it, so renaming a command leaves the lockfile valid.\n\n`uv.lock` is committed. CI runs `uv sync --locked`, which installs exactly what the lockfile\nsays and fails if `pyproject.toml` and `uv.lock` disagree. Add a dependency to\n`pyproject.toml` by hand, forget `uv lock`, and you get:\n\n```console\n$ uv sync --locked\nResolved 22 packages in 6ms\nerror: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.\n\nhint: To update the lockfile, run `uv lock`.\n```\n\nThe fix is the hint: `uv lock`, then commit `uv.lock` with `pyproject.toml`. One trap: plain\n`uv sync` (without `--locked`) does not refuse. It quietly rewrites `uv.lock` to match and carries\non, so your laptop is green while the updated lockfile sits uncommitted (`git status` shows\n`modified: uv.lock`). Session 4's diagnosis: \"works on my machine\" can usually be pinpointed to a\nlockfile that was never committed.",
+   "key_points": [
+    "`python tracker.py` needs the file and the right folder; `uv run expenses report` needs the project.",
+    "`uv run` resolves the environment from `pyproject.toml` and `uv.lock`, installs what is missing, runs.",
+    "`pyproject.toml` gives a range (`typer>=0.12`); `uv.lock` pins the exact version and hash, and also records the project's own `name`, `version` and `requires-python`.",
+    "CI's `uv sync --locked` fails when the two disagree: run `uv lock` and commit both.",
+    "Plain `uv sync` silently updates `uv.lock`; commit it or CI goes red."
+   ],
+   "exam_note_md": "The sample paper's first question is a uv error with \"what should you do next?\". Read the\nmessage: it names the file, and usually the fix.",
+   "source_ref": "S4 slides 23–24; labs/01-scaffold.md §4 and troubleshooting; expense-tracker uv.lock (a953d05 and v0.4) and .github/workflows/check.yml; runs",
+   "check": [
+    "project-anatomy-q30",
+    "project-anatomy-q31",
+    "project-anatomy-q32"
+   ]
+  },
+  {
+   "id": "project-anatomy-s9",
+   "heading": "Works on my machine: diagnosis, clean clones and the tag",
+   "body_md": "When something passes on one laptop and fails in CI or on a teammate's machine, the cause is\nusually one of four things, and each leaves a clue.\n\n| Clue in a clean clone or in CI | Cause | Fix |\n|---|---|---|\n| `uv sync --locked`: the lockfile needs to be updated | `pyproject.toml` changed; the new `uv.lock` was never committed | `uv lock`, commit `uv.lock` |\n| `ModuleNotFoundError` for one of your own modules | The file exists only on one laptop; `git status` listed it as untracked | `git add` it, commit, push |\n| `ModuleNotFoundError` for a third-party package | Installed by hand into one environment, never declared | `uv add` it, so `pyproject.toml` and `uv.lock` record it; commit both |\n| Errors on one machine only, in code that is fine elsewhere | That person bypasses uv and runs a different Python | Use `uv run`; uv installs the Python the project requires |\n\nThe cheapest way to catch all four before the marker does is the one lab 01 §10 and the\npartial rubric both give: clone your own repository into an empty folder and follow your\nREADME literally. A clean clone has no `.venv`,\nno caches and nothing you forgot to commit.\n\nHistory is also why secrets never go in. The project brief warns that \"I deleted the file\" does\nnot remove it from a repository's history. A real run in a repository where a key was committed\nand then deleted:\n\n```console\n$ ls -a\n.  ..  .git  README.md\n$ git log --oneline\n0948038 Remove the API key\n7cd2bd6 Add movie search\n441f9ee Start the README\n$ git show 7cd2bd6:.env\nMOVIE_API_KEY=9f2c71d04ab35e8c\n```\n\nIn a public repository, anyone can run that last command.\n\nFinally, the CI gate in the partial-submission rubric. The marker looks at `main` at the `v0.5`\ntag. If the `check` workflow is red on that commit, the Tests criterion is capped at 1, whatever\nelse is true. A fix pushed after the tag does not count: fix, push, wait for a green tick on the\nnew commit, and only then move the tag onto it. That is the referee in practice. CI does not mark\nyour work, but it decides whether the submission is mechanically valid.",
+   "key_points": [
+    "Four usual causes: uncommitted lockfile, untracked file, undeclared package, a different Python.",
+    "A clean clone has no `.venv`, no caches and nothing you forgot to commit.",
+    "Deleting a file does not remove it from history; a pushed secret is exposed.",
+    "Red CI at the `v0.5` tag caps Tests at 1; a later fix counts only once the tag is moved."
+   ],
+   "exam_note_md": "The \"works on my machine\" story is the module's signature question: a green laptop, a red CI\nrun, and one clue in the output. Name the cause and the fix, never \"delete `.venv`\".",
+   "source_ref": "S4 slide 24; labs/01-scaffold.md §10; moodle/project-pages.md; partial-rubric (The CI gate; If CI is red on the tag); runs",
+   "check": [
+    "project-anatomy-q38",
+    "project-anatomy-q43",
+    "project-anatomy-q41"
+   ]
+  }
+ ],
+ "terms": [
+  {
+   "term": "Works on my machine",
+   "definition_md": "Code that runs on the laptop it was written on and nowhere else, because something it relies on (a file, a package version, a Python) exists only there. The problem the course is built to solve.",
+   "section_ref": "project-anatomy-s1"
+  },
+  {
+   "term": "Reproducible",
+   "definition_md": "The same repository at the same commit gives the same environment and the same result on any machine. What standardising dependencies and builds is for.",
+   "section_ref": "project-anatomy-s1"
+  },
+  {
+   "term": "CI check (the referee)",
+   "definition_md": "The `check` workflow on GitHub that runs on every push: `uv sync --locked`, `ruff`, `mypy` and `pytest`. Green means the referee accepts the repository; it is not marked itself.",
+   "section_ref": "project-anatomy-s1"
+  },
+  {
+   "term": "WSL2",
+   "definition_md": "A real Linux kernel inside Windows, so Windows students work in the same Linux shell as everyone else. Work in `~`, not under `/mnt/c`.",
+   "section_ref": "project-anatomy-s2"
+  },
+  {
+   "term": "uv",
+   "definition_md": "The tool that installs Python itself and the project's dependencies, the same versions for everyone. It makes and fills `.venv`; `uv run` runs commands in it.",
+   "section_ref": "project-anatomy-s2"
+  },
+  {
+   "term": "Virtual environment (`.venv`)",
+   "definition_md": "One more directory per project that Python is told to look in first. Installing puts packages there, not on the whole computer. Rebuilt by `uv sync`; never committed.",
+   "section_ref": "project-anatomy-s3"
+  },
+  {
+   "term": "Setup check",
+   "definition_md": "`bash scripts/setup-check.sh` in the course materials: every line pass or fail with a fix. A red line is a ticket, a to-do item, not a reason to stop.",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "term": "Branch",
+   "definition_md": "A separate line of commits. `git switch -c <name>` makes one and moves you onto it, so your pushes cannot collide with a teammate's.",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "term": "Staging (`git add`)",
+   "definition_md": "Marking a change to go into the next commit. A file that was never added is untracked and is not in any commit.",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "term": "Commit",
+   "definition_md": "A recorded snapshot of the staged changes, in the repository on your laptop until you push it.",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "term": "Push",
+   "definition_md": "Sending your commits to GitHub, where teammates and CI can see them.",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "term": "Tag",
+   "definition_md": "A permanent name for one commit, such as `v0.1` or `v0.5`. Checkpoints are marked at their tag; a tag does not move by itself.",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "term": "`pyproject.toml`",
+   "definition_md": "The single source of truth: the project's identity (`name`, `version`), needs (`requires-python`, `dependencies`), commands (`[project.scripts]`) and build system.",
+   "section_ref": "project-anatomy-s7"
+  },
+  {
+   "term": "`uv.lock`",
+   "definition_md": "The exact versions, with hashes, of every package the project installs, including indirect ones. Generated by `uv lock`, committed, read by `uv sync`.",
+   "section_ref": "project-anatomy-s8"
+  },
+  {
+   "term": "`uv sync --locked`",
+   "definition_md": "Install exactly what `uv.lock` says, and fail if `uv.lock` and `pyproject.toml` disagree. What CI runs first.",
+   "section_ref": "project-anatomy-s8"
+  },
+  {
+   "term": "`.gitignore`",
+   "definition_md": "The list of what git must never see: `.venv/`, `__pycache__/`, tool caches, local data such as `data/`, and anything secret.",
+   "section_ref": "project-anatomy-s6"
+  },
+  {
+   "term": "`src/` layout",
+   "definition_md": "The package lives in `src/<package>/`, so it only imports once installed; tests then exercise what a user gets, and deployable code is kept apart from tests.",
+   "section_ref": "project-anatomy-s7"
+  },
+  {
+   "term": "`[project.scripts]`",
+   "definition_md": "The table that turns an object into a command: `expenses = \"expense_tracker.cli:app\"` installs a command `expenses` that runs `app` from `expense_tracker.cli`.",
+   "section_ref": "project-anatomy-s7"
+  },
+  {
+   "term": "`__main__.py`",
+   "definition_md": "The file inside a package that makes `python -m <package>` work; the other door, next to the installed command.",
+   "section_ref": "project-anatomy-s7"
+  },
+  {
+   "term": "Clean clone",
+   "definition_md": "A fresh `git clone` into an empty folder: no `.venv`, no caches and nothing you forgot to commit. The cheapest way to see what the marker and CI will see.",
+   "section_ref": "project-anatomy-s9"
+  }
+ ],
+ "traps": [
+  "\"Delete `.venv` and sync again\" fixes uv errors. It cannot fix an error about `pyproject.toml` or `uv.lock`: uv stops while reading those files, before it touches the environment, and the rebuilt `.venv` is identical anyway.",
+  "`uv.lock` is generated clutter you can ignore. It is the only record of the exact versions everyone installs; CI's `uv sync --locked` needs the committed copy and refuses to run without it.",
+  "Committing `.venv` gives teammates the same packages. It is built for one machine (its `python` links to an interpreter on that computer); teammates rebuild an identical one from `uv.lock` with `uv sync`.",
+  "If `uv sync` works on my laptop, the lockfile is fine. Plain `uv sync` silently rewrites `uv.lock` to match `pyproject.toml`; if that change is never committed, CI's `uv sync --locked` goes red.",
+  "After `uv sync`, `python3` can import the project's packages. A bare `python3` never looks in `.venv`; only `uv run ...` (or an activated environment) does.",
+  "Without `src/`, nothing really changes. Without it, `import` finds the folder you are standing in even when nothing is installed, so tests can pass against files a user would never get.",
+  "Deleting a file removes a leaked key. The earlier commit still holds it, and in a public repository anyone can read it with `git show`.",
+  "A red line on the setup report means setup failed. A red line is a ticket: push the report anyway. Actions checks the repository, not your laptop.",
+  "A fix pushed after the `v0.5` tag counts. Marking is at the tag, which never moves by itself; move it onto the green commit, or Tests stays capped at 1."
+ ],
+ "flashcards": [
+  {
+   "id": "project-anatomy-f01",
+   "front_md": "What single problem is the course built to solve, according to session 3?",
+   "back_md": "\"Works on my machine\": code that runs on one laptop and nowhere else. The cure is to systematise dependencies and builds so the artefacts are reproducible.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s1"
+  },
+  {
+   "id": "project-anatomy-f02",
+   "front_md": "The two non-negotiable rules of the setup contract",
+   "back_md": "1. Your work passes the CI check (`ruff` + `mypy` + `pytest` on GitHub), the referee. 2. The recommended path is the only one the lecturer supports; off-path costs your own time.",
+   "kind": "recall",
+   "section_ref": "project-anatomy-s1"
+  },
+  {
+   "id": "project-anatomy-f03",
+   "front_md": "Referee or judge: which is the CI check?",
+   "back_md": "The referee. It is not marked itself, but a red check means the submission is not mechanically valid, and red at `v0.5` caps Tests at 1.",
+   "kind": "distinction",
+   "section_ref": "project-anatomy-s1"
+  },
+  {
+   "id": "project-anatomy-f04",
+   "front_md": "The six tools of session 3, one job each",
+   "back_md": "WSL2: Linux inside Windows. VS Code: the editor. uv: Python and dependencies, the same versions for everyone. git: history. GitHub: hosts the repository (SSH key). Docker: runs the project in a container, later.",
+   "kind": "recall",
+   "section_ref": "project-anatomy-s2"
+  },
+  {
+   "id": "project-anatomy-f05",
+   "front_md": "Why install VS Code's Python and Ruff extensions only after connecting to WSL?",
+   "back_md": "Installed before, they land on the Windows side and do not run in a WSL window: Ruff lints nothing and the editor never flags what CI rejects.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s2"
+  },
+  {
+   "id": "project-anatomy-f06",
+   "front_md": "What is a virtual environment, in the slide's words?",
+   "back_md": "Python looks up packages in a fixed list of directories. A virtual environment is one more such directory, one per project, that Python is told to look in first.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s3"
+  },
+  {
+   "id": "project-anatomy-f07",
+   "front_md": "After `uv sync`, `python3 -c \"import typer\"` fails but `uv run python -c \"import typer\"` works. Why?",
+   "back_md": "A bare `python3` never looks in `.venv`; `uv run` starts Python with the project's environment, where `typer` was installed.",
+   "kind": "reading",
+   "section_ref": "project-anatomy-s3"
+  },
+  {
+   "id": "project-anatomy-f08",
+   "front_md": "What do you lose by deleting `.venv`?",
+   "back_md": "Nothing that `uv sync` cannot rebuild from `pyproject.toml` and `uv.lock`. No file of the repository changes.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s3"
+  },
+  {
+   "id": "project-anatomy-f09",
+   "front_md": "Why is `.venv` ignored while `uv.lock` is committed?",
+   "back_md": "`.venv` is the product, built for one machine; `uv.lock` is the recipe that rebuilds an identical `.venv` anywhere.",
+   "kind": "distinction",
+   "section_ref": "project-anatomy-s3"
+  },
+  {
+   "id": "project-anatomy-f10",
+   "front_md": "\"A red line is a ticket.\" Meaning?",
+   "back_md": "Each red line on the setup report is a to-do with a fix. Push the report anyway and work down the lines before the next session.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "id": "project-anatomy-f11",
+   "front_md": "Why did everyone push to their own branch in the setup lab?",
+   "back_md": "Four people pushing to `main` in the same twenty minutes: only the first push succeeds. A branch per person cannot collide.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "id": "project-anatomy-f12",
+   "front_md": "`git add` vs `git commit` vs `git push`",
+   "back_md": "`add` stages a change; `commit` records the staged changes in the repository on your laptop; `push` sends your commits to GitHub.",
+   "kind": "distinction",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "id": "project-anatomy-f13",
+   "front_md": "`git status` says `Your branch is ahead of 'origin/setup/carla' by 1 commit.` What has not happened yet?",
+   "back_md": "The push. The commit exists on the laptop only; GitHub, CI and teammates cannot see it.",
+   "kind": "reading",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "id": "project-anatomy-f14",
+   "front_md": "Red lines on the setup report, green on Actions: a problem?",
+   "back_md": "No. The report checks your machine and is your to-do list; Actions checks the repository. Green means the referee accepts the repository.",
+   "kind": "distinction",
+   "section_ref": "project-anatomy-s4"
+  },
+  {
+   "id": "project-anatomy-f15",
+   "front_md": "`$'\\r': command not found` when a script runs in WSL",
+   "back_md": "The repository was cloned with Git for Windows, which gave it Windows (CRLF) line endings. Delete it and clone again from the Ubuntu shell into `~`.",
+   "kind": "reading",
+   "section_ref": "project-anatomy-s5"
+  },
+  {
+   "id": "project-anatomy-f16",
+   "front_md": "`Permission denied (publickey)`, or `git push` asks for a password",
+   "back_md": "Your SSH key is not on GitHub, or the remote is an `https://` URL. Add the key and switch the remote to the `git@github.com:` form.",
+   "kind": "reading",
+   "section_ref": "project-anatomy-s5"
+  },
+  {
+   "id": "project-anatomy-f17",
+   "front_md": "`uv: command not found` straight after installing uv",
+   "back_md": "This shell started before the installer edited its startup file: open a new terminal. If it persists, add uv's folder to `PATH` in `~/.bashrc` (bash) or `~/.zshrc` (zsh).",
+   "kind": "reading",
+   "section_ref": "project-anatomy-s5"
+  },
+  {
+   "id": "project-anatomy-f18",
+   "front_md": "What does a script lack that a project has?",
+   "back_md": "A name, a version, declared dependencies and a home for tests.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s6"
+  },
+  {
+   "id": "project-anatomy-f19",
+   "front_md": "The job of `pyproject.toml`, `uv.lock`, `README.md`, `LICENSE`, `.gitignore`",
+   "back_md": "The single source of truth; exact versions, pinned; what it is and how to run it; what others may do with it; what git must never see.",
+   "kind": "recall",
+   "section_ref": "project-anatomy-s6"
+  },
+  {
+   "id": "project-anatomy-f20",
+   "front_md": "Three reasons the group repository is public",
+   "back_md": "A portfolio piece; it makes copying visible rather than tempting; the tooling (checks, container hosting) is free. So never anything personal: no credentials, keys or data about real people.",
+   "kind": "recall",
+   "section_ref": "project-anatomy-s6"
+  },
+  {
+   "id": "project-anatomy-f21",
+   "front_md": "What did commit `a953d05` change in the code?",
+   "back_md": "Nothing. `uv init --package` and one edit made the code installable: `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`, `src/expense_tracker/`.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s6"
+  },
+  {
+   "id": "project-anatomy-f22",
+   "front_md": "`expenses = \"expense_tracker.cli:app\"` under `[project.scripts]`",
+   "back_md": "On install, a command `expenses` that runs the object `app` in the module `expense_tracker.cli`. Rename either side and the command disappears.",
+   "kind": "reading",
+   "section_ref": "project-anatomy-s7"
+  },
+  {
+   "id": "project-anatomy-f23",
+   "front_md": "`pyproject.toml` read as four answers",
+   "back_md": "Identity (`name`, `version`); what it needs (`requires-python`, `dependencies`); what it installs as a command (`[project.scripts]`); how it is built (`[build-system]`).",
+   "kind": "recall",
+   "section_ref": "project-anatomy-s7"
+  },
+  {
+   "id": "project-anatomy-f24",
+   "front_md": "Why the `src/` layout?",
+   "back_md": "Without `src/`, `import` finds the folder you stand in, installed or not. With it, only the installed package imports, so tests exercise what a user gets, and deployable code stays apart from tests.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s7"
+  },
+  {
+   "id": "project-anatomy-f25",
+   "front_md": "`python tracker.py` vs `uv run expenses report`",
+   "back_md": "The first needs the file, the right directory and whatever Python the machine has. The second needs the project: uv resolves the environment from `pyproject.toml` and `uv.lock`, installs what is missing, and runs.",
+   "kind": "distinction",
+   "section_ref": "project-anatomy-s8"
+  },
+  {
+   "id": "project-anatomy-f26",
+   "front_md": "`typer>=0.12` in `pyproject.toml` vs the typer entry in `uv.lock`",
+   "back_md": "A range the project accepts vs the exact version chosen (0.27.2 in the expense-tracker), with its hash.",
+   "kind": "distinction",
+   "section_ref": "project-anatomy-s8"
+  },
+  {
+   "id": "project-anatomy-f27",
+   "front_md": "`error: The lockfile at uv.lock needs to be updated, but --locked was provided.`",
+   "back_md": "`pyproject.toml` changed without re-locking. Run `uv lock`, then commit `uv.lock` together with `pyproject.toml`.",
+   "kind": "reading",
+   "section_ref": "project-anatomy-s8"
+  },
+  {
+   "id": "project-anatomy-f28",
+   "front_md": "Four usual causes of \"works on my machine\"",
+   "back_md": "A lockfile changed but never committed; a file never added (untracked); a package installed by hand and never declared; a different Python because uv was bypassed.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s9"
+  },
+  {
+   "id": "project-anatomy-f29",
+   "front_md": "Does deleting a committed file remove a key from the repository?",
+   "back_md": "No. The earlier commit still contains it (`git show <commit>:<file>` prints it). Treat the key as leaked.",
+   "kind": "concept",
+   "section_ref": "project-anatomy-s9"
+  },
+  {
+   "id": "project-anatomy-f30",
+   "front_md": "The CI gate in the partial-submission rubric",
+   "back_md": "Red `check` on the `v0.5` commit caps Tests at 1. A fix pushed after the tag counts only once the tag is moved onto a green commit.",
+   "kind": "recall",
+   "section_ref": "project-anatomy-s9"
+  }
+ ],
+ "questions": [
+  {
+   "id": "project-anatomy-q01",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Your group's repository runs a workflow called `check` on GitHub every time anyone pushes. Which\nstatement describes its role in the course?",
+   "options": [
+    {
+     "text_md": "It is the referee: a run on a machine none of you owns, where green means the work is accepted",
+     "correct": true,
+     "why_md": "Right. Session 3 calls it the referee, and the project pages add \"the referee, not the judge\": it decides validity on neutral ground."
+    },
+    {
+     "text_md": "It is the judge: its result is the mark your group gets for each checkpoint and for the partial",
+     "correct": false,
+     "why_md": "The brief says the check is not marked itself. Criteria such as naming, tests and the README are marked by the lecturer; CI only decides whether the submission is valid."
+    },
+    {
+     "text_md": "It is optional; if the same checks pass on your own laptop, that counts just as much as CI",
+     "correct": false,
+     "why_md": "This is the \"works on my machine\" thinking the course rejects. Passing the CI check is one of the two non-negotiable rules."
+    },
+    {
+     "text_md": "It only confirms that the files arrived on GitHub; the code itself is checked on Demo Day",
+     "correct": false,
+     "why_md": "The workflow runs the linter, the type checker and the tests on every push, all term. It checks the code, not just its arrival."
+    }
+   ],
+   "explanation_md": "The session 3 contract has two non-negotiable rules, and the first is that your work passes the CI\ncheck: the automated `ruff` + `mypy` + `pytest` run on GitHub. Because it runs on a machine none of us\nowns, it settles the \"works on my machine\" argument for good. The project pages call it \"the referee,\nnot the judge\": it is not marked itself, but a red check means the submission is not mechanically\nvalid, and at the `v0.5` tag a red check caps the Tests criterion at 1.",
+   "section_ref": "project-anatomy-s1",
+   "source_ref": "S3 slide 3; labs/00-setup.md (The contract); moodle/project-pages.md",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q02",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "Arnau uses Fedora Linux and the Neovim editor, and installs Python with Fedora's package manager\ninstead of uv. His tests pass on his laptop. Under the course's setup contract, which statement is\nright?",
+   "options": [
+    {
+     "text_md": "He is breaking the rules: the course requires Windows with WSL2 or macOS, plus VS Code",
+     "correct": false,
+     "why_md": "Session 3 says the opposite: any operating system and any editor is your freedom. What is fixed is the CI check, and that only the recommended path gets live support."
+    },
+    {
+     "text_md": "He is fine, as long as he hands in a screenshot showing his local checks passing",
+     "correct": false,
+     "why_md": "A screenshot shows his machine, which is exactly what the referee ignores. The check that counts runs on GitHub."
+    },
+    {
+     "text_md": "He may do this, but his work must pass the CI check, and help costs his own time",
+     "correct": true,
+     "why_md": "Right. Any OS and any editor are allowed; the CI check and the supported path for live help are the two fixed points."
+    },
+    {
+     "text_md": "He may do this, and because his own tests pass, a red CI result can be ignored",
+     "correct": false,
+     "why_md": "Passing the CI check is non-negotiable. A red check means the work is not accepted, whatever his laptop says."
+    }
+   ],
+   "explanation_md": "Session 3 and lab 00 give you freedom (any OS, any editor) and two rules. First, the work passes the\nCI check on GitHub, the referee. Second, the recommended path (WSL2 on Windows, VS Code, uv, git, GitHub)\nis the only one supported live in the room: off-path is allowed, but the time it costs is yours, and\noff-path help is office hours, not the lab. Arnau's setup is legal. His laptop's verdict is simply not\nthe one that counts.",
+   "section_ref": "project-anatomy-s1",
+   "source_ref": "S3 slide 3; labs/00-setup.md (The contract)",
+   "origin": "lab",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q03",
+   "type": "sort",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Match each need to the tool from session 3 that answers it. (VS Code, the editor, is left out.)",
+   "categories": [
+    {
+     "id": "wsl",
+     "label": "WSL2"
+    },
+    {
+     "id": "uv",
+     "label": "uv"
+    },
+    {
+     "id": "git",
+     "label": "git"
+    },
+    {
+     "id": "github",
+     "label": "GitHub"
+    },
+    {
+     "id": "docker",
+     "label": "Docker"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "A real Linux shell on a Windows laptop",
+     "category": "wsl",
+     "why_md": "WSL2 runs a real Linux kernel inside Windows; the course lives in a Linux shell."
+    },
+    {
+     "text_md": "Python 3.13 itself, installed the same way on every laptop",
+     "category": "uv",
+     "why_md": "uv installs Python itself (`uv python install 3.13`); no system Python is needed."
+    },
+    {
+     "text_md": "The exact same `typer` version on four laptops and in CI",
+     "category": "uv",
+     "why_md": "uv installs the project's dependencies from `uv.lock`: the same versions for everyone."
+    },
+    {
+     "text_md": "A record of every change to the code, and who made it",
+     "category": "git",
+     "why_md": "git records the history of your code, commit by commit."
+    },
+    {
+     "text_md": "Starting a branch of your own so you do not collide with teammates",
+     "category": "git",
+     "why_md": "`git switch -c` is a git command; the branch exists in your local repository until you push it."
+    },
+    {
+     "text_md": "The place your group's repository lives, reached with an SSH key",
+     "category": "github",
+     "why_md": "GitHub hosts the repository; you authenticate with the SSH key you added in the lab."
+    },
+    {
+     "text_md": "The `check` workflow that runs on every push",
+     "category": "github",
+     "why_md": "The workflow runs on GitHub (the Actions tab). That neutral machine is the referee."
+    },
+    {
+     "text_md": "Running the program on a computer with no Python installed, on Demo Day",
+     "category": "docker",
+     "why_md": "Docker runs the project in a container; on Demo Day the program runs from the image your repository published."
+    }
+   ],
+   "explanation_md": "Each of the six tools answers one question. WSL2 gives Windows the Linux shell the course assumes. uv\ninstalls Python and the dependencies, so versions match everywhere. git records history (including\nbranches); GitHub hosts that history and runs the `check` workflow. Docker comes later and solves the\nlast version of \"works on my machine\": running on a computer that has no Python at all.",
+   "section_ref": "project-anatomy-s2",
+   "source_ref": "S3 slide 5; labs/00-setup.md (The recommended path); moodle/project-pages.md (Demo day)",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q04",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "Lucía, on Windows, edits her project in VS Code connected to WSL (the bottom-left corner says\n`WSL: Ubuntu`). CI keeps rejecting lint errors that her editor never underlines. In the Extensions\npane, Ruff shows an **Install in WSL: Ubuntu** button. What is the most likely explanation?",
+   "options": [
+    {
+     "text_md": "The editor's Ruff uses its own default rules, while CI reads the rules in `pyproject.toml`",
+     "correct": false,
+     "why_md": "Both read the same `[tool.ruff]` settings from `pyproject.toml`. The button shows that the editor's Ruff is not running in WSL at all."
+    },
+    {
+     "text_md": "Ruff was installed before she connected, so it runs on the Windows side, not in WSL",
+     "correct": true,
+     "why_md": "Right. Lab 00 describes this exact symptom: Ruff lints nothing and the editor never flags what CI rejects. Clicking the button installs it where the code runs."
+    },
+    {
+     "text_md": "Her Ubuntu is still on WSL1, where VS Code extensions install but do not lint",
+     "correct": false,
+     "why_md": "A WSL version problem shows up in `wsl -l -v` and at install time. The button in the Extensions pane points directly at where Ruff is installed."
+    },
+    {
+     "text_md": "Her repository lives under `/mnt/c`, and files stored there hide lint errors from the editor",
+     "correct": false,
+     "why_md": "Working under `/mnt/c` makes git and uv slow; it does not stop an extension from linting. The button says Ruff is not installed in WSL."
+    }
+   ],
+   "explanation_md": "Lab 00 is explicit about order: open the project from Ubuntu with `code .`, check the corner says\n`WSL: Ubuntu`, and only then install the Python and Ruff extensions. Extensions installed before you\nconnect land on the Windows side, and an extension on the Windows side does not run in a WSL window.\nThe editor then shows nothing while CI, which runs `ruff check`, rejects the code. The\n**Install in WSL: Ubuntu** button is the giveaway; the lab says to click it.",
+   "section_ref": "project-anatomy-s2",
+   "source_ref": "labs/00-setup.md (Windows step 2)",
+   "origin": "lab",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q05",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Inside your project, `uv sync` installs `typer` into the virtual environment. According to session 3,\nwhat has this changed?",
+   "options": [
+    {
+     "text_md": "Every Python program on this computer, in any folder, can now import it",
+     "correct": false,
+     "why_md": "That is the misconception the slide corrects: installing means \"put it in this project's directory\", not \"change the whole computer\"."
+    },
+    {
+     "text_md": "It has been added to the project's dependencies in `pyproject.toml`, for everyone",
+     "correct": false,
+     "why_md": "`uv sync` reads `pyproject.toml` and `uv.lock`; it does not edit `pyproject.toml`. Declaring a dependency is a separate step."
+    },
+    {
+     "text_md": "A copy of it has been committed to the repository, so teammates receive it on their next pull",
+     "correct": false,
+     "why_md": "`.venv` is in `.gitignore` and never committed. Teammates get `typer` by running `uv sync` themselves, from the same lockfile."
+    },
+    {
+     "text_md": "It sits in the project's own directory, which Python looks in first when started through `uv run`",
+     "correct": true,
+     "why_md": "Right: installing means putting it in this project's directory. Nothing else on the computer changes."
+    }
+   ],
+   "explanation_md": "Python looks up packages in a fixed list of directories. A virtual environment is one more directory,\none per project, that Python is told to look in first. So installing puts the package in this\nproject's `.venv`, nothing else on the computer changes, and only Python started through the\nenvironment (`uv run ...`) sees it. uv makes and fills that directory from `pyproject.toml` and\n`uv.lock`. That is the entire idea; the slide's words are \"No magic\".",
+   "section_ref": "project-anatomy-s3",
+   "source_ref": "S3 slide 6",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q06",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "concept"
+   ],
+   "stem_md": "In a fresh clone of the expense-tracker you run:\n\n```console\n$ uv sync -q\n$ python3.13 --version\nPython 3.13.15\n$ python3.13 -c \"import typer\"\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import typer\nModuleNotFoundError: No module named 'typer'\n$ uv run python -c \"import typer; print(typer.__file__)\"\n/home/alice/expense-tracker/.venv/lib/python3.13/site-packages/typer/__init__.py\n```\n\nWhat explains the difference between the two imports?",
+   "options": [
+    {
+     "text_md": "The install failed during the sync, and the quiet flag hid the error message from you",
+     "correct": false,
+     "why_md": "`uv run` imports it from `.venv` one command later, so it is installed. `-q` only hides progress lines."
+    },
+    {
+     "text_md": "Only `uv run` starts Python with the project's `.venv` on its search list",
+     "correct": true,
+     "why_md": "Right. Same computer, same Python version; the only difference is which directories each one searches."
+    },
+    {
+     "text_md": "The two commands run different Python versions, and `typer` supports only one of them",
+     "correct": false,
+     "why_md": "Both are Python 3.13; the version line rules this out. The difference is which directories each one searches."
+    },
+    {
+     "text_md": "The second command downloaded the package from the internet, just for that one run",
+     "correct": false,
+     "why_md": "The printed path is inside the project's `.venv`, where `uv sync` put it. `uv run` uses the environment and installs only what is missing; nothing was."
+    }
+   ],
+   "explanation_md": "A virtual environment is a directory Python is told to look in first, but only when Python is started\nthrough it. `uv sync` filled `.venv` with `typer`. A bare `python3.13` was never told about `.venv`, so it\nsearches only its own fixed list and fails. `uv run python` starts Python with the project's\nenvironment, and the printed path proves `typer` came from `.venv/lib/python3.13/site-packages`. This\nis why the course runs everything as `uv run ...`.",
+   "section_ref": "project-anatomy-s3",
+   "source_ref": "S3 slide 6; run in a clone of v0.4",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q07",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "read-tool-output"
+   ],
+   "stem_md": "Marc's `.venv` \"feels broken\", so he deletes it and rebuilds it:\n\n```console\n$ rm -rf .venv\n$ uv sync\nUsing CPython 3.13.15\nCreating virtual environment at: .venv\nResolved 20 packages in 5ms\nInstalled 19 packages in 24ms\n$ git status --short\n```\n\n(`git status --short` printed nothing.) What did deleting `.venv` cost him?",
+   "options": [
+    {
+     "text_md": "Nothing: `uv sync` rebuilt the same environment; no repository file changed",
+     "correct": true,
+     "why_md": "Right. The recipe is in the repository; the product can be thrown away and rebuilt at any time."
+    },
+    {
+     "text_md": "Python 3.13 itself, which he must now install again before the project can run",
+     "correct": false,
+     "why_md": "`.venv/bin/python` only links to the Python that uv installed elsewhere, and the output's `Using CPython 3.13.15` shows it is still there."
+    },
+    {
+     "text_md": "The lockfile, which uv has now regenerated with the newest versions available",
+     "correct": false,
+     "why_md": "`uv.lock` is a file in the repository, not in `.venv`. It was read, not rewritten; `git status` would list it as modified otherwise."
+    },
+    {
+     "text_md": "All 19 packages, which he will now have to reinstall one at a time with pip",
+     "correct": false,
+     "why_md": "`uv sync` already reinstalled all 19 in one step, from the lockfile. Installing by hand with pip is the move that creates \"works on my machine\"."
+    }
+   ],
+   "explanation_md": "`.venv` is a product built from a recipe. The recipe, `pyproject.toml` plus `uv.lock`, lives in the\nrepository; the product can be thrown away and rebuilt, which is what `Creating virtual environment`\nand `Installed 19 packages` show. `git status --short` printing nothing confirms that no tracked file\nchanged. Deleting `.venv` is harmless, which is also why it rarely fixes anything: an error about\n`pyproject.toml` or the lockfile has nothing to do with it.",
+   "section_ref": "project-anatomy-s3",
+   "source_ref": "S3 slide 6; run in a clone of v0.4",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q08",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "In the setup lab, every student ran `git switch -c setup/<your-github-username>` before pushing their\nsetup report to the group repository. Why?",
+   "options": [
+    {
+     "text_md": "With four people pushing to the same branch at once, only the first push succeeds",
+     "correct": true,
+     "why_md": "Right. This is session 3's reason, and lab 00 adds that it is how you will work all term."
+    },
+    {
+     "text_md": "Because the main branch is protected on GitHub and refuses every push from a student",
+     "correct": false,
+     "why_md": "Lab 01 notes there is no branch protection yet. Pushes to `main` work; only the first of several simultaneous ones succeeds."
+    },
+    {
+     "text_md": "Because the CI check only runs on branches named after a student, never on main",
+     "correct": false,
+     "why_md": "The `check` workflow runs on every push to any branch. The name only keeps each person's work apart."
+    },
+    {
+     "text_md": "Because the lecturer marks each student's setup branch as a separate checkpoint",
+     "correct": false,
+     "why_md": "The setup report is not a checkpoint. Checkpoints are marked at tags on the group repository."
+    }
+   ],
+   "explanation_md": "Your group of four pushes to the same repository within the same twenty minutes. On `main`, the first\npush succeeds and the rest are rejected, because GitHub now holds a commit the others do not have.\n`git switch -c` makes a new branch and moves you onto it; it is yours alone, so nobody can collide with\nyou on it. Lab 00's troubleshooting §8 gives the same advice for the rejected push: do not try to\nmerge, switch to your own branch and push that.",
+   "section_ref": "project-anatomy-s4",
+   "source_ref": "S3 slide 10; labs/00-setup.md (Push your first file)",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q09",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output"
+   ],
+   "stem_md": "Carla is on her own branch. She copied her report into `setup-reports/` and tried to commit:\n\n```console\n$ git commit -m \"add setup report\"\nOn branch setup/carla\nUntracked files:\n  (use \"git add <file>...\" to include in what will be committed)\n\tsetup-reports/\n\nnothing added to commit but untracked files present (use \"git add\" to track)\n```\n\nWhat should she do next?",
+   "options": [
+    {
+     "text_md": "Run `git push`, to send the report to GitHub",
+     "correct": false,
+     "why_md": "There is no new commit to send. `push` sends commits, and this one was never recorded."
+    },
+    {
+     "text_md": "Run `git add setup-reports/`, then commit again",
+     "correct": true,
+     "why_md": "Right. Staging is what puts a change into the next commit; nothing was staged, so nothing was committed."
+    },
+    {
+     "text_md": "Delete the clone and clone the group repository again",
+     "correct": false,
+     "why_md": "Nothing is broken. A fresh clone would not contain her report either, and she would lose the copy she just made."
+    },
+    {
+     "text_md": "Run `git switch -c setup/carla` again, to restart the branch",
+     "correct": false,
+     "why_md": "She is already on her branch (`On branch setup/carla`), and switching branches does not stage anything."
+    }
+   ],
+   "explanation_md": "git reports `setup-reports/` as untracked: it sees the folder but has not been told to include it. A\ncommit records only what is staged, so with nothing staged there is nothing to commit. The order is\n`git add` (stage), `git commit` (record), `git push` (send to GitHub). The output even says what to\ndo: `use \"git add\" to track`. Reading the message before acting is the whole skill here.",
+   "section_ref": "project-anatomy-s4",
+   "source_ref": "S3 slides 11 and 13; run in a local repository",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q10",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output"
+   ],
+   "stem_md": "Carla pushed her branch during the lab. At home she fixed a red line, updated her report, committed,\nand told the group it was done. Nobody can see the update on GitHub. She runs:\n\n```console\n$ git status\nOn branch setup/carla\nYour branch is ahead of 'origin/setup/carla' by 1 commit.\n  (use \"git push\" to publish your local commits)\n\nnothing to commit, working tree clean\n```\n\nWhat is going on?",
+   "options": [
+    {
+     "text_md": "Her new commit is recorded only on her laptop; `git push` sends it to GitHub",
+     "correct": true,
+     "why_md": "Right. `ahead ... by 1 commit` means the commit exists locally and GitHub has not received it."
+    },
+    {
+     "text_md": "The commit failed, because the output says the working tree is clean and nothing is staged",
+     "correct": false,
+     "why_md": "\"Working tree clean\" means everything is committed. The commit exists; it just has not left her laptop."
+    },
+    {
+     "text_md": "GitHub takes a few minutes to show new commits, so she should wait and refresh the page",
+     "correct": false,
+     "why_md": "GitHub has not received anything yet. Waiting changes nothing until she pushes."
+    },
+    {
+     "text_md": "She must `git add` the report again, because GitHub reads what is staged, not committed",
+     "correct": false,
+     "why_md": "Staging comes before a commit, and the commit is already made. GitHub receives commits through `push`, not `add`."
+    }
+   ],
+   "explanation_md": "Each survival-kit command records something in a different place. `add` stages, `commit` records the\nstaged change as a commit in the repository on her laptop, and `push` sends commits to GitHub. `git\nstatus` says it plainly: her branch is one commit ahead of the copy on GitHub (`origin/setup/carla`),\nand the hint is `use \"git push\" to publish your local commits`. Until she pushes, neither her\nteammates nor CI can see the change.",
+   "section_ref": "project-anatomy-s4",
+   "source_ref": "S3 slide 13; run in a local repository",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q11",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "During the setup lab, Bob forgets to make his own branch. He commits his report on `main` and pushes:\n\n```console\n$ git push\nTo github.com:esade-swdev-2026/parking-lot.git\n ! [rejected]        main -> main (fetch first)\nerror: failed to push some refs to 'github.com:esade-swdev-2026/parking-lot.git'\nhint: Updates were rejected because the remote contains work that you do not\nhint: have locally. This is usually caused by another repository pushing to\nhint: the same ref. If you want to integrate the remote changes, use\nhint: 'git pull' before pushing again.\nhint: See the 'Note about fast-forwards' in 'git push --help' for details.\n```\n\nWhat happened, and what does lab 00 tell him to do?",
+   "options": [
+    {
+     "text_md": "His SSH key is not on GitHub yet; he should add the public key and push again",
+     "correct": false,
+     "why_md": "An SSH problem stops the connection with `Permission denied (publickey)`. Here GitHub accepted the connection and refused the update."
+    },
+    {
+     "text_md": "He should run `git push --force`, so that his own commit replaces whatever is there now",
+     "correct": false,
+     "why_md": "Forcing would throw away the teammate's commit on `main`. The lab's answer is your own branch, not overwriting someone else's work."
+    },
+    {
+     "text_md": "His clone is corrupted; he should delete it and clone the repository again",
+     "correct": false,
+     "why_md": "Nothing is corrupted, and a fresh clone would not contain his commit. The hints say GitHub has work he lacks."
+    },
+    {
+     "text_md": "A teammate pushed to `main` first; he should make his own branch and push that instead",
+     "correct": true,
+     "why_md": "Right. Lab 00 §8: do not try to merge, take your own branch and push it. His commit comes with him onto the new branch."
+    }
+   ],
+   "explanation_md": "The hints say the remote contains work he does not have locally: a teammate pushed to the same branch\nfirst. This is exactly why the lab gives everyone a branch. Lab 00 §8 lists the same rejection (as\n`non-fast-forward`; git says `fetch first` when it has not yet seen the teammate's commit) and says:\ndo not try to merge, switch to your own branch and push that, with `git push -u origin\nsetup/<your-github-username>`. Merging properly is module 4.",
+   "section_ref": "project-anatomy-s4",
+   "source_ref": "S3 slide 10; labs/00-setup.md §8; run against a local bare repository (URL rewritten)",
+   "origin": "lab",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q12",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "Your setup report has a red line for Docker. You pushed it anyway, and on GitHub, in the Actions tab,\nthe `check` workflow on your branch is green. What does that mean?",
+   "options": [
+    {
+     "text_md": "The referee accepts the repository; the red line is a ticket on your own to-do list",
+     "correct": true,
+     "why_md": "Right. The report checks your machine; Actions checks the repository."
+    },
+    {
+     "text_md": "Something is wrong: CI should have failed, because the report contains a red line",
+     "correct": false,
+     "why_md": "CI does not read your report. It checks the repository: lint, types and tests."
+    },
+    {
+     "text_md": "You should delete the report from the repository and push it again once every line is green",
+     "correct": false,
+     "why_md": "The lab says to push the report even if lines are red. A red line is a ticket, not something to hide."
+    },
+    {
+     "text_md": "Your setup is complete, so the red Docker line can be ignored for the rest of the course",
+     "correct": false,
+     "why_md": "Docker is needed later; the lab says to install it at home before session 15. Green on Actions says nothing about your laptop's Docker."
+    }
+   ],
+   "explanation_md": "Two different things are being checked. The setup report is about your machine: every line pass or\nfail with a fix, and a red line is a ticket you work down. The `check` workflow is about the\nrepository: green means the referee accepts it. Session 3 says it directly: red on the report but\ngreen on Actions is fine, because the report is your to-do list and Actions checks the repository. A\nred Docker line was expected on lab day.",
+   "section_ref": "project-anatomy-s4",
+   "source_ref": "S3 slides 9 and 14; labs/00-setup.md (About Docker, today)",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q13",
+   "type": "sort",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Messages from setup day, as the lab's troubleshooting table quotes them. Sort each by where the fix\nlives.",
+   "categories": [
+    {
+     "id": "machine",
+     "label": "Your machine's own setup"
+    },
+    {
+     "id": "access",
+     "label": "Network or GitHub access"
+    },
+    {
+     "id": "clone",
+     "label": "How you cloned or pushed"
+    },
+    {
+     "id": "none",
+     "label": "Not an error: nothing to fix"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "`wsl --install` fails and Ubuntu never appears",
+     "category": "machine",
+     "why_md": "Virtualisation is disabled in the BIOS/UEFI; enable it in the firmware settings and retry."
+    },
+    {
+     "text_md": "`docker: command not found` inside WSL while Docker Desktop is running",
+     "category": "machine",
+     "why_md": "Docker Desktop is not sharing with your Ubuntu; turn on its WSL integration."
+    },
+    {
+     "text_md": "`git: command not found`",
+     "category": "machine",
+     "why_md": "The shell cannot find a program called `git`: it is not installed, or not on the `PATH` of this machine. The fix is on your side."
+    },
+    {
+     "text_md": "`uv: command not found` in a new terminal, after installing uv",
+     "category": "machine",
+     "why_md": "The installer wrote the `PATH` line to a startup file your shell does not read; add it to `~/.bashrc` or `~/.zshrc`."
+    },
+    {
+     "text_md": "`Permission denied (publickey)` from `ssh -T git@github.com`",
+     "category": "access",
+     "why_md": "Your SSH key is not on GitHub; add the public key and test until GitHub greets you by name."
+    },
+    {
+     "text_md": "Everything times out on a managed laptop with an always-on VPN",
+     "category": "access",
+     "why_md": "The VPN or proxy blocks the downloads; disconnect it, use SSH over port 443, or use a lab machine for today."
+    },
+    {
+     "text_md": "`$'\\r': command not found` when running the setup check",
+     "category": "clone",
+     "why_md": "The repository was cloned with Git for Windows, so it has Windows line endings; clone it again from the Ubuntu shell."
+    },
+    {
+     "text_md": "`! [rejected] ... (non-fast-forward)` when pushing to `main`",
+     "category": "clone",
+     "why_md": "A teammate pushed first; switch to your own branch and push that."
+    },
+    {
+     "text_md": "`ssh: connect to host github.com port 22: Operation timed out`",
+     "category": "access",
+     "why_md": "The request never reached GitHub: a firewall, VPN or proxy is blocking port 22. The fix is about the network, not your key."
+    },
+    {
+     "text_md": "`Switched to a new branch 'setup/ana'`",
+     "category": "none",
+     "why_md": "Git is reporting that it did what you asked. It is not an error."
+    }
+   ],
+   "explanation_md": "Lab 00's rule is to search for the text your machine printed, and the text itself usually tells you where\nto look. Four messages are about your machine (virtualisation, Docker and WSL sharing, a program missing\nfrom the `PATH`), three about reaching the outside world (SSH key, VPN or proxy, a blocked port) and two\nabout how you used git (cloned from the Windows side, pushed to `main` after a teammate). One line is\nonly git telling you what it did.",
+   "section_ref": "project-anatomy-s5",
+   "source_ref": "S3 slide 15; labs/00-setup.md (Troubleshooting); labs/02-docker-setup.md §1 and §3",
+   "origin": "lab",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q14",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Testing her new SSH key, Nora runs `ssh -T git@github.com` for the first time on her laptop and sees:\n\n```console\n$ ssh -T git@github.com\nThe authenticity of host 'github.com (140.82.121.3)' can't be established.\nED25519 key fingerprint is SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU.\nAre you sure you want to continue connecting (yes/no/[fingerprint])?\n```\n\nWhat should she do?",
+   "options": [
+    {
+     "text_md": "Generate a new SSH key, because GitHub does not recognise the one she has",
+     "correct": false,
+     "why_md": "The fingerprint is GitHub's host key, not hers. The question says nothing about her key and appears on every operating system the first time."
+    },
+    {
+     "text_md": "Answer `no`: an unknown host means someone is intercepting the connection",
+     "correct": false,
+     "why_md": "It is unknown only because her machine has never talked to `github.com`. Answering `no` stops the test, and the question comes back next time."
+    },
+    {
+     "text_md": "Type `yes`: her machine is meeting `github.com` for the first time",
+     "correct": true,
+     "why_md": "Right. Lab 00 §10: SSH is asking you to confirm you trust the server; you will not be asked again."
+    },
+    {
+     "text_md": "Close the terminal and switch the repository to an `https://` URL instead",
+     "correct": false,
+     "why_md": "That swaps a harmless question for the password-prompt problem of troubleshooting §3. The course uses SSH."
+    }
+   ],
+   "explanation_md": "Lab 00 §10: the first time a machine talks to `github.com`, SSH asks you to confirm you trust the\nserver. It is not an error and it says nothing about your key. Type `yes` (the whole word) and press\nEnter; the host is remembered and you are not asked again. It happens on every operating system at the\n`ssh -T git@github.com` step. The setup check script never shows it, because it accepts new hosts on\nits own.",
+   "section_ref": "project-anatomy-s5",
+   "source_ref": "labs/00-setup.md §10; run with an empty known-hosts file; prompt text as quoted in lab 00 §10",
+   "origin": "lab",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q15",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "On her Mac, Elena runs the uv installer, then types `uv --version` in the same Terminal window. The\nshell answers that the command `uv` is not found. What should she do first?",
+   "options": [
+    {
+     "text_md": "Reinstall uv, because the first install evidently failed",
+     "correct": false,
+     "why_md": "The installer worked; it added uv to a startup file that this already-open shell read before the change. Reinstalling does not change that."
+    },
+    {
+     "text_md": "Close the Terminal window, open a new one, and try again",
+     "correct": true,
+     "why_md": "Right. Lab 00 §4: the installer edited the startup file after this shell had already started."
+    },
+    {
+     "text_md": "Run the installer again with `sudo` so that it installs for the whole system",
+     "correct": false,
+     "why_md": "uv installs into your home folder and needs no administrator rights. The problem is the shell that has not re-read its startup file."
+    },
+    {
+     "text_md": "Install Python 3.13 first, because uv needs Python to start",
+     "correct": false,
+     "why_md": "uv does not need Python; it installs Python itself (`uv python install 3.13`). The shell simply cannot find uv yet."
+    }
+   ],
+   "explanation_md": "Lab 00 §4: the installer added `uv` to your shell's startup file, but this shell started before that.\nClose the terminal and open a new one. Only if it still fails do you dig further: `echo $SHELL` tells\nyou which shell you run, and the `PATH` line must go in the file that shell reads, `~/.zshrc` on every\nrecent macOS, `~/.bashrc` on WSL Ubuntu. The `Login shell` line of the setup report gives the same\ninformation.",
+   "section_ref": "project-anatomy-s5",
+   "source_ref": "labs/00-setup.md §4 (macOS step 3)",
+   "origin": "lab",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q16",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "judgement",
+    "read-tool-output"
+   ],
+   "stem_md": "Four students show you red text from setup day. Which one needs no fix at all?",
+   "options": [
+    {
+     "text_md": "Iker: `Permission denied (publickey)` every time he tries to push his commits up to the group's repository on GitHub",
+     "correct": false,
+     "why_md": "His SSH key is not on GitHub, or he cloned with an `https://` URL. Until he fixes it, nothing he commits reaches GitHub."
+    },
+    {
+     "text_md": "Sara: `$'\\r': command not found` as soon as she runs the setup check script from her Ubuntu shell",
+     "correct": false,
+     "why_md": "She cloned from the Windows side, so the scripts carry Windows line endings. She must clone again from the Ubuntu shell."
+    },
+    {
+     "text_md": "Leo: `uv: command not found` even in a brand-new terminal window, on the morning after he installed uv and restarted his laptop",
+     "correct": false,
+     "why_md": "A new terminal rules out the quick fix. The installer wrote to a startup file his shell does not read, so he must add uv to `PATH` in the right file."
+    },
+    {
+     "text_md": "Martina: installer permission errors for shells she never uses, while `uv --version` works in a new terminal",
+     "correct": true,
+     "why_md": "Right. Lab 00 §4 calls these finished business: startup files for shells she does not use."
+    }
+   ],
+   "explanation_md": "Lab 00 marks only a few red messages as harmless, and Martina's is the one §4 names: permission errors\nfor startup files of shells you do not use are finished business once `uv --version` works in a new\nterminal. The others are real: a missing SSH key or `https://` remote, Windows line endings from\ncloning on the Windows side, and uv missing from `PATH` even in a fresh shell. The lab stresses the\nrule behind the exception: everywhere else in the course, red text means something is wrong and you\nread it.",
+   "section_ref": "project-anatomy-s5",
+   "source_ref": "labs/00-setup.md §3, §4, §6",
+   "origin": "lab",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q17",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "Pol, on Windows, cloned the course materials with Git for Windows into his Documents folder. Then he\nopened Ubuntu and ran the setup check from there. It stops at once with `$'\\r': command not found`.\nWhat is the diagnosis?",
+   "options": [
+    {
+     "text_md": "The script has a bug, so he should report it to the lecturer and wait for a fixed version",
+     "correct": false,
+     "why_md": "The same script runs for everyone else. The `\\r` (carriage return) in the message points at how the file reached his disk."
+    },
+    {
+     "text_md": "The file lacks execute permission, and running `chmod +x` on the script will fix it",
+     "correct": false,
+     "why_md": "He ran it as `bash scripts/setup-check.sh`, which only needs read permission. A permission problem says `Permission denied`."
+    },
+    {
+     "text_md": "Git for Windows gave his clone Windows line endings; he should re-clone from the Ubuntu shell",
+     "correct": true,
+     "why_md": "Right. This is lab 00 §6: Windows (CRLF) line endings from cloning on the Windows side."
+    },
+    {
+     "text_md": "His Ubuntu runs on WSL1 instead of WSL2, and upgrading the WSL version will fix it",
+     "correct": false,
+     "why_md": "The WSL version decides whether Linux runs properly, not which bytes are inside the file. The carriage returns came from cloning on the Windows side."
+    }
+   ],
+   "explanation_md": "Lab 00 §6: Git for Windows rewrites line endings to CRLF, and a Linux shell cannot run a script with\ncarriage returns (`\\r`) in it. The fix is to delete that clone and clone again from inside the Ubuntu\nshell, into the Linux home `~`. That also moves the files off the slow Windows filesystem under\n`/mnt/c`. The lab warns about this in Windows step 1: everything happens in the Ubuntu shell, not in\nPowerShell and not in Git Bash.",
+   "section_ref": "project-anatomy-s5",
+   "source_ref": "labs/00-setup.md §6 and Windows step 1",
+   "origin": "lab",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q18",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "At tag `v0.0` the expense-tracker is two files, `tracker.py` and `expenses.csv`, and it runs with\n`python tracker.py`. According to session 4, what does it lack that makes it a script rather than a\nproject?",
+   "options": [
+    {
+     "text_md": "A name, a version, declared dependencies and a home for tests",
+     "correct": true,
+     "why_md": "Right. Slide 19, word for word: no name, no version, no dependencies, no home for tests."
+    },
+    {
+     "text_md": "A way to run it at all, because it has no command of its own yet",
+     "correct": false,
+     "why_md": "It runs: `python tracker.py` prints the report. Running is not what separates a script from a project."
+    },
+    {
+     "text_md": "Version control, because the script is not yet in git",
+     "correct": false,
+     "why_md": "`v0.0` is a tag in the git history, so it is already under version control. Being in git does not make it a project."
+    },
+    {
+     "text_md": "Functions, because all of its code still sits at the top level of the file",
+     "correct": false,
+     "why_md": "`tracker.py` already has `calculate_totals` and `run`. Structure inside the file is a clean-code question, not what makes a project."
+    }
+   ],
+   "explanation_md": "Session 4, slide 19: a script runs with `python tracker.py` and has no name, no version, no\ndependencies and no home for tests. Fine for a weekend project. A project adds `pyproject.toml`\n(identity and needs), `uv.lock` (exact versions), a package under `src/`, `tests/`, a README and a\nlicence, so that a stranger can install it and four people can work on it. The expense-tracker made\nthat step in commit `a953d05`.",
+   "section_ref": "project-anatomy-s6",
+   "source_ref": "S4 slide 19; expense-tracker v0.0",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q19",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-diff",
+    "concept"
+   ],
+   "stem_md": "Session 4 calls this commit the moment the expense-tracker became a project:\n\n```console\n$ git show --stat --format=\"%h %s\" a953d05\na953d05 Turn the script into a uv package\n\n .gitignore                      |  6 ++++++\n .python-version                 |  1 +\n README.md                       |  0\n pyproject.toml                  | 17 +++++++++++++++++\n src/expense_tracker/__init__.py |  2 ++\n uv.lock                         |  8 ++++++++\n 6 files changed, 34 insertions(+)\n```\n\nWhich description of the commit is accurate?",
+   "options": [
+    {
+     "text_md": "It moved the script into the new package folder and rewrote its code as a package",
+     "correct": false,
+     "why_md": "`tracker.py` is not in the list, so it was not touched. The report moved into the package in the next commit, `2ecad20`."
+    },
+    {
+     "text_md": "It added typer as a dependency and built the command-line interface on top of it",
+     "correct": false,
+     "why_md": "At this commit `dependencies = []`. `typer` and the `expenses` command arrived in `2ecad20`."
+    },
+    {
+     "text_md": "It added the first tests for the report, so that CI had something to check",
+     "correct": false,
+     "why_md": "No file under `tests/` appears. The first tests arrived much later, after `v0.3`."
+    },
+    {
+     "text_md": "It changed no existing code; it added what makes the code installable",
+     "correct": true,
+     "why_md": "Right. The slide: `uv init --package`, and one edit. No code changed, the code became installable."
+    }
+   ],
+   "explanation_md": "Every line of the stat is a new file: `pyproject.toml` (name, version, Python requirement), `uv.lock`,\n`.python-version`, `.gitignore`, an empty `README.md` and a package folder `src/expense_tracker/` with\na two-line `__init__.py`. `tracker.py` is not listed, so its code is exactly as before. That is the\nslide's point: `uv init --package` and one edit; no code changed, the code became installable. The CLI\nand `typer` came in the next commit, `2ecad20`.",
+   "section_ref": "project-anatomy-s6",
+   "source_ref": "S4 slides 25–26; expense-tracker a953d05 and 2ecad20",
+   "origin": "history",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q20",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Every group repository in the course is public. Which of these is one of the reasons the project brief\ngives?",
+   "options": [
+    {
+     "text_md": "Automated checks and container hosting cost nothing on public repositories",
+     "correct": true,
+     "why_md": "Right. The brief's three reasons: a portfolio piece, copying becomes visible, and the tooling is free."
+    },
+    {
+     "text_md": "So that GitHub's CI can clone the repository without needing anyone's SSH key",
+     "correct": false,
+     "why_md": "CI runs inside GitHub and checks out private repositories as well. The brief's reason is cost: checks and container hosting are free on public repositories."
+    },
+    {
+     "text_md": "So that other groups can reuse your code freely in their own projects",
+     "correct": false,
+     "why_md": "The opposite: being public makes copying visible rather than tempting."
+    },
+    {
+     "text_md": "So that the lecturer can push his own fixes straight to your main branch",
+     "correct": false,
+     "why_md": "Public means anyone can read it, not write to it. The lecturer marks what you push."
+    }
+   ],
+   "explanation_md": "The project brief gives three reasons for a public repository: it is a portfolio piece, it makes\ncopying visible rather than tempting, and it makes the tooling free (automated checks and container\nhosting cost nothing on public repositories). It also gives the warning that comes with it: never put\nanything personal in the repository, no credentials, no keys, no data about real people, because \"I\ndeleted the file\" does not remove it from history.",
+   "section_ref": "project-anatomy-s6",
+   "source_ref": "moodle/project-pages.md (Project Brief)",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q21",
+   "type": "sort",
+   "level": "exam",
+   "skills": [
+    "judgement",
+    "concept"
+   ],
+   "stem_md": "Your group is about to make its first real commit. Sort each path by what should happen to it.",
+   "categories": [
+    {
+     "id": "commit",
+     "label": "Commit it: part of the project's definition"
+    },
+    {
+     "id": "rebuilt",
+     "label": "Never commit: rebuilt or generated on each machine"
+    },
+    {
+     "id": "private",
+     "label": "Never commit: secret or personal"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "`pyproject.toml`",
+     "category": "commit",
+     "why_md": "The single source of truth: identity, needs, commands, build."
+    },
+    {
+     "text_md": "`uv.lock`",
+     "category": "commit",
+     "why_md": "The exact pinned versions; CI's `uv sync --locked` needs the committed copy."
+    },
+    {
+     "text_md": "`.python-version`",
+     "category": "commit",
+     "why_md": "Tells uv which Python to use for the project; `a953d05` committed it with the rest."
+    },
+    {
+     "text_md": "`tests/test_report.py`",
+     "category": "commit",
+     "why_md": "Tests are part of the project; CI runs them on every push."
+    },
+    {
+     "text_md": "`LICENSE`",
+     "category": "commit",
+     "why_md": "Says what others may do with the code; lab 01 has you put your group's names in it."
+    },
+    {
+     "text_md": "`.venv/`",
+     "category": "rebuilt",
+     "why_md": "Built for one machine from `pyproject.toml` and `uv.lock`; `uv sync` rebuilds it anywhere."
+    },
+    {
+     "text_md": "`__pycache__/`",
+     "category": "rebuilt",
+     "why_md": "Compiled bytecode that Python writes as it runs; it is regenerated automatically."
+    },
+    {
+     "text_md": "`.mypy_cache/`",
+     "category": "rebuilt",
+     "why_md": "A tool's cache that speeds up the next run; it is rebuilt when missing."
+    },
+    {
+     "text_md": "`.env` holding the group's API key",
+     "category": "private",
+     "why_md": "A credential. Once committed it stays in the history, and the repository is public."
+    },
+    {
+     "text_md": "`data/expenses.csv`, where `expenses add` writes your real spending",
+     "category": "private",
+     "why_md": "Data about a real person; the expense-tracker keeps `data/` out of version control in its `.gitignore`."
+    }
+   ],
+   "explanation_md": "The rule: commit the recipe, ignore the products, and never let anything secret or personal near the\nrepository. `pyproject.toml`, `uv.lock`, `.python-version` and the tests define the project, so a\nclean clone needs them. `.venv/` and the caches are rebuilt on every machine, which is why they head\nthe expense-tracker's `.gitignore`. Keys and personal data never go in, because deleting them later\ndoes not remove them from history.",
+   "section_ref": "project-anatomy-s6",
+   "source_ref": "S4 slide 20; expense-tracker .gitignore; moodle/project-pages.md",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q22",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "read-diff",
+    "compare"
+   ],
+   "stem_md": "Two candidate commit messages for the same change to the expense-tracker. The change:\n\n```text\n .gitignore                      |  6 ++++++\n .python-version                 |  1 +\n README.md                       |  0\n pyproject.toml                  | 17 +++++++++++++++++\n src/expense_tracker/__init__.py |  2 ++\n uv.lock                         |  8 ++++++++\n 6 files changed, 34 insertions(+)\n```\n\n- A: `Turn the script into a uv package`\n- B: `add files`",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "What does this change do?",
+     "marks": 2,
+     "model_answer_md": "It turns the `tracker.py` script into an installable project without changing its code: `uv init --package` adds `pyproject.toml` (name, version, Python requirement), a lockfile, a `.gitignore`, a Python version file and a package folder `src/expense_tracker/` holding only a placeholder `__init__.py`.",
+     "rubric": [
+      "Says it makes the code installable or turns the script into a package (for example via `uv init --package`)",
+      "Says no existing code changed (`tracker.py` untouched); only new project files were added"
+     ],
+     "weak_answers_md": "\"It adds some config files\" describes the list but not the meaning. The mark is for the consequence: the code becomes installable, with a name and a version. Many students also claim the script was moved into `src/`; it was not, since `tracker.py` is not in the list, and that only happens in the next commit."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Which message is better for someone reading the history six months later, and why?",
+     "marks": 2,
+     "model_answer_md": "A. It says what the commit achieves, so a reader scanning `git log --oneline` finds the moment the script became a project without opening the diff. B is true of almost any commit and tells them nothing.",
+     "rubric": [
+      "Chooses A",
+      "Reason: A states the purpose or outcome and is findable in a one-line log; B is vague and could describe any commit"
+     ],
+     "weak_answers_md": "Choosing A without a reason earns one mark at most. \"A is longer\" or \"A is more professional\" is not a reason. Answer from the reader's point of view: what does the line tell someone who has not seen the diff?"
+    },
+    {
+     "label": "3",
+     "prompt_md": "Name one thing the project can do after this commit that the script could not.",
+     "marks": 1,
+     "model_answer_md": "It can be installed with `uv sync` into its own environment, with a name and a version, so dependencies can now be declared and locked, and a command added through `[project.scripts]`.",
+     "rubric": [
+      "Names a concrete new capability: installable with `uv sync`, declared and locked dependencies, a name and version, or a command via `[project.scripts]`"
+     ],
+     "weak_answers_md": "\"It is better organised\" is not a capability. Name something you can now do that a bare `tracker.py` cannot, such as installing it with `uv sync` into its own environment or declaring a dependency that gets locked."
+    }
+   ],
+   "lines": "5–8",
+   "explanation_md": "This is the sample paper's \"compare\" shape applied to the expense-tracker history. Part 1 needs the\nmeaning of the file list (installable, no code changed); part 2 needs the reader's point of view; part\n3 checks you know what the project gained. The real message is A.",
+   "section_ref": "project-anatomy-s6",
+   "source_ref": "S4 slides 25–26; expense-tracker a953d05; sample paper Q8 shape",
+   "origin": "history",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q23",
+   "type": "open",
+   "level": "hard",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "A group asks you to review their repository before Checkpoint 1. A stranger must be able to clone it\nand run `uv sync && uv run parking-lot --help`. In a fresh clone (`git ls-files` lists the files git\ntracks):\n\n```console\n$ ls -a\n.  ..  .git  .gitignore  .venv  README.md  parking.py  pyproject.toml  test_parking.py\n$ cat .gitignore\n__pycache__/\n$ wc -c README.md\n0 README.md\n$ git ls-files .venv | wc -l\n636\n$ cat pyproject.toml\n[project]\nname = \"parking-lot\"\nversion = \"0.1.0\"\nrequires-python = \">=3.13\"\ndependencies = [\"typer>=0.12\"]\n\n[build-system]\nrequires = [\"hatchling\"]\nbuild-backend = \"hatchling.build\"\n```",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Name three things that would stop or mislead a stranger, and why each matters.",
+     "marks": 3,
+     "model_answer_md": "`parking.py` is a loose file, not a package `src/parking_lot/`, so the build finds no `parking_lot` and `uv sync` fails before installing anything. With no `[project.scripts]` entry, even a working install would create no `parking-lot` command. With no committed `uv.lock`, versions are unpinned and CI's `uv sync --locked` stops at once.",
+     "rubric": [
+      "No `[project.scripts]` entry: even once it installs, no `parking-lot` command exists",
+      "No `uv.lock`: versions are not pinned, and `uv sync --locked` in CI fails",
+      "Code is not a package in `src/parking_lot/`: the build finds nothing named `parking_lot`, so `uv sync` itself fails",
+      "`.venv` is committed (636 tracked files) although it is built for one machine; it should be untracked and listed in `.gitignore`",
+      "README is empty: a stranger cannot tell what it does or how to run it",
+      "Tests are not in a `tests/` folder that mirrors `src/`"
+     ],
+     "weak_answers_md": "Listing problems without saying why they matter (\"no lock file\", \"bad layout\") earns little: each point needs its consequence for the stranger. A common miss is the absent `[project.scripts]` table; students check what is there, not what is missing. Another is assuming the install works: with no `parking_lot` package, `uv sync` stops at the build. Saying \"the `.gitignore` is wrong\" without naming `.venv/` is too vague."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Describe in words how you would fix two of them, and which problem each change solves.",
+     "marks": 2,
+     "model_answer_md": "Move the code into a package `src/parking_lot/` and add a `[project.scripts]` entry pointing `parking-lot` at the `app` object in `parking_lot.cli`, so the build works and creates the command. Run `uv lock`, commit `uv.lock`, and untrack and ignore `.venv/`, so every machine builds the same environment.",
+     "rubric": [
+      "Describes a fix for the command or layout (package under `src/`, `[project.scripts]` pointing at the CLI object)",
+      "Describes a fix for reproducibility (commit `uv.lock`; untrack and ignore `.venv/`) or for the README (what it does, `uv sync`, an example)",
+      "Links each change to the problem it solves"
+     ],
+     "weak_answers_md": "Writing the TOML is not asked for and gains nothing; describe the change in words. Answers that say \"add a lock file\" without saying it must be committed miss why it exists. Deleting `.venv` locally without removing it from git does not fix the repository."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Which item of CP1's three-item Definition of Done does the layout fail?",
+     "marks": 1,
+     "model_answer_md": "Item 2, `src/` layout with an importable package; item 1 fails too, as `uv sync` cannot build it.",
+     "rubric": [
+      "Names CP1 item 2: `src/` layout with an importable package"
+     ],
+     "weak_answers_md": "Quoting the README item instead of the layout item misses the question. CP1 is three binary items: clean-clone install and `--help`, `src/` layout with the package importable, and a README that says what it does and how to run it."
+    }
+   ],
+   "lines": "5–8",
+   "explanation_md": "The question is the session 4 anatomy slide in reverse: compare the tree with the list of files a\nwell-formed project has, and for each gap say what a stranger would hit. The strongest answers\nconnect each gap to a consequence (a build error on `uv sync`, no command, unpinned versions) and\nthen to CP1's Definition of Done. A real run of `uv sync` in a clone of this repository stops at the\nbuild: hatchling reports that no directory matches the project's name, `parking_lot`.",
+   "section_ref": "project-anatomy-s6",
+   "source_ref": "S4 slides 17 and 20–22; S5 slide 14; labs/01-scaffold.md §10; runs of the reviewed repository and of `uv sync` in a clone of it (outputs in GNU format)",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q24",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept",
+    "read-code"
+   ],
+   "stem_md": "The expense-tracker's `pyproject.toml` contains:\n\n```toml\n[project.scripts]\nexpenses = \"expense_tracker.cli:app\"\n```\n\nWhat does this line produce?",
+   "options": [
+    {
+     "text_md": "A file `expenses.py` in the repository that imports `app` from the package for you",
+     "correct": false,
+     "why_md": "Nothing is added to the repository. A small wrapper is written into the environment (`.venv/bin/expenses`) when the project is installed."
+    },
+    {
+     "text_md": "A dependency on a package called `expenses`, which uv downloads from PyPI on install",
+     "correct": false,
+     "why_md": "Dependencies are listed in `dependencies` under `[project]`. `[project.scripts]` declares the commands this project provides."
+    },
+    {
+     "text_md": "After install, a command `expenses` that runs `app` from `expense_tracker.cli`",
+     "correct": true,
+     "why_md": "Right. Session 5: `expenses`, then module `expense_tracker.cli`, then object `app`."
+    },
+    {
+     "text_md": "A shortcut called `expenses` that VS Code adds to its built-in terminal",
+     "correct": false,
+     "why_md": "It is an ordinary command in the project's environment: `uv run expenses` works in any terminal, and CI can use it too."
+    }
+   ],
+   "explanation_md": "Session 4 reads `[project.scripts]` as \"what it installs as a command\", and session 5 spells it out:\n`expenses` is the command, `expense_tracker.cli` the module, `app` the object. When uv installs the\nproject it writes a wrapper named `expenses` into `.venv/bin`; in a real environment that wrapper does\n`from expense_tracker.cli import app` and then calls `app()`. That is why `uv run expenses report`\nworks from any folder inside the project.",
+   "section_ref": "project-anatomy-s7",
+   "source_ref": "S4 slide 21; S5 slide 5; .venv/bin/expenses inspected after uv sync",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q25",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "In the expense-tracker's `pyproject.toml`, what is the `[build-system]` table, with\n`requires = [\"hatchling\"]`, for?",
+   "options": [
+    {
+     "text_md": "It says how the project is built into something installable",
+     "correct": true,
+     "why_md": "Right. The slide's fourth answer: how it is built."
+    },
+    {
+     "text_md": "It lists the development tools that every teammate needs: `ruff`, `mypy` and `pytest`",
+     "correct": false,
+     "why_md": "In the expense-tracker those live under `[dependency-groups]` as `dev`. `[build-system]` names the build tool."
+    },
+    {
+     "text_md": "It defines the steps the CI workflow runs on GitHub after every push",
+     "correct": false,
+     "why_md": "CI's steps are in `.github/workflows/check.yml`, not in `pyproject.toml`."
+    },
+    {
+     "text_md": "It sets which Python versions the project accepts and installs",
+     "correct": false,
+     "why_md": "That is `requires-python` under `[project]`, with `.python-version` telling uv which one to use."
+    }
+   ],
+   "explanation_md": "Slide 21 reads `pyproject.toml` as four answers: identity (`name`, `version`), what it needs\n(`requires-python`, `dependencies`), what it installs as a command (`[project.scripts]`) and how it is\nbuilt (`[build-system]`). The build system is the tool that turns the code in `src/` into an\ninstallable package; the expense-tracker uses `hatchling`. You rarely edit it, but it is why `uv sync`\ncan install your own project into `.venv`.",
+   "section_ref": "project-anatomy-s7",
+   "source_ref": "S4 slide 21; expense-tracker pyproject.toml",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q26",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-diff",
+    "read-tool-output"
+   ],
+   "stem_md": "A teammate's last commit changed one line:\n\n```diff\n [project.scripts]\n-expenses = \"expense_tracker.cli:app\"\n+tracker = \"expense_tracker.cli:app\"\n```\n\nYou pull and run the command from the README:\n\n```console\n$ uv run expenses report\n   Building expense-tracker @ file:///home/you/expense-tracker\n      Built expense-tracker @ file:///home/you/expense-tracker\nUninstalled 1 package in 0.59ms\nInstalled 1 package in 1ms\nerror: Failed to spawn: `expenses`\n  cause: No such file or directory (os error 2)\n```\n\nWhat is the right diagnosis?",
+   "options": [
+    {
+     "text_md": "The lockfile no longer matches the project file, so it must be re-locked before running",
+     "correct": false,
+     "why_md": "A real run of `uv sync --locked` still passes after this change: the lockfile records packages and versions, not command names. Re-locking changes nothing."
+    },
+    {
+     "text_md": "The environment was damaged by the rebuild; delete it and run the sync again",
+     "correct": false,
+     "why_md": "The rebuild worked (`Installed 1 package`). A fresh `.venv` would contain the same commands, and `expenses` is not one of them."
+    },
+    {
+     "text_md": "The package folder was renamed, so `expense_tracker.cli` can no longer be imported",
+     "correct": false,
+     "why_md": "The right-hand side, `expense_tracker.cli:app`, did not change. Only the command's name did."
+    },
+    {
+     "text_md": "The left-hand side is the command's name, so the installed command is now `tracker`",
+     "correct": true,
+     "why_md": "Right. Session 5: rename either side and the command disappears."
+    }
+   ],
+   "explanation_md": "In `[project.scripts]` the left-hand side is the command you type, and the right-hand side is the\nmodule and the object. uv saw `pyproject.toml` change, reinstalled the project (`Uninstalled 1\npackage`, `Installed 1 package`) and wrote a wrapper called `tracker` instead of `expenses`. Then it\ncould not find any `expenses` to run. `uv run tracker report` would work; the group should decide on\none name and make the README agree, because the README's commands must work.",
+   "section_ref": "project-anatomy-s7",
+   "source_ref": "S5 slide 5; labs/01-scaffold.md troubleshooting (Failed to spawn); run in a clone of v0.4",
+   "origin": "lab",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q27",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "concept"
+   ],
+   "stem_md": "A teammate moved the package out of `src/` to the top of the repository \"to simplify things\". In a\nfresh clone, with nothing installed (there is no `.venv`), you run:\n\n```console\n$ ls\nLICENSE  README.md  expense_tracker  expenses.csv  pyproject.toml  tests  uv.lock\n$ python3 -c \"import expense_tracker; print(expense_tracker.__file__)\"\n/home/alice/expense-tracker/expense_tracker/__init__.py\n```\n\nWhat does this show?",
+   "options": [
+    {
+     "text_md": "Nothing is wrong here: the package is installed correctly, so moving it out of the folder was harmless",
+     "correct": false,
+     "why_md": "Nothing is installed: there is no `.venv` and `uv sync` was never run. The import worked for a different reason."
+    },
+    {
+     "text_md": "Python found the folder you stand in, installed or not; tests would skip the installed package",
+     "correct": true,
+     "why_md": "Right. This is slide 22's reason for `src/`, shown by a real run."
+    },
+    {
+     "text_md": "`python3` found the project's virtual environment on its own and imported the package from there",
+     "correct": false,
+     "why_md": "A bare `python3` never looks in `.venv`, and here there is no `.venv` at all. It found the folder in the current directory."
+    },
+    {
+     "text_md": "The `src/` folder was unnecessary all along, since imports from the top work without it",
+     "correct": false,
+     "why_md": "Working without installation is the problem, not a benefit: the tests stop proving that the installed package works."
+    }
+   ],
+   "explanation_md": "Slide 22: without `src/`, `import expense_tracker` finds the folder you are standing in, whether or not\nthe package is installed. The printed path is the loose folder in the repository, and nothing was\ninstalled. With `src/`, the same command fails with `ModuleNotFoundError`; the import works only\nthrough the installed project (`uv run`), so the tests exercise what a user would get. The move also\ncosts marks: CP1 requires the\n`src/` layout, and the partial rubric scores Structure 0 for code outside `src/`.",
+   "section_ref": "project-anatomy-s7",
+   "source_ref": "S4 slide 22; partial-rubric (Structure); run on a flat-layout copy of v0.4",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q28",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output"
+   ],
+   "stem_md": "In a clone of the expense-tracker, `uv run expenses --help` prints the usage text. Then:\n\n```console\n$ ls src/expense_tracker\n__init__.py  __pycache__  cli.py  report.py\n$ uv run python -m expense_tracker\n/home/you/expense-tracker/.venv/bin/python: No module named expense_tracker.__main__; 'expense_tracker' is a package and cannot be directly executed\n```\n\nWhich conclusion is right?",
+   "options": [
+    {
+     "text_md": "The project is not installed yet, so `uv sync` must run before `python -m` can find it",
+     "correct": false,
+     "why_md": "The error comes from `.venv/bin/python`, the project's own environment, and `uv run expenses` works. The project is installed."
+    },
+    {
+     "text_md": "There is no `__main__.py`, which `python -m` needs; the command is a separate door",
+     "correct": true,
+     "why_md": "Right. Slide 20 lists `__main__.py` for exactly this; session 5 calls it the other door."
+    },
+    {
+     "text_md": "`[project.scripts]` points at the wrong object, which also stops `python -m` from working",
+     "correct": false,
+     "why_md": "`uv run expenses --help` works, so `[project.scripts]` is fine, and it powers the command, not `python -m`."
+    },
+    {
+     "text_md": "`python -m` does not work for code under `src/`; it needs the package at the top level",
+     "correct": false,
+     "why_md": "Installed `src/` code imports normally; with a `__main__.py`, `python -m expense_tracker` would run."
+    }
+   ],
+   "explanation_md": "The error names exactly what is missing: `expense_tracker.__main__`. Slide 20 lists `__main__.py` as\nthe file that makes `python -m expense_tracker` work, and session 5 calls it \"the other door\", next to\nthe installed command from `[project.scripts]`. The demo repository at `v0.4` really has no\n`__main__.py` (your template ships one, which is why it is the file everyone forgets to rename). Two\nentry points, two files: the command needs `[project.scripts]`, `python -m` needs `__main__.py`.",
+   "section_ref": "project-anatomy-s7",
+   "source_ref": "S4 slide 20; S5 slide 6; run in a clone of v0.4",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q29",
+   "type": "open",
+   "level": "hard",
+   "skills": [
+    "concept",
+    "judgement"
+   ],
+   "stem_md": "In your group, Hugo wants to move `src/parking_lot/` to `parking_lot/` at the top of the repository:\n\"Then `python3 -c 'import parking_lot'` works even without uv, and the tests pass anyway.\"",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "What changes about how `import parking_lot` behaves if the package sits at the top?",
+     "marks": 2,
+     "model_answer_md": "Python then imports the folder in the directory you are standing in, whether or not the project is installed. With `src/`, the import only works once the project is installed.",
+     "rubric": [
+      "Without `src/`, the import finds the local folder in the current directory",
+      "This happens whether or not the package is installed (with `src/`, only when installed)"
+     ],
+     "weak_answers_md": "\"Imports get easier\" restates Hugo's claim without the mechanism. The mark needs the reason: Python looks in the folder you are standing in, so the import succeeds even when nothing has been installed at all."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Why does that make passing tests less trustworthy?",
+     "marks": 2,
+     "model_answer_md": "The tests then exercise the files lying next to them, not the package a user installs. They can pass even when the project is not installed at all, so a problem with what the installed package contains would only surface for a stranger installing from the repository.",
+     "rubric": [
+      "Tests run against the local files, not what a user installs",
+      "So a problem with what the installed package contains stays hidden until a stranger installs it"
+     ],
+     "weak_answers_md": "Answers that say \"tests might fail\" have it backwards: the risk is that tests pass when the installed package is broken. A second common miss is not saying who suffers: the stranger installing from the repository."
+    },
+    {
+     "label": "3",
+     "prompt_md": "What would the move cost the group in the course's marking?",
+     "marks": 1,
+     "model_answer_md": "CP1 requires `src/` layout with the package importable, and the partial rubric scores Structure 0 for \"a script, or code outside `src/`\".",
+     "rubric": [
+      "Names CP1's `src/` layout item, or the partial rubric's Structure criterion (0 for code outside `src/`)"
+     ],
+     "weak_answers_md": "\"The lecturer prefers `src/`\" is not enough; name where it is marked. CP1's second item checks the `src/` layout with the package importable, and the partial rubric scores Structure 0 for code outside `src/`."
+    }
+   ],
+   "lines": "5–8",
+   "explanation_md": "Hugo's argument is the slide's warning turned into a feature. Without `src/`, imports succeed because\nof where you stand, not because the project installs; the tests then prove only that the loose files\nwork. The course's marking makes the layout non-negotiable at CP1 and in the partial rubric.",
+   "section_ref": "project-anatomy-s7",
+   "source_ref": "S4 slide 22; S5 slide 14; partial-rubric (Structure)",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q30",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "read-tool-output"
+   ],
+   "stem_md": "In a fresh clone of the expense-tracker, without running `uv sync` first, you type:\n\n```console\n$ uv run expenses report\nUsing CPython 3.13.15\nCreating virtual environment at: .venv\n   Building expense-tracker @ file:///home/alice/expense-tracker\n      Built expense-tracker @ file:///home/alice/expense-tracker\nInstalled 19 packages in 20ms\nExpense report for expenses.csv\n----------------------------------------\ngroceries              6401.78\nutilities              3474.15\n```\n\nWhat did `uv run` do?",
+   "options": [
+    {
+     "text_md": "It installed `typer` and the rest for the whole computer, so any `python3` can import them now",
+     "correct": false,
+     "why_md": "The packages went into the project's new `.venv` (`Creating virtual environment at: .venv`). A bare `python3` still cannot import them."
+    },
+    {
+     "text_md": "It downloaded the newest release of every dependency, ignoring the versions in the lockfile",
+     "correct": false,
+     "why_md": "uv installs the versions recorded in `uv.lock`; that is how every teammate and CI get the same ones."
+    },
+    {
+     "text_md": "It built the project's environment from `uv.lock`, then ran the installed command",
+     "correct": true,
+     "why_md": "Right. Slide 23: resolve the environment, install what is missing, run the command."
+    },
+    {
+     "text_md": "It ran the file `src/expense_tracker/cli.py` directly, exactly the way `python3` would",
+     "correct": false,
+     "why_md": "`expenses` is the command that `[project.scripts]` installs. A bare `python3` running the file fails, because it cannot see `typer`."
+    }
+   ],
+   "explanation_md": "Session 4, slide 23: `uv run` resolves the environment from `pyproject.toml` and `uv.lock`, installs\nwhat is missing, and runs the command. In a fresh clone everything is missing, so you see it create\n`.venv`, build the project, install 19 packages and only then run `expenses report`. Compare `python\ntracker.py`, which needs the file, the right directory and whatever Python the machine has. Same\nversions for every teammate and for CI.",
+   "section_ref": "project-anatomy-s8",
+   "source_ref": "S4 slide 23; run in a fresh clone of v0.4",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q31",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-code",
+    "compare"
+   ],
+   "stem_md": "`pyproject.toml` says `dependencies = [\"typer>=0.12\"]`. The committed `uv.lock` contains:\n\n```toml\n[[package]]\nname = \"typer\"\nversion = \"0.27.2\"\nsource = { registry = \"https://pypi.org/simple\" }\ndependencies = [\n    { name = \"annotated-doc\" },\n    { name = \"colorama\", marker = \"sys_platform == 'win32'\" },\n    { name = \"rich\" },\n    { name = \"shellingham\" },\n]\n```\n\n(followed by download URLs and `sha256` hashes). Which statement is right?",
+   "options": [
+    {
+     "text_md": "The two files disagree (0.12 against 0.27.2), so CI's locked sync is going to fail",
+     "correct": false,
+     "why_md": "0.27.2 satisfies `>=0.12`, so they agree. `--locked` fails only when the lockfile no longer matches what `pyproject.toml` asks for."
+    },
+    {
+     "text_md": "The lockfile is only a download cache, so deleting it changes nothing for anyone",
+     "correct": false,
+     "why_md": "Without it each machine resolves its own versions, and CI's `uv sync --locked` stops with `Unable to find lockfile`."
+    },
+    {
+     "text_md": "The project file pins typer to exactly 0.12, and the lockfile then overrides that pin",
+     "correct": false,
+     "why_md": "`>=0.12` is a range, not a pin. The lockfile does not override it; it records which version in that range was chosen."
+    },
+    {
+     "text_md": "`pyproject.toml` states a range; `uv.lock` records the exact version chosen, with its hash",
+     "correct": true,
+     "why_md": "Right. Slide 24: the lockfile says exactly which typer, and which of its dependencies, down to the hash."
+    }
+   ],
+   "explanation_md": "`pyproject.toml` is where you state what the project accepts: typer 0.12 or newer. `uv.lock` is what\nuv resolved from that: exactly typer 0.27.2, plus exact versions of its own dependencies (`rich`,\n`shellingham`, ...) and a hash for each download. Committing the lockfile is what makes \"same versions\nfor every teammate and for CI\" true. Session 4: \"works on my machine\" can usually be pinpointed to a\nlockfile that was never committed.",
+   "section_ref": "project-anatomy-s8",
+   "source_ref": "S4 slide 24; expense-tracker uv.lock (v0.4); run of uv sync --locked without uv.lock",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q32",
+   "type": "mcq",
+   "level": "beyond",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "You add a dependency to `pyproject.toml` by hand:\n\n```diff\n dependencies = [\n     \"typer>=0.12\",\n+    \"python-dateutil>=2.9\",\n ]\n```\n\nBefore pushing, you run what CI runs first:\n\n```console\n$ uv sync --locked\nResolved 22 packages in 6ms\nerror: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.\n\nhint: To update the lockfile, run `uv lock`.\n```\n\nWhat should you do next?",
+   "options": [
+    {
+     "text_md": "Run `uv lock`, then commit `uv.lock` together with `pyproject.toml`",
+     "correct": true,
+     "why_md": "Right. The hint names the fix, and afterwards `uv sync --locked` passes. Committing both files keeps CI's copy in step."
+    },
+    {
+     "text_md": "Delete `uv.lock` and push, so that CI generates a fresh lockfile of its own",
+     "correct": false,
+     "why_md": "With no lockfile, `uv sync --locked` stops with `Unable to find lockfile at uv.lock` (a real run). CI never writes files back to your repository."
+    },
+    {
+     "text_md": "Delete `.venv`, then run `uv sync --locked` again to rebuild the environment",
+     "correct": false,
+     "why_md": "The environment is not involved: uv compared two files and stopped. The same error comes back."
+    },
+    {
+     "text_md": "Reinstall uv, since its resolver seems confused by the new dependency",
+     "correct": false,
+     "why_md": "uv did its job: it noticed that `pyproject.toml` changed and the lockfile did not. The tool is fine; the lockfile is stale."
+    }
+   ],
+   "explanation_md": "`--locked` means \"install exactly what `uv.lock` says, and refuse if `uv.lock` no longer matches\n`pyproject.toml`\". You changed `pyproject.toml`, so the lockfile is stale. `uv lock` resolves the new\ndependency and records it (a real run printed `Added python-dateutil v2.9.0.post0` and `Added six\nv1.17.0`); after that `uv sync --locked` passes, and you commit both files together. Lab 01 lists this\nmessage as the most likely reason a first push goes red.",
+   "section_ref": "project-anatomy-s8",
+   "source_ref": "S4 slide 24; labs/01-scaffold.md §4 and troubleshooting; run in a clone of v0.4",
+   "origin": "lab",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q33",
+   "type": "mcq",
+   "level": "beyond",
+   "skills": [
+    "judgement",
+    "concept"
+   ],
+   "stem_md": "Four teammates each change one line of `pyproject.toml`, commit only that file, and push. CI starts\nwith `uv sync --locked`. Whose push stays green?",
+   "options": [
+    {
+     "text_md": "Ana bumps the project version from `\"0.1.0\"` to `\"0.2.0\"` for the partial",
+     "correct": false,
+     "why_md": "The lockfile records the project's own name and version (the `a953d05` lockfile shows them), so it is now stale; in a real run `--locked` refused."
+    },
+    {
+     "text_md": "Bea adds `\"python-dateutil>=2.9\"` to the list of dependencies by hand",
+     "correct": false,
+     "why_md": "A new dependency has no entry in the lockfile, so `--locked` refuses until someone runs `uv lock`."
+    },
+    {
+     "text_md": "Cesc renames the command in `[project.scripts]` from `expenses` to `tracker`",
+     "correct": true,
+     "why_md": "Right. Command names are not recorded in the lockfile, so `uv.lock` still matches; a real run of `uv sync --locked` passed."
+    },
+    {
+     "text_md": "Dani relaxes `requires-python` so that Python 3.12 is also accepted",
+     "correct": false,
+     "why_md": "The lockfile records the project's `requires-python` and resolves versions for that range; in a real run `--locked` refused."
+    }
+   ],
+   "explanation_md": "`uv.lock` records the project's own name and version, its `requires-python`, and every dependency\nat its exact resolved version. The 8-line lockfile of `a953d05` already shows the first three. Change\nany of these in `pyproject.toml` and the two files disagree, so CI's `uv sync --locked` refuses until\nsomeone runs `uv lock` and commits the result. All four cases were run. A command name only decides\nwhich wrapper goes into `.venv/bin`, so the lockfile is unaffected. The habit that makes this\nquestion unnecessary: after any edit to `pyproject.toml`, run `uv lock` and commit both files.",
+   "section_ref": "project-anatomy-s8",
+   "source_ref": "S4 slide 24; expense-tracker uv.lock at a953d05; labs/01-scaffold.md §4; runs of uv sync --locked after each edit",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q34",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "A teammate changed `.python-version` \"to match the Python that Ubuntu ships\". After pulling, on your\nMac, you run:\n\n```console\n$ cat .python-version\n3.12\n$ uv sync\nUsing CPython 3.12.14\nerror: The Python request from `.python-version` resolved to Python 3.12.14, which is incompatible with the project's Python requirement: `>=3.13` (from `project.requires-python`)\nUse `uv python pin` to update the `.python-version` file to a compatible version\n```\n\nWhat should you do next?",
+   "options": [
+    {
+     "text_md": "Delete `.venv` and run `uv sync` again, so the environment is built from scratch",
+     "correct": false,
+     "why_md": "uv stopped before creating anything, because the two files ask for incompatible Pythons. A new `.venv` hits the same check."
+    },
+    {
+     "text_md": "Put `.python-version` back to 3.13, which `requires-python` allows",
+     "correct": true,
+     "why_md": "Right. The file that changed is the file that is wrong, and uv installs Python for you."
+    },
+    {
+     "text_md": "Reinstall uv, so that it can find the Python 3.13 already on this machine",
+     "correct": false,
+     "why_md": "uv found exactly what it was asked for, 3.12. The request is wrong, not the tool."
+    },
+    {
+     "text_md": "Run `uv sync --upgrade`, so that the project moves on to a newer Python",
+     "correct": false,
+     "why_md": "`--upgrade` upgrades packages, not the Python request; a real run printed the same error."
+    }
+   ],
+   "explanation_md": "The error names both sides: `.python-version` asks for 3.12, while `requires-python` under `[project]`\nsays the project needs 3.13 or newer. They cannot both hold, so uv stops. The fix belongs in the file\nthat changed: put `.python-version` back to 3.13 (the hint's `uv python pin` does that). The teammate's\nreason was wrong too: the course never uses Ubuntu's own Python, because uv installs Python itself, the\nsame version for everyone and for CI.",
+   "section_ref": "project-anatomy-s8",
+   "source_ref": "S3 slide 5; S4 slide 21; run in a clone of v0.4 on macOS (download lines trimmed)",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q35",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "A teammate added `rich` to the dependencies by editing `pyproject.toml` by hand. After pulling, you run:\n\n```console\n$ uv sync\nwarning: Failed to parse `pyproject.toml` during settings discovery:\n  TOML parse error at line 14, column 5\n     |\n  14 |     \"rich>=13\",\n     |     ^\n  missing comma between array elements, expected `,`\n\nerror: Failed to parse: `pyproject.toml`\n  cause: TOML parse error at line 14, column 5\n            |\n         14 |     \"rich>=13\",\n            |     ^\n         missing comma between array elements, expected `,`\n```\n\nWhich conclusion is right?",
+   "options": [
+    {
+     "text_md": "The lockfile is out of date, and `uv lock` will rewrite it and clear the error",
+     "correct": false,
+     "why_md": "`uv lock` reads `pyproject.toml` first and fails with the same parse error (a real run). The lockfile is not involved yet."
+    },
+    {
+     "text_md": "`rich` is not available for Python 3.13, so an older version must be pinned",
+     "correct": false,
+     "why_md": "uv never got as far as looking up `rich`. A parse error means it could not read the file at all."
+    },
+    {
+     "text_md": "The `.venv` is damaged, so it should be deleted before running `uv sync` again",
+     "correct": false,
+     "why_md": "uv stopped while reading `pyproject.toml`, before it touched the environment. Deleting `.venv` changes nothing."
+    },
+    {
+     "text_md": "uv could not read `pyproject.toml` and stopped; fix the list near line 14",
+     "correct": true,
+     "why_md": "Right. The message names the file, the line and what the parser expected."
+    }
+   ],
+   "explanation_md": "Read the message before acting. It names the file, the line and the column, and says what the parser\nexpected: a comma between the elements of a list. Because uv could not read `pyproject.toml`, it did\nnothing else, so neither `.venv` nor `uv.lock` can be the problem. Open the file at the dependencies\nlist: the entry before `\"rich>=13\"` lacks its comma, which the parser only notices when it reaches\nline 14. Fix the file, run `uv lock`, and commit both files.",
+   "section_ref": "project-anatomy-s8",
+   "source_ref": "Sample paper Q1 shape; S4 slide 21; run in a clone of v0.4",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q36",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "concept",
+    "judgement"
+   ],
+   "stem_md": "A new teammate asks in the group chat: \"Why do we commit `uv.lock`? It is 400 lines nobody reads.\nAnd why does CI run `uv sync --locked` instead of plain `uv sync`?\" Explain in 5–8 lines.",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "What does `uv.lock` record that `pyproject.toml` does not?",
+     "marks": 2,
+     "model_answer_md": "`pyproject.toml` gives ranges, such as `typer>=0.12`. `uv.lock` records the exact version uv chose for every package, including typer's own dependencies, with a hash for each download.",
+     "rubric": [
+      "Says `pyproject.toml` states acceptable ranges (e.g. `typer>=0.12`)",
+      "Says `uv.lock` records the exact resolved versions, including indirect dependencies or hashes"
+     ],
+     "weak_answers_md": "\"It locks the packages\" restates the name. \"It lists the dependencies\" is also true of `pyproject.toml`; the mark is for the difference: a range versus the exact version chosen from it, for every package including ones you never named, such as `rich` under typer."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Why must it be committed?",
+     "marks": 2,
+     "model_answer_md": "So that every teammate and CI install exactly the same versions with `uv sync`. Without it each machine resolves its own versions, and \"works on my machine\" comes back: the slide says it can usually be pinpointed to a lockfile that was never committed.",
+     "rubric": [
+      "Same versions for every teammate and for CI (reproducibility)",
+      "Without it each machine may resolve different versions, so results differ (works on my machine)"
+     ],
+     "weak_answers_md": "\"Because CI needs it\" is half an answer: say why, namely that it is the only shared record of exact versions. Answers that suggest committing `.venv` instead have it backwards: the environment is rebuilt from the lockfile, never shipped."
+    },
+    {
+     "label": "3",
+     "prompt_md": "What does `--locked` add in CI?",
+     "marks": 2,
+     "model_answer_md": "`uv sync --locked` installs exactly what the lockfile says and fails if `uv.lock` and `pyproject.toml` disagree. So someone who edits `pyproject.toml` and forgets `uv lock`, or forgets to commit the new lockfile, gets a red check instead of a silent difference.",
+     "rubric": [
+      "`--locked` fails when the lockfile and `pyproject.toml` disagree (a stale lockfile)",
+      "Contrast: plain `uv sync` would silently re-lock, so CI could test different versions from the committed ones"
+     ],
+     "weak_answers_md": "Many answers stop at \"it uses the lockfile\"; plain `uv sync` uses it too. The point of `--locked` is that it refuses instead of quietly rewriting the lockfile, so a forgotten `uv lock` turns CI red rather than going unnoticed."
+    }
+   ],
+   "lines": "5–8",
+   "explanation_md": "The task asks for the session 4 slide on `uv.lock` in your own words: range versus exact version,\ncommitted so that everyone and CI share it, and `--locked` as the check that catches a lockfile that\nhas fallen out of step. A full answer uses a concrete example (`typer>=0.12` against the exact version\nin the lockfile).",
+   "section_ref": "project-anatomy-s8",
+   "source_ref": "S4 slides 23–24; labs/01-scaffold.md §4",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q37",
+   "type": "mcq",
+   "level": "beyond",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Marta added `python-dateutil` to `pyproject.toml`, ran `uv sync` (it installed fine), and all four\nchecks passed on her laptop. Then she committed and pushed. Afterwards:\n\n```console\n$ git status\nOn branch main\nYour branch is up to date with 'origin/main'.\n\nChanges not staged for commit:\n  (use \"git add <file>...\" to update what will be committed)\n  (use \"git restore <file>...\" to discard changes in working directory)\n\tmodified:   uv.lock\n\nno changes added to commit (use \"git add\" and/or \"git commit -a\")\n```\n\nCI is red at the step `Install dependencies from the lockfile`, and the log shows:\n\n```text\nerror: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.\n```\n\nWhy was it green for her and red in CI?",
+   "options": [
+    {
+     "text_md": "CI runs a different patch release of Python, which resolves different versions",
+     "correct": false,
+     "why_md": "A Python difference would not make uv say the lockfile needs updating. The message is about `uv.lock` against `pyproject.toml`."
+    },
+    {
+     "text_md": "Her plain `uv sync` rewrote `uv.lock`, but she committed only `pyproject.toml`",
+     "correct": true,
+     "why_md": "Right. `modified: uv.lock` is the evidence: the updated lockfile never left her laptop."
+    },
+    {
+     "text_md": "GitHub's package cache was stale, and re-running the job will turn it green",
+     "correct": false,
+     "why_md": "Re-running checks the same commit with the same stale lockfile and fails the same way."
+    },
+    {
+     "text_md": "`python-dateutil` cannot be installed on Linux, which is what CI runs",
+     "correct": false,
+     "why_md": "The step never got as far as installing anything. uv refused because the two files disagree, before any download."
+    }
+   ],
+   "explanation_md": "Plain `uv sync` does not refuse a stale lockfile: it re-resolves, rewrites `uv.lock` and carries on,\nso her laptop was green. `git status` shows the evidence: `modified: uv.lock`, never staged. CI runs\n`uv sync --locked`, which compares the committed `uv.lock` with the committed `pyproject.toml` and\nrefuses. Session 4: \"works on my machine\" can usually be pinpointed to a lockfile that was never\ncommitted. The fix: commit `uv.lock` and push.",
+   "section_ref": "project-anatomy-s9",
+   "source_ref": "S4 slide 24; expense-tracker check.yml; runs (laptop clone and clean CI-like clone)",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q38",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Before committing, Pau's terminal showed:\n\n```console\n$ git status\nOn branch main\nYour branch is up to date with 'origin/main'.\n\nChanges not staged for commit:\n  (use \"git add <file>...\" to update what will be committed)\n  (use \"git restore <file>...\" to discard changes in working directory)\n\tmodified:   src/expense_tracker/cli.py\n\nUntracked files:\n  (use \"git add <file>...\" to include in what will be committed)\n\tsrc/expense_tracker/dates.py\n\nno changes added to commit (use \"git add\" and/or \"git commit -a\")\n```\n\nHe committed and pushed `cli.py`; all 24 tests pass on his laptop. In your fresh clone,\n`uv sync --locked` succeeds, and `uv run pytest` ends with:\n\n```text\n______________________ ERROR collecting tests/test_io.py _______________________\nImportError while importing test module '/home/you/expense-tracker/tests/test_io.py'.\ntests/test_io.py:5: in <module>\n    from expense_tracker.cli import app\nsrc/expense_tracker/cli.py:7: in <module>\n    from expense_tracker.dates import parse_date\nE   ModuleNotFoundError: No module named 'expense_tracker.dates'\n=========================== short test summary info ============================\nERROR tests/test_io.py\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n```\n\nWhat is the cause?",
+   "options": [
+    {
+     "text_md": "Your environment is out of date; delete `.venv` and run the sync again",
+     "correct": false,
+     "why_md": "Your environment was built seconds ago from the committed lockfile. What is missing is a source file, not a package."
+    },
+    {
+     "text_md": "The lockfile does not list your new module, so `uv lock` must be run first",
+     "correct": false,
+     "why_md": "The lockfile records packages and versions, not your own modules, and `uv sync --locked` passed."
+    },
+    {
+     "text_md": "`dates.py` exists only on Pau's laptop: it was untracked, and he never added it",
+     "correct": true,
+     "why_md": "Right. The commit imports a module that is not in the repository."
+    },
+    {
+     "text_md": "The test is flaky; run `pytest` a few more times until it passes",
+     "correct": false,
+     "why_md": "An import error is deterministic. It fails every time, on every machine that lacks the file."
+    }
+   ],
+   "explanation_md": "`git status` listed `src/expense_tracker/dates.py` under `Untracked files`, and Pau then staged only\n`cli.py`. So the commit contains an import of a module that is not in the repository. On his laptop\nthe file exists and all 24 tests pass; in a clean clone it does not, so collecting `tests/test_io.py`\nfails. Lab 01: a clean clone has no `.venv`, no caches and nothing you forgot to commit. The fix is to\n`git add` the file, commit and push.",
+   "section_ref": "project-anatomy-s9",
+   "source_ref": "labs/01-scaffold.md §10; S3 slide 13; runs (Pau's clone and a clean clone)",
+   "origin": "lab",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q39",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Jordi never installed uv. To check that the report module at least loads, he runs it with the\n`python3` his Mac came with:\n\n```console\n$ python3 --version\nPython 3.9.6\n$ python3 src/expense_tracker/report.py\nTraceback (most recent call last):\n  File \"/Users/jordi/expense-tracker/src/expense_tracker/report.py\", line 56, in <module>\n    def largest_expense(expenses: list[Expense]) -> Expense | None:\nTypeError: unsupported operand type(s) for |: 'type' and 'NoneType'\n```\n\nOn his teammates' laptops the same file loads without error under `uv run`, and CI is green. What is\nthe best response?",
+   "options": [
+    {
+     "text_md": "Rewrite the annotation in the report module so that it also works on his Python 3.9",
+     "correct": false,
+     "why_md": "That bends shared code to suit one laptop. The project declares `requires-python = \">=3.13\"`, and CI and every teammate run 3.13."
+    },
+    {
+     "text_md": "Add `# type: ignore` to line 56 so that the error stops appearing",
+     "correct": false,
+     "why_md": "That comment silences mypy, which is not running here. This is Python itself failing at run time on an old interpreter."
+    },
+    {
+     "text_md": "Delete `.venv` and then run the file with `python3` once more",
+     "correct": false,
+     "why_md": "A bare `python3` does not use `.venv` at all, so deleting it changes nothing about this error."
+    },
+    {
+     "text_md": "Install uv and use `uv run`, which brings the Python 3.13 the project requires",
+     "correct": true,
+     "why_md": "Right. Stop bypassing the tool that gives everyone the same Python."
+    }
+   ],
+   "explanation_md": "This is the \"different Python\" kind of works-on-my-machine. Jordi's `python3` is 3.9.6, while\n`pyproject.toml` requires `>=3.13`; on 3.9, writing `Expense | None` in an annotation fails as soon\nas the function is defined. Under `uv run` the same file runs on Python 3.13 and loads fine. uv exists\nto give everyone the same Python and the same packages, so the fix is to stop bypassing it, not to\nchange the code for one machine.",
+   "section_ref": "project-anatomy-s9",
+   "source_ref": "S3 slides 3 and 5; S4 slide 23; run with macOS /usr/bin/python3 (3.9.6) and uv run",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q40",
+   "type": "open",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Pau's branch passes all four checks on his laptop. In a fresh clone, where `pyproject.toml` declares\nonly `typer>=0.12` under `dependencies`, you install exactly what the lockfile says and run the tests:\n\n```console\n$ uv sync --locked\nUsing CPython 3.13.15\nCreating virtual environment at: .venv\nResolved 20 packages in 3ms\nInstalled 19 packages in 21ms\n$ uv run pytest\n```\n\n```text\n______________________ ERROR collecting tests/test_io.py _______________________\nImportError while importing test module '/home/you/expense-tracker/tests/test_io.py'.\ntests/test_io.py:5: in <module>\n    from expense_tracker.cli import app\nsrc/expense_tracker/cli.py:6: in <module>\n    from dateutil import parser\nE   ModuleNotFoundError: No module named 'dateutil'\n=========================== short test summary info ============================\nERROR tests/test_io.py\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n```",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Why does `uv sync --locked` succeed although a package is missing?",
+     "marks": 2,
+     "model_answer_md": "`--locked` only checks that `uv.lock` agrees with `pyproject.toml`, and it does: neither file mentions `python-dateutil`. uv installed exactly what the two files declare, so by their definition the environment is complete.",
+     "rubric": [
+      "`--locked` checks the lockfile against `pyproject.toml` (consistency), not the code's imports",
+      "Notes that `dateutil` is declared in neither file, so nothing disagrees"
+     ],
+     "weak_answers_md": "\"The lockfile is broken\" is the tempting answer and it is wrong: the two files agree perfectly. Students often think `--locked` checks that everything the code needs is installed; it only checks that the recipe is consistent."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Why do the tests pass on Pau's laptop?",
+     "marks": 1,
+     "model_answer_md": "He installed `python-dateutil` straight into his own `.venv` (for example with `uv pip install`) instead of declaring it, so his environment has a package the repository does not describe.",
+     "rubric": [
+      "Installed by hand into his environment without declaring it in `pyproject.toml`"
+     ],
+     "weak_answers_md": "\"His computer is different\" is too vague. Name the mechanism: a package in his `.venv` that `pyproject.toml` does not declare, so no environment built from the repository can have it."
+    },
+    {
+     "label": "3",
+     "prompt_md": "A teammate proposes adding a step to `check.yml` that installs `python-dateutil` by hand before the checks run. Do you accept? Give your reasoning.",
+     "marks": 2,
+     "model_answer_md": "No. That makes the referee's machine special instead of fixing the project: a stranger or a teammate following the README would still crash. Declare it with `uv add python-dateutil` (and its stubs with `uv add --dev types-python-dateutil`), which updates `pyproject.toml` and `uv.lock`, commit both, and every install gets it.",
+     "rubric": [
+      "Rejects it: it hides the problem in CI while the project still breaks for anyone installing from the repository",
+      "Gives the real fix: declare it with `uv add` and commit `pyproject.toml` and `uv.lock`"
+     ],
+     "weak_answers_md": "Accepting \"because then CI can pass\" treats the referee as the obstacle. The check exists to prove that a clean machine can install and run the project; patching the check proves nothing. Rejecting without the fix (declare and lock the dependency) earns half."
+    }
+   ],
+   "lines": "5–8",
+   "explanation_md": "The sample paper's \"read tool output, harder\" shape on the anatomy topic. The trap in part 1 is\nbelieving `--locked` guarantees completeness; it guarantees consistency. Part 3 mirrors sample Q9.3\n(\"do you accept `# type: ignore` to get CI green?\"): the answer is never to bend the referee. A\ncomplete fix also declares the stubs: `python-dateutil` ships no type hints, so without\n`types-python-dateutil` the Types step reports `Library stubs not installed for \"dateutil\"` and CI\ngoes red there.",
+   "section_ref": "project-anatomy-s9",
+   "source_ref": "S4 slides 23–24; S8 (uv add --dev); runs (Pau's clone with a hand-installed package, clean clone, mypy without the stubs)",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q41",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Nil pushed a commit with a `.env` file holding the group's movie API key, then deleted the file in the\nnext commit. The repository is public. Anyone can run:\n\n```console\n$ ls -a\n.  ..  .git  README.md\n$ git log --oneline\n0948038 Remove the API key\n7cd2bd6 Add movie search\n441f9ee Start the README\n$ git show 7cd2bd6:.env\nMOVIE_API_KEY=9f2c71d04ab35e8c\n```\n\nIs the key safe now?",
+   "options": [
+    {
+     "text_md": "Yes: the file is gone from the latest commit, so GitHub no longer shows it",
+     "correct": false,
+     "why_md": "The latest commit lacks the file, but the earlier commit still contains it. A `git clone` copies the whole history, and `git show` prints the key."
+    },
+    {
+     "text_md": "Yes, as soon as the file name is added to the ignore list in `.gitignore`",
+     "correct": false,
+     "why_md": "`.gitignore` stops future mistakes; it does nothing to commits already in the history."
+    },
+    {
+     "text_md": "No: the earlier commit still holds it; treat the key as leaked and replace it",
+     "correct": true,
+     "why_md": "Right. Deleting a file only removes it from later commits."
+    },
+    {
+     "text_md": "No, but only members of the group can see the older commits of a repository",
+     "correct": false,
+     "why_md": "The repository is public: its whole history is visible to anyone, which is exactly why nothing secret may go in."
+    }
+   ],
+   "explanation_md": "The project brief: \"I deleted the file\" does not remove it from a repository's history. A commit\nrecords a snapshot; `0948038` removed the file from later snapshots, but `7cd2bd6` still holds it, and\nin a public repository anyone can run `git show 7cd2bd6:.env`. So the key is exposed, and the safe\nresponse is to treat it as leaked: cancel it with the provider and use a new one that is never\ncommitted, with `.env` in `.gitignore` so it cannot happen again.",
+   "section_ref": "project-anatomy-s9",
+   "source_ref": "moodle/project-pages.md (Project Brief); run in a local repository",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q42",
+   "type": "open",
+   "level": "beyond",
+   "skills": [
+    "concept",
+    "judgement"
+   ],
+   "stem_md": "Your group's repository is public. On Monday a teammate committed and pushed `config.py` with a real\nAPI key in it. On Tuesday they deleted the file, committed, pushed, and wrote in the chat: \"Fixed, the\nkey is gone.\"",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Is the key still exposed? Explain using what a commit records.",
+     "marks": 2,
+     "model_answer_md": "Yes. Each commit records a snapshot of the files. Tuesday's commit removes the file from later snapshots, but Monday's commit still contains it, and anyone can show that commit, because the repository is public.",
+     "rubric": [
+      "Says yes, the key is still exposed",
+      "Explains that history keeps every earlier commit, so the deleted file can still be read (for example with `git show <commit>:config.py`)"
+     ],
+     "weak_answers_md": "\"It is in the history\" without saying what that means earns one point. The second point needs the mechanism: a commit is a snapshot, deleting creates a new snapshot without the file, and the old one is untouched and public."
+    },
+    {
+     "label": "2",
+     "prompt_md": "What should the group do now? Name two actions.",
+     "marks": 2,
+     "model_answer_md": "Treat the key as leaked: cancel it with the provider and create a new one. Keep the new key out of the repository, for example in a `.env` file listed in `.gitignore`.",
+     "rubric": [
+      "Revoke or replace the key (treat it as compromised)",
+      "Keep secrets out of the repository from now on (an ignored file, a `.gitignore` entry, never committed)"
+     ],
+     "weak_answers_md": "\"Delete the commit\" or \"make the repository private\" misses that the key may already have been copied; once public, it is compromised. Adding `.gitignore` alone protects the future but not the leaked key."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Why does the course make repositories public despite this risk? Give one of its reasons.",
+     "marks": 1,
+     "model_answer_md": "A public repository is a portfolio piece, it makes copying visible rather than tempting, and the tooling (automated checks, container hosting) is free. The price is never putting anything personal or secret in it.",
+     "rubric": [
+      "Gives one of the brief's three reasons: portfolio, copying visible rather than tempting, free tooling"
+     ],
+     "weak_answers_md": "\"So the lecturer can see it\" is not one of the brief's reasons; a private repository could be shared with the lecturer too. Name one of the three: a portfolio piece, copying made visible, or free tooling."
+    }
+   ],
+   "lines": "5–8",
+   "explanation_md": "Part 1 is straight from the brief (\"I deleted the file\" does not remove it from history). Part 2 is the\nobvious next consequence: a key that has been public must be replaced, not hidden. Part 3 checks you\nknow why the course accepts the risk.",
+   "section_ref": "project-anatomy-s9",
+   "source_ref": "moodle/project-pages.md (Project Brief)",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q43",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Sunday 18 October, 23:50. Lena's group tagged `v0.5` and pushed the tag, then saw CI red on that commit\n(at `Formatting`). She fixed it, pushed to `main`, and the new commit is green. Now:\n\n```console\n$ git log --oneline -3\n5bf3483 (HEAD -> main, origin/main) Fix the failing check\n2b1b151 (tag: v0.5) Add the report command\nf6f3ce0 Add weighted averages\n```\n\nIf nothing else happens before 23:59, what does the marker see?",
+   "options": [
+    {
+     "text_md": "The green commit, because marking uses the newest commit on `main`",
+     "correct": false,
+     "why_md": "The rubric marks `main` at the `v0.5` tag, and the tag still points at `2b1b151`. A fix pushed after the tag does not count."
+    },
+    {
+     "text_md": "The red tagged commit, so Tests is capped at 1 unless she moves the tag and pushes it",
+     "correct": true,
+     "why_md": "Right. The rubric marks the tag, and a fix after the tag only counts once the tag is moved."
+    },
+    {
+     "text_md": "No effect on the mark: CI is the referee, not the judge, so its colour is irrelevant",
+     "correct": false,
+     "why_md": "CI is not a criterion, but the rubric's gate is explicit: red at the tag caps Tests at 1, whatever else is true."
+    },
+    {
+     "text_md": "The green commit, because a tag moves forward with each new commit on `main`",
+     "correct": false,
+     "why_md": "A tag is a permanent name for one commit and never moves by itself. That is why the rubric gives steps to move it."
+    }
+   ],
+   "explanation_md": "A tag names one commit and stays there; `git log` shows `tag: v0.5` on `2b1b151`, below the fix. The\npartial rubric marks `main` at `v0.5`, and its CI gate says that if the check is red on the `v0.5`\ncommit, Tests is capped at 1, and a fix pushed after the tag does not count. The rubric's procedure:\nfix, push, wait for a green tick on the new commit, then move the tag onto it and push the tag. What\ncounts is where `v0.5` points at 23:59.",
+   "section_ref": "project-anatomy-s9",
+   "source_ref": "partial-rubric (The CI gate; If CI is red on the tag); labs/01-scaffold.md §9; run in a local repository",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q44",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "judgement",
+    "concept"
+   ],
+   "stem_md": "It is Sunday 18 October, 23:30. Your group's `v0.5` tag is on a commit whose `check` run is red at the\n`Formatting` step. A teammate says: \"Leave the tag. The marker will obviously look at our latest\ncommit, and anyway CI is only the referee, not the judge.\"",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "What happens to your mark if you leave the tag where it is? Answer the teammate's two claims.",
+     "marks": 2,
+     "model_answer_md": "The rubric marks `main` at the `v0.5` tag, not the latest commit. CI is not a criterion itself, but red CI on the tagged commit caps the Tests criterion at 1 out of 3, whatever else is true.",
+     "rubric": [
+      "Marking happens at the commit the `v0.5` tag points to, not the latest commit",
+      "Red CI at the tag caps the Tests criterion at 1, even though CI is not marked itself"
+     ],
+     "weak_answers_md": "Answers that only say \"we lose marks\" do not say which criterion or why. The second claim is half right: CI is not marked, which is exactly why the rubric uses it as a gate on Tests."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Describe in words the steps to put it right before 23:59.",
+     "marks": 3,
+     "model_answer_md": "Open the red run and read the failing step's log, and reproduce it locally by running the same checks. Fix it, commit and push to `main`, then wait for a green tick on that new commit. Only then move `v0.5` onto the green commit, push the tag, and check that it points there.",
+     "rubric": [
+      "Find what failed: read the failing step's log, or run the same checks locally",
+      "Fix, commit and push to `main`, then wait until CI is green on the new commit",
+      "Move the tag onto the green commit and push it (a fix after the tag counts only once the tag moves)"
+     ],
+     "weak_answers_md": "Moving the tag before CI has gone green on the new commit risks tagging another red commit; the rubric says wait for the green tick first. Forgetting to push the moved tag leaves GitHub's `v0.5` where it was."
+    }
+   ],
+   "lines": "5–8",
+   "explanation_md": "The partial rubric's CI gate in practice. Part 1 tests the two facts students mix up: marking is at the\ntag, and CI, though not marked, caps Tests. Part 2 is the rubric's own four-step procedure in your\nwords. No commands are needed, only the order and the reason for it.",
+   "section_ref": "project-anatomy-s9",
+   "source_ref": "partial-rubric (The CI gate; If CI is red on the tag)",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q45",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Oriol writes his first test for the expense-tracker's report and saves it next to the code, as\n`src/expense_tracker/test_largest.py`, \"so each test sits beside what it tests\". He wrote it to\nfail first. Before he added the file, the suite had 24 tests. Now:\n\n```console\n$ uv run pytest -q\n........................                                                 [100%]\n24 passed in 0.02s\n```\n\nThe project's `pyproject.toml` contains:\n\n```toml\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n```\n\nWhat is the best conclusion?",
+   "options": [
+    {
+     "text_md": "His test passed on the first run, so the red step can be skipped this time",
+     "correct": false,
+     "why_md": "The count is still 24, the same as before his file existed, so his test never ran. A green bar that contains no new test proves nothing."
+    },
+    {
+     "text_md": "pytest cannot import code from under `src/`, so it skipped his file without a warning",
+     "correct": false,
+     "why_md": "Installed code under `src/` imports normally; that is how `tests/test_report.py` imports `report`. Run by name, his file is collected and fails (a real run). pytest was simply pointed at `tests/`."
+    },
+    {
+     "text_md": "The `.venv` still holds the old test suite; delete it and run `uv sync` again",
+     "correct": false,
+     "why_md": "`.venv` holds installed packages, not test files; pytest reads tests from the repository. Rebuilding it changes nothing about where pytest looks."
+    },
+    {
+     "text_md": "pytest never ran his file, which would also ship to users: move it to `tests/`",
+     "correct": true,
+     "why_md": "Right. `testpaths` points pytest at `tests/`, and everything under `src/expense_tracker/` is part of the package that gets built and installed."
+    }
+   ],
+   "explanation_md": "There are two clues. The count did not change, and `testpaths = [\"tests\"]` tells pytest where to\nlook, so it never collects a file under `src/`. Run by name, his test fails, exactly as he intended.\nThe layout says the same thing for a deeper reason. Slide 20: `tests/` mirrors `src/`, so the tests\nfor `report.py` live in `tests/`. Slide 22: `src/` holds the deployable code, and the tests in\n`tests/` are typically not included in the build. A wheel built with his file in place really does\ncontain `expense_tracker/test_largest.py`. Moved to `tests/test_largest.py`, it is collected, goes\nred, and stays out of what users install.",
+   "section_ref": "project-anatomy-s7",
+   "source_ref": "S4 slides 20 and 22; S8 (red, green, refactor); expense-tracker v0.4 pyproject.toml; runs (pytest with the file under src/, by name, after the move; wheel build)",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q46",
+   "type": "sort",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "The survival-kit commands from the setup lab and lab 01, in the order you might type them. Sort each\nby what it changes, and where.",
+   "categories": [
+    {
+     "id": "reports",
+     "label": "Reports only: changes nothing"
+    },
+    {
+     "id": "laptop",
+     "label": "Changes your laptop only"
+    },
+    {
+     "id": "github",
+     "label": "Sends something to GitHub"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "`git clone git@github.com:esade-swdev-2026/<your-group>.git`",
+     "category": "laptop",
+     "why_md": "Copies the repository, with its whole history, onto your laptop. GitHub is only read."
+    },
+    {
+     "text_md": "`git switch -c setup/<your-github-username>`",
+     "category": "laptop",
+     "why_md": "Makes a new branch and moves you onto it, in your local repository. GitHub has no such branch until you push."
+    },
+    {
+     "text_md": "`git status`",
+     "category": "reports",
+     "why_md": "Tells you what is untracked, not staged, staged, or committed but not pushed. It records nothing."
+    },
+    {
+     "text_md": "`git add setup-reports/`",
+     "category": "laptop",
+     "why_md": "Stages the folder for the next commit. Nothing is in the history yet, and nobody else can see it."
+    },
+    {
+     "text_md": "`git commit -m \"add setup report\"`",
+     "category": "laptop",
+     "why_md": "Records the staged change as a commit on your laptop. Teammates and CI see it only after a push."
+    },
+    {
+     "text_md": "`git push -u origin setup/<your-github-username>`",
+     "category": "github",
+     "why_md": "Sends the branch and its commits to GitHub, where the `check` workflow runs on them."
+    },
+    {
+     "text_md": "`git tag -a v0.1 -m \"Scaffolded project\"`",
+     "category": "laptop",
+     "why_md": "Names one commit in your local repository. Until the tag is pushed, GitHub has no `v0.1` to mark."
+    },
+    {
+     "text_md": "`git push origin v0.1`",
+     "category": "github",
+     "why_md": "Sends the tag to GitHub. Checkpoints are marked at the tag, so this is the step that makes it count."
+    }
+   ],
+   "explanation_md": "Only `push` sends anything to GitHub. Everything else happens in the repository on your laptop:\n`clone` copies it down with its whole history, `switch -c` makes a branch, `add` stages, `commit`\nrecords and `tag` names a commit. All of it is invisible to teammates, CI and the marker until you\npush. `git status` changes nothing; it tells you which of those states each change is in. That is why\nan unpushed commit, or a tag that was never pushed, counts for nothing at a checkpoint: lab 01 says a\nmissing tag means there is nothing to mark.",
+   "section_ref": "project-anatomy-s4",
+   "source_ref": "S3 slides 10–13; labs/00-setup.md (Push your first file); labs/01-scaffold.md §9; moodle/project-pages.md (Every checkpoint is a git tag)",
+   "origin": "slides",
+   "verified_by": "source"
+  },
+  {
+   "id": "project-anatomy-q47",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "read-tool-output",
+    "concept"
+   ],
+   "stem_md": "At tag `v0.0` the expense-tracker is a script. Alice is in her home folder, one level above the\nclone, and runs:\n\n```console\n$ python3 tracker.py\npython3: can't open file '/home/alice/tracker.py': [Errno 2] No such file or directory\n```\n\nFrom inside `expense-tracker/` the same command prints the report. What does this show?",
+   "options": [
+    {
+     "text_md": "Her Python installation is broken and has to be reinstalled before the script can run",
+     "correct": false,
+     "why_md": "Python started and printed its own error naming the path it tried. It looked in the folder Alice is standing in, where there is no `tracker.py`."
+    },
+    {
+     "text_md": "The last commit deleted `tracker.py`, so she has to restore the file from the history",
+     "correct": false,
+     "why_md": "The same command works one folder down. The file exists; Python simply looked in the wrong directory."
+    },
+    {
+     "text_md": "A script needs the file and the right folder; an installed command needs the project",
+     "correct": true,
+     "why_md": "Right. Slide 23: `python tracker.py` needs the file and the right directory, while `uv run expenses report` needs the project and works from any folder inside it."
+    },
+    {
+     "text_md": "The script needs `uv sync` first, because a bare `python3` reads the project's lockfile",
+     "correct": false,
+     "why_md": "A bare `python3` never reads `pyproject.toml` or `uv.lock`. At `v0.0` there is not even a project to sync."
+    }
+   ],
+   "explanation_md": "Session 4, slide 23 contrasts two ways to run the same code. `python tracker.py` runs a file, so it\nneeds that file in the current directory, plus whatever Python and packages the machine happens to\nhave; the error names the path Python tried, `/home/alice/tracker.py`. `uv run expenses report` runs\nan installed command: uv finds the project from any folder inside it, builds the environment from\n`pyproject.toml` and `uv.lock`, and runs it. Packaging the script, from `a953d05` on, is what made\nthe second form possible.",
+   "section_ref": "project-anatomy-s8",
+   "source_ref": "S4 slide 23; S5 slide 4; run on expense-tracker v0.0 (path rewritten)",
+   "origin": "slides",
+   "verified_by": "run"
+  },
+  {
+   "id": "project-anatomy-q48",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "concept",
+    "judgement"
+   ],
+   "stem_md": "The day before the first checkpoint, Pol cannot get Docker Desktop to start on his laptop. He has\nWSL2, VS Code, uv, git and his SSH key working, and he can push to the group's repository. He asks\nwhether this blocks the group's CI run and his work this month. Which answer is right?",
+   "options": [
+    {
+     "text_md": "No: session 3 says Docker is not needed until session 16; CI today runs ruff, mypy and pytest through uv",
+     "correct": true,
+     "why_md": "Right. Slide 5: Docker \"is not needed until session 16\", and the `check` workflow installs uv and Python on GitHub's runner. He should skip Docker for now."
+    },
+    {
+     "text_md": "Yes: CI runs every push inside a Docker container, so Docker has to work on his laptop first",
+     "correct": false,
+     "why_md": "CI runs on GitHub's own machine, which installs uv and Python itself. Nothing in the `check` workflow needs Docker, on his laptop or anywhere else."
+    },
+    {
+     "text_md": "Yes: without Docker `uv.lock` cannot be created, so `uv sync --locked` fails in CI",
+     "correct": false,
+     "why_md": "uv builds the lockfile from `pyproject.toml` by itself. Docker plays no part until the sessions on containers."
+    },
+    {
+     "text_md": "No: CI runs only on GitHub, so none of the six tools on his laptop matters to it",
+     "correct": false,
+     "why_md": "The other tools matter: uv produces the lockfile CI checks, git and the SSH key get his commits to GitHub, and the workflow only runs once they arrive."
+    }
+   ],
+   "explanation_md": "Session 3's table gives each of the six tools one job. Docker runs a project in a container and, in\nthe slide's words, is \"not needed until session 16: install it today if it is painless, skip it if it\nfights\". The referee is the CI run on GitHub, and the course's `check` workflow uses uv to install\nPython and the locked dependencies, then runs ruff, mypy and pytest. A Docker problem therefore blocks\nnothing yet. The other five tools each sit on the path from his laptop to a green run.",
+   "section_ref": "project-anatomy-s2",
+   "source_ref": "S3 slides 3, 5; labs/00-setup.md; expense-tracker 0e05065 (workflow)",
+   "origin": "slides",
+   "verified_by": "source"
+  }
+ ]
+}

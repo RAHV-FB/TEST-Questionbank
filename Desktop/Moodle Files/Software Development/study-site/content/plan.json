@@ -1,0 +1,133 @@
+{
+ "days": [
+  {
+   "id": "wed-14",
+   "date": "2026-10-14",
+   "label": "Wed 14 Oct",
+   "when": "Evening",
+   "title": "Baseline",
+   "note_md": "Sit the sample paper before you study anything, so you know where you start. Do not look anything up while you sit it.",
+   "items": [
+    {"id": "wed-14-how-paper", "label": "Read “How the paper works”", "link": "#learn.sample-paper.s1"},
+    {"id": "wed-14-sample-cold", "label": "Sit the teacher's sample paper cold (30 min)", "link": "#exam.sample"},
+    {"id": "wed-14-sdlc", "label": "Learn the SDLC and Agile module", "link": "#learn.sdlc-agile"}
+   ]
+  },
+  {
+   "id": "thu-15",
+   "date": "2026-10-15",
+   "label": "Thu 15 Oct",
+   "when": "Full day",
+   "title": "Starting a project",
+   "note_md": "Three modules, each followed straight away by ten questions on it. Answer before you look back at the text.",
+   "items": [
+    {"id": "thu-15-scrum", "label": "Learn the Scrum module", "link": "#learn.scrum"},
+    {"id": "thu-15-scrum-10", "label": "Practice: Next 10 on Scrum", "link": "#practice.next10.scrum"},
+    {"id": "thu-15-anatomy", "label": "Learn the project anatomy module", "link": "#learn.project-anatomy"},
+    {"id": "thu-15-anatomy-10", "label": "Practice: Next 10 on project anatomy", "link": "#practice.next10.project-anatomy"},
+    {"id": "thu-15-cli", "label": "Learn the CLI program module", "link": "#learn.cli-program"},
+    {"id": "thu-15-cli-10", "label": "Practice: Next 10 on the CLI program", "link": "#practice.next10.cli-program"}
+   ]
+  },
+  {
+   "id": "fri-16",
+   "date": "2026-10-16",
+   "label": "Fri 16 Oct",
+   "when": "Class, then evening",
+   "title": "Session 10, then clean code",
+   "note_md": "Session 10 is in class: pipes, text wrangling and bash scripts. The pipes and bash module was written before its slides existed, so re-check it against what was taught.",
+   "items": [
+    {"id": "fri-16-pipes-skim", "label": "Before class: skim the pipes and bash module", "link": "#learn.pipes-bash"},
+    {"id": "fri-16-pipes-recheck", "label": "After class: re-check the pipes and bash module against the slides (done: it now follows them)", "link": "#learn.pipes-bash"},
+    {"id": "fri-16-clean", "label": "Learn the clean code module", "link": "#learn.clean-code"},
+    {"id": "fri-16-clean-10", "label": "Practice: Next 10 on clean code", "link": "#practice.next10.clean-code"},
+    {"id": "fri-16-refactor", "label": "Learn the refactoring and types module", "link": "#learn.refactor-types"},
+    {"id": "fri-16-refactor-10", "label": "Practice: Next 10 on refactoring and types", "link": "#practice.next10.refactor-types"}
+   ]
+  },
+  {
+   "id": "sat-17",
+   "date": "2026-10-17",
+   "label": "Sat 17 Oct",
+   "when": "Full day",
+   "title": "Core, shell and tests",
+   "note_md": "The last two clean-code modules, then every flashcard that is due.",
+   "items": [
+    {"id": "sat-17-core", "label": "Learn the core, shell and failing well module", "link": "#learn.core-shell-failing"},
+    {"id": "sat-17-core-10", "label": "Practice: Next 10 on core, shell and failing well", "link": "#practice.next10.core-shell-failing"},
+    {"id": "sat-17-tdd", "label": "Learn the testing and TDD module", "link": "#learn.testing-tdd"},
+    {"id": "sat-17-tdd-10", "label": "Practice: Next 10 on testing and TDD", "link": "#practice.next10.testing-tdd"},
+    {"id": "sat-17-cards", "label": "Flashcards: every card that is due", "link": "#cards"}
+   ]
+  },
+  {
+   "id": "sun-18",
+   "date": "2026-10-18",
+   "label": "Sun 18 Oct",
+   "when": "Light day",
+   "title": "Partial submission day",
+   "note_md": "The project's partial submission is due at 23:59, marked at the `v0.5` tag with CI green. Keep study light and leave time for the project.",
+   "items": [
+    {"id": "sun-18-terminal", "label": "Learn the terminal and files module", "link": "#learn.terminal-files"},
+    {"id": "sun-18-cards", "label": "Flashcards: 20 cards", "link": "#cards"},
+    {"id": "sun-18-weak", "label": "Practice: 10 weak spots", "link": "#practice.weak"}
+   ]
+  },
+  {
+   "id": "mon-19",
+   "date": "2026-10-19",
+   "label": "Mon 19 Oct",
+   "when": "Full day",
+   "title": "Terminal, history and Paper A",
+   "note_md": "Finish the last module, drill the terminal, read the expense-tracker history, then sit your first full mock paper under time.",
+   "items": [
+    {"id": "mon-19-pipes", "label": "Learn the pipes and bash module", "link": "#learn.pipes-bash"},
+    {"id": "mon-19-labs", "label": "Terminal lab: pipelines, permissions, paths and exit codes", "link": "#labs"},
+    {"id": "mon-19-history", "label": "Walk through the expense-tracker history", "link": "#history"},
+    {"id": "mon-19-paper-a", "label": "Sit Paper A (60 min)", "link": "#exam.paper-a"},
+    {"id": "mon-19-review-a", "label": "Review Paper A: every wrong answer and its explanation", "link": "#exam"}
+   ]
+  },
+  {
+   "id": "tue-20",
+   "date": "2026-10-20",
+   "label": "Tue 20 Oct",
+   "when": "Full day",
+   "title": "Weak spots and Paper B",
+   "note_md": "Fix what Paper A exposed, then sit Paper B. Rewrite each open answer that lost marks until it scores every rubric point.",
+   "items": [
+    {"id": "tue-20-weak", "label": "Practice: weak spots", "link": "#practice.weak"},
+    {"id": "tue-20-paper-b", "label": "Sit Paper B (60 min)", "link": "#exam.paper-b"},
+    {"id": "tue-20-rewrite", "label": "Rewrite every open answer you scored below full marks", "link": "#practice.weak.all.open"}
+   ]
+  },
+  {
+   "id": "wed-21",
+   "date": "2026-10-21",
+   "label": "Wed 21 Oct",
+   "when": "Full day",
+   "title": "Worst case and a step beyond",
+   "note_md": "The two hardest papers, then the sample paper again to compare with Wednesday's baseline.",
+   "items": [
+    {"id": "wed-21-paper-c", "label": "Sit Paper C, the worst case (60 min)", "link": "#exam.paper-c"},
+    {"id": "wed-21-paper-d", "label": "Sit Paper D, a step beyond (60 min)", "link": "#exam.paper-d"},
+    {"id": "wed-21-weak", "label": "Practice: weak spots", "link": "#practice.weak"},
+    {"id": "wed-21-cards", "label": "Flashcards: every card that is due", "link": "#cards"},
+    {"id": "wed-21-sample", "label": "Sit the teacher's sample paper again (30 min)", "link": "#exam.sample"}
+   ]
+  },
+  {
+   "id": "thu-22",
+   "date": "2026-10-22",
+   "label": "Thu 22 Oct",
+   "when": "Morning",
+   "title": "Exam day",
+   "note_md": "No new material. The exam is at 14:00 in room 108: one hour, pen and paper, closed book.",
+   "items": [
+    {"id": "thu-22-cards", "label": "Flashcards: every card that is due", "link": "#cards"},
+    {"id": "thu-22-glossary", "label": "Skim the glossary", "link": "#glossary"},
+    {"id": "thu-22-weak", "label": "Practice: 10 weak spots", "link": "#practice.weak"}
+   ]
+  }
+ ]
+}

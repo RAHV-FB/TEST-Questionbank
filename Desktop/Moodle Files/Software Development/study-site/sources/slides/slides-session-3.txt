@@ -1,0 +1,184 @@
+
+===== [slides-session-3.pdf] page 1 =====
+The Developer's Starter Kit
+Setup lab
+Session 3. September 18th 2026
+Alberto Cámara
+
+===== [slides-session-3.pdf] page 2 =====
+Today is hands-on from the first minute
+Goal for today: by 13:15 most of the room has a working environment and has pushed a
+file that CI checked.
+Agile approach: we will aim at having a basic working setup and then we will go deeper on
+the different tools along the way, when there is a need for them.
+The lab sheet is labs/00-setup.md in the course repository — linked from Moodle.
+Alberto Cámara | Software Development for Business | Session 3
+2
+
+===== [slides-session-3.pdf] page 3 =====
+Why we standardise — and what is actually required
+"Works on my machine" is the single problem this whole course is built to solve. We aim
+to systematize how dependencies and builds happen, so that the artifacts produced by the
+code are reproducible.
+You may use any operating system and any editor. That is your freedom.
+Two things are not negotiable:
+1. Your work passes the CI check — the automated ruff + mypy + pytest run on
+GitHub. That is the referee.
+2. The recommended path is the only one supported by the lecturer. Off-path is allowed,
+but at the expense of your own time.
+Alberto Cámara | Software Development for Business | Session 3
+3
+
+===== [slides-session-3.pdf] page 4 =====
+The map
+What each tool is for — no installing yet
+
+===== [slides-session-3.pdf] page 5 =====
+Six tools
+Tool
+One sentence
+WSL2
+A real Linux kernel inside Windows. The course lives in a Linux shell. (macOS/Linux: you already
+have one.)
+VS
+Code
+The editor. On Windows it runs outside WSL and reaches in via the Remote-WSL extension.
+uv
+Installs Python itself and your project's dependencies == the same versions for everyone.
+git
+Records the history of your code. Today we do bare minimal setup.
+GitHub
+Where your group's repository lives. You authenticate to it with an SSH key.
+Docker
+Runs your project in a container. Not needed until session 16. Install it today if it is painless, skip
+it if it fights.
+Alberto Cámara | Software Development for Business | Session 3
+5
+
+===== [slides-session-3.pdf] page 6 =====
+What a virtual environment actually is
+In three minutes.
+Python looks up packages in a fixed list of directories.
+A virtual environment is just another such directory, one per project, that Python is
+told to look in first.
+So "install a package" means "put it in this project's directory", not "change the
+whole computer".
+uv makes and fills that directory from your pyproject.toml . uv run uses it.
+That is the entire idea. No magic.
+Alberto Cámara | Software Development for Business | Session 3
+6
+
+===== [slides-session-3.pdf] page 7 =====
+Guided install — first half
+
+===== [slides-session-3.pdf] page 8 =====
+Install Checks
+
+===== [slides-session-3.pdf] page 9 =====
+Clone the course repo, run the check
+Two repositories today. First, the course materials:
+cd ~
+git clone git@github.com:esade-swdev-2026/software-development-course-materials.git
+cd software-development-course-materials
+bash scripts/setup-check.sh
+Every line is pass or fail with a fix. A red line is a ticket. The script then prints
+your next commands with your GitHub username already in them — copy those.
+Alberto Cámara | Software Development for Business | Session 3
+9
+
+===== [slides-session-3.pdf] page 10 =====
+Clone the group project repo, take your own branch
+Your group repository already exists. Four of you push to it in the same twenty
+minutes — on main , only the first would succeed. So you each take a branch.
+cd ~
+git clone git@github.com:esade-swdev-2026/<your-group>.git
+cd <your-group>
+git switch -c setup/<your-github-username>
+switch -c = "make a new branch and move onto it". Yours alone; nobody can collide
+with you on it.
+Alberto Cámara | Software Development for Business | Session 3
+10
+
+===== [slides-session-3.pdf] page 11 =====
+Drop the report in and push
+mkdir -p setup-reports
+cp ~/software-development-course-materials/setup-report.md \
+   setup-reports/<your-github-username>.md
+git add setup-reports/
+git commit -m "add setup report"
+git push -u origin setup/<your-github-username>
+The check script printed these with your username already in them — copy from the
+terminal, not from this slide.
+Now open the repo on GitHub → Actions.
+Alberto Cámara | Software Development for Business | Session 3
+11
+
+===== [slides-session-3.pdf] page 12 =====
+Terminal survival kit
+Enough to get around until Module 3 teaches it properly.
+Command
+Does
+pwd
+where am I
+ls
+what is here ( ls -la = everything, with detail)
+cd foo / cd .. / cd
+go into foo / up one / home
+mkdir foo
+make a directory
+cat file / less file
+print a file / page through it ( q to quit)
+Alberto Cámara | Software Development for Business | Session 3
+12
+
+===== [slides-session-3.pdf] page 13 =====
+Git survival kit
+Command
+Does
+git clone <url>
+copy a repo down, with its history
+git switch -c <name>
+start your own branch, so you don't collide
+git status
+what have I changed
+git add <file>
+stage a change to be committed
+git commit -m "..."
+record the staged changes
+git push
+send your commits to GitHub
+Again: mechanics now, meaning in Module 4. The loop today is
+switch -c → status → add → commit → push .
+Alberto Cámara | Software Development for Business | Session 3
+13
+
+===== [slides-session-3.pdf] page 14 =====
+Push the report — watch CI go green
+The moment the whole session is built toward.
+1. You pushed your report to your own branch of your group repo.
+2. Open the repo on GitHub → Actions tab.
+3. A workflow called check is running, on your branch. Watch it.
+4. Green = the referee accepts your repo. This check now runs on every push you make
+all term. From module 4, when you merge through pull requests, a red check blocks the
+merge.
+Red on the report but green on Actions is fine — the report is your to-do list; Actions
+checks the repository.
+Alberto Cámara | Software Development for Business | Session 3
+14
+
+===== [slides-session-3.pdf] page 15 =====
+If you did not finish
+Not a problem. Before Tuesday:
+Re-run bash scripts/setup-check.sh and work down the red lines — each has a fix.
+Troubleshooting appendix in labs/00-setup.md covers the eight that actually happen:
+BIOS virtualization, Docker/WSL sharing, SSH key not on GitHub, uv not on PATH,
+corporate VPN/proxy, Windows line endings, macOS Gatekeeper, rejected push.
+Still stuck? Office hours, a lab machine, or a neighbour. Push the report even if lines
+are red — a red line is a ticket.
+Alberto Cámara | Software Development for Business | Session 3
+15
+
+===== [slides-session-3.pdf] page 16 =====
+Next: session 4, Tuesday
+Scrum, and the anatomy of a Python project. We start building the course project for real.
+Bring the laptop. Keep labs/00-setup.md bookmarked.

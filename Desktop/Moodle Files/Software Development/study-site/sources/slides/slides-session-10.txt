@@ -1,0 +1,269 @@
+
+===== [slides-session-10.pdf] page 1 =====
+Pipes, Text and Scripts
+Module 3
+Session 10. October 16th 2026
+Alberto Cámara
+
+===== [slides-session-10.pdf] page 2 =====
+Goal for Today
+Answer a question about real data with one pipeline. Then turn a pipeline into a script.
+Clock
+What
+10:45–11:15
+Pipes and redirection
+11:15–11:30
+Break
+11:30–12:15
+Lab: labs/10-wrangling.md
+12:15–13:00
+Bash scripts, and scripts/check.sh
+13:00–13:15
+The partial submission
+Alberto Cámara | Software Development for Business | Session 10
+2
+
+===== [slides-session-10.pdf] page 3 =====
+Pipes and redirection
+
+===== [slides-session-10.pdf] page 4 =====
+Small programs, joined
+$ wc -l expenses.csv
+421 expenses.csv
+$ tail -n +2 expenses.csv | cut -d, -f3 | sort | uniq | wc -l
+8
+Each program does one thing. | sends what the left one prints into the right one.
+That is the Unix idea, and it is fifty years old: write programs that do one thing well, and
+that work together.
+Alberto Cámara | Software Development for Business | Session 10
+4
+
+===== [slides-session-10.pdf] page 5 =====
+Three streams, four symbols
+Every program has stdin (in), stdout (out) and stderr (errors).
+Symbol
+Does
+>
+stdout into a file (overwrites)
+>>
+stdout appended to the end of a file
+|
+stdout of one into stdin of the next
+2>
+stderr into a file
+$ uv run expenses report nosuch.csv > out.txt
+could not read nosuch.csv      # stderr: not in out.txt
+Alberto Cámara | Software Development for Business | Session 10
+5
+
+===== [slides-session-10.pdf] page 6 =====
+The wrangling kit
+Command
+Does
+head -n 3 · tail -n 3
+first or last lines
+tail -n +2
+everything from line 2, skipping the header
+wc -l
+count lines
+cut -d, -f3
+column 3 of a comma-separated file
+grep · grep -v · grep -c
+keep, drop, count matching lines
+sort · sort -rn · sort -t, -k4
+sort; numeric, reversed; by column
+uniq -c · uniq -d
+count adjacent repeats; only the repeated
+uniq only sees neighbours. It is always sort | uniq .
+Alberto Cámara | Software Development for Business | Session 10
+6
+
+===== [slides-session-10.pdf] page 7 =====
+Build it one stage at a time
+Question: which category has the most expenses? Add one stage at a time.
+$ tail -n +2 expenses.csv | cut -d, -f3 | sort | uniq -c | sort -rn | head -n 3
+    119 groceries
+     86 dining
+     76 transport
+tail -n +2 drops the header · cut keeps the category · sort groups equal ones · uniq -
+c counts each group · sort -rn puts the biggest first · head keeps three
+Alberto Cámara | Software Development for Business | Session 10
+7
+
+===== [slides-session-10.pdf] page 8 =====
+Filter, then count
+$ grep -c ',dining,' expenses.csv
+86
+$ grep '^2025-09' expenses.csv | wc -l
+67
+$ tail -n +2 expenses.csv | sort | uniq -d
+2025-08-19,Bar Alegria,dining,52.71
+2025-11-07,Renfe,transport,52.24
+2025-11-10,Movistar,utilities,69.10
+2025-11-29,Condis,groceries,93.02
+2025-11-29,Mercadona,groceries,90.60
+2025-12-23,Lidl,groceries,61.85
+The shell found the duplicates in one line.
+Alberto Cámara | Software Development for Business | Session 10
+8
+
+===== [slides-session-10.pdf] page 9 =====
+Never edit the original
+$ cp ~/code/expense-tracker/expenses.csv ~/lab10/
+$ head -n 1 expenses.csv > clean.csv
+$ tail -n +2 expenses.csv | sort -u >> clean.csv
+$ wc -l clean.csv
+415 clean.csv
+> overwrites without asking. >> appends
+expenses.csv is the fixture every session uses. Work on a copy
+One > where you meant >> is the shell's rm
+Alberto Cámara | Software Development for Business | Session 10
+9
+
+===== [slides-session-10.pdf] page 10 =====
+Lab: labs/10-wrangling.md
+Seven exercises on expenses.csv . Each answer is one pipeline.
+Count, group, filter, sort, find duplicates
+Compare the shell's answer to the tracker's: uv run expenses report --category
+groceries
+Stretch: read an awk one-liner
+Pairs. Run each pipeline one stage at a time.
+Back at 12:15. Then we turn pipelines into scripts.
+Alberto Cámara | Software Development for Business | Session 10
+10
+
+===== [slides-session-10.pdf] page 11 =====
+Scripts
+
+===== [slides-session-10.pdf] page 12 =====
+A script is saving a pipeline for re-running
+#!/usr/bin/env bash
+set -euo pipefail
+file="$1"
+tail -n +2 "$file" | cut -d, -f3 | sort | uniq -c | sort -rn | head -n 3
+#!/usr/bin/env bash : which program runs this file
+chmod +x : a statement that this file is a program (session 9)
+"$1" : the first argument. Always quote it
+Alberto Cámara | Software Development for Business | Session 10
+12
+
+===== [slides-session-10.pdf] page 13 =====
+Run it with:
+$ chmod +x top.sh
+$ ./top.sh expenses.csv
+Alberto Cámara | Software Development for Business | Session 10
+13
+
+===== [slides-session-10.pdf] page 14 =====
+Arguments, conditions, loops
+if [ "$#" -lt 1 ]; then                       # $# is the number of arguments
+  echo "usage: $0 FILE" >&2                   # $0 stands for the script
+  exit 2
+fi
+if [ ! -f "$1" ]; then                        # $1 is the first argument
+  echo "error: $1 is not a file" >&2
+  exit 1
+fi
+for file in *.csv; do
+  echo "$file has $(wc -l < "$file") lines"   # $(...) is the output of a command
+done
+Alberto Cámara | Software Development for Business | Session 10
+14
+
+===== [slides-session-10.pdf] page 15 =====
+Exit codes are the return value
+$ ./top.sh
+usage: ./top.sh FILE
+$ echo $?
+2
+$ ./top.sh nofile; echo $?
+error: nofile is not a file
+1
+0 means success. Anything else is failure
+Errors go to >&2 , so they are not mixed into the output
+CI reads one thing: the exit code. That is what turns a step red
+Alberto Cámara | Software Development for Business | Session 10
+15
+
+===== [slides-session-10.pdf] page 16 =====
+set -euo pipefail : three silent failures
+Letter
+Without it
+With it
+-e
+Script carries on after a failing command
+Stops at the first failure
+-u
+$NAME typo expands to nothing
+Error: unbound variable
+-o pipefail
+Pipeline's code is its last stage's
+Fails if any stage fails
+$ ./u.sh
+./u.sh: line 3: NAME: unbound variable
+Alberto Cámara | Software Development for Business | Session 10
+16
+
+===== [slides-session-10.pdf] page 17 =====
+scripts/check.sh
+#!/usr/bin/env bash
+set -euo pipefail
+echo "==> ruff check"
+uv run ruff check .
+echo "==> ruff format"
+uv run ruff format --check .
+echo "==> mypy"
+uv run mypy src tests
+echo "==> pytest"
+uv run pytest
+Alberto Cámara | Software Development for Business | Session 10
+17
+
+===== [slides-session-10.pdf] page 18 =====
+One command, green or red
+$ scripts/check.sh
+==> ruff check
+All checks passed!
+==> ruff format
+9 files already formatted
+==> mypy
+Success: no issues found in 8 source files
+==> pytest
+============================== 44 passed in 0.07s ==============================
+$ echo $?
+0
+Break a test and run it again: it stops at pytest, prints the failure, and exits 1. That 1 is the
+red cross on GitHub.
+Alberto Cámara | Software Development for Business | Session 10
+18
+
+===== [slides-session-10.pdf] page 19 =====
+One trap, and what we skipped
+set -e
+counter=0
+((counter++))          # exits the script, silently
+counter=$((counter + 1))   # safe
+((counter++)) evaluates to the old value, 0 , which -e reads as failure. Use $(( )) .
+Not today: functions and trap (clean up on exit). Look them up when you need them. They
+are not examined.
+Alberto Cámara | Software Development for Business | Session 10
+19
+
+===== [slides-session-10.pdf] page 20 =====
+Remaining time
+Questions about the partial submission.
+Due Sunday 18 October, 23:59. Tag v0.5 . CI green on the tagged commit.
+Alberto Cámara | Software Development for Business | Session 10
+20
+
+===== [slides-session-10.pdf] page 21 =====
+Take-aways
+A pipeline is small programs joined by | . Build it one stage at a time
+> overwrites. >> appends. Never edit the original
+A script is a pipeline you wanted twice: shebang, chmod +x , "$1" , an exit code
+set -euo pipefail makes silent failures loud
+scripts/check.sh is what CI runs. Exit code 0 is green
+Mid-term: Thursday 22 October, 14:00, 1 hour. Modules 1 to 3.
+Next class: Tuesday 27 October, Git.
+Alberto Cámara | Software Development for Business | Session 10
+21

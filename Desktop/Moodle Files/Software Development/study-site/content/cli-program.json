@@ -1,0 +1,2434 @@
+{
+ "id": "cli-program",
+ "order": 4,
+ "module": "M2",
+ "title": "From script to program: entry points, typer and exit codes",
+ "sessions": [
+  5
+ ],
+ "predicted": false,
+ "sources": [
+  "slides-session-5",
+  "labs/01-scaffold.md",
+  "slides-session-4 (anatomy)",
+  "project-template",
+  "expense-tracker v0.0..v0.4 (c746d38, a953d05, 2ecad20)",
+  "slides-session-7 (failing well), slides-session-8 (CliRunner)"
+ ],
+ "summary_md": "Session 5 turns a script into a program: the same code, but installed as a command with a name, a version, dependencies and an entry point. You learn how `uv run expenses` is resolved through `[project.scripts]`, why `__main__.py` is a second door, and how typer reads a function signature so that the type hints are the specification of arguments, options and `--help`. You learn why exit codes matter: every tool downstream reads the number, and a program that prints an error and exits 0 is a program that lies. The lab applies it all: rename the template in six places, write one real command, pass the four checks and tag `v0.1` for Checkpoint 1.",
+ "exam_focus_md": "- A terminal transcript after a rename (`Failed to spawn`, `ModuleNotFoundError`, `ImportError` from the wrapper): say which part of `[project.scripts]` or which file broke.\n- A typer signature next to a `--help` page or an error box (`Missing argument`, `Got unexpected extra argument(s)`, `Invalid value`): say which parameters are arguments or options, predict the usage line, or explain the error.\n- A command that prints an error but exits 0, with `echo $?` or an `&&` chain: what the shell, CI and tests conclude, and the fix in words.\n- The four checks' output where pytest passes and mypy fails on `__main__.py`, or CI's `uv sync --locked` refusing the lockfile: which of the three that bite, why the other tools missed it, and whether `# type: ignore` is acceptable.\n- One command without `@app.callback()`: read the usage line without `COMMAND` and the failing `exit_code` assertions.\n- Compare: `python file.py` against `uv run <command>`, `uv run <command>` against `python -m <package>`, argparse against typer, or a diff that makes a lying command exit 1, with two commit messages to judge.\n- Checkpoint 1 as a Definition of Done: which situation fails which binary item, what a clean clone catches, and why the tag needs its own push.",
+ "sections": [
+  {
+   "id": "cli-program-s1",
+   "heading": "Two ways to run the same code",
+   "body_md": "Session 5 opens with \"A program, not a script\", and slide 4 puts two lines side by side:\n\n```bash\npython tracker.py                    # a file, run by an interpreter\nuv run expenses report               # a command, installed from a project\n```\n\nSame code. The second one has **a name, a version, dependencies and an entry point**, and all four live in `pyproject.toml`: `name = \"expense-tracker\"`, `version = \"0.1.0\"`, `dependencies = [\"typer>=0.12\"]`, and the `[project.scripts]` line that turns `expenses` into a command. Session 4 called the first a script and the second a project.\n\n**A file run by an interpreter.** You choose the interpreter, you stand in the right folder, and Python runs the file from top to bottom with whatever packages that interpreter happens to have. On the course's machines typer is installed only inside the project's `.venv`, so the system Python stops at `import typer`:\n\n```console\n$ python3 src/expense_tracker/cli.py report\nTraceback (most recent call last):\n  File \"src/expense_tracker/cli.py\", line 5, in <module>\n    import typer\nModuleNotFoundError: No module named 'typer'\n```\n\nEven with the project's interpreter, the file route does nothing useful at `v0.4`: `uv run python src/expense_tracker/cli.py report` prints nothing and exits 0. Running a file executes its top-level code, and the top level of `cli.py` only creates `app` and defines the commands. No line calls `app()`, so `report` never runs.\n\n**A command installed from a project.** `uv run` reads `pyproject.toml` and `uv.lock`, installs whatever is missing into `.venv`, and runs the command. Session 4 put it as \"needs the project, from anywhere\", with the same versions for every teammate and for CI. The command is also what Checkpoint 1 checks: `uv sync && uv run <your-app> --help` from a clean clone.\n\nThe demo made this move in two commits: `a953d05` turned the script into a uv package, and `2ecad20` moved the report \"into the package behind a typer CLI\". The rest of this module is about that command: how it is found, the second way in, how typer reads your function, how it reports failure, and the lab that turns your template into one.",
+   "key_points": [
+    "Same code, two ways in: a file you hand to an interpreter, or a command the project installs.",
+    "The command has a name, a version, dependencies and an entry point, all in `pyproject.toml`.",
+    "A file gets whatever packages its interpreter has; `uv run` builds the project's environment from `pyproject.toml` and `uv.lock` first.",
+    "Running `cli.py` as a file only defines `app`; something has to call it."
+   ],
+   "exam_note_md": "Expect a transcript where the file route fails and the command works, and a question about why. Answer with the interpreter and the environment; reinstalling things is the careless move.",
+   "source_ref": "S5 slides 3–4; S4 slides 19–23; expense-tracker a953d05, 2ecad20",
+   "check": [
+    "cli-program-q01",
+    "cli-program-q02",
+    "cli-program-q03"
+   ]
+  },
+  {
+   "id": "cli-program-s2",
+   "heading": "What `uv run expenses` resolves",
+   "body_md": "Slide 5 reads one line of `pyproject.toml`:\n\n```toml\n[project.scripts]\nexpenses = \"expense_tracker.cli:app\"\n```\n\nRead it in three steps: `expenses` → module `expense_tracker.cli` → object `app`. The left side is the name of the command you type. The right side is a dotted module path (the file `src/expense_tracker/cli.py`), a colon, and the name of an object inside that module: the `app = typer.Typer(...)` that every command is attached to.\n\n**A wrapper is written into the environment on install.** When `uv sync` installs the project (and `uv run` syncs first), uv writes a tiny program called `expenses` into `.venv/bin/`. These are its working lines, from the real file:\n\n```python\nimport sys\nfrom expense_tracker.cli import app\nif __name__ == \"__main__\":\n    ...\n    sys.exit(app())\n```\n\nIt imports exactly the module and the object named in the line, calls `app()`, and hands typer's exit code back to the shell. `uv run expenses` finds that wrapper and runs it.\n\n**Rename either side and the command disappears.** Each part can break on its own, and each gives a different message:\n\n| What changed | What you see |\n|---|---|\n| The command name on the left (`2ecad20` replaced `expense-tracker = ...` with `expenses = ...`) | `uv run expense-tracker` now fails with `error: Failed to spawn` |\n| The module on the right, but not the package folder (still `src/app`) | the wrapper starts, then `ModuleNotFoundError: No module named 'parking_lot'` |\n| The object in `cli.py` (`app` renamed to `cli`) | `ImportError: cannot import name 'app' from 'parking_lot.cli'` |\n\nTwo readings follow. `Failed to spawn` means uv found no command by that name: nothing was installed under it. A traceback that starts in `.venv/bin/<command>` means the wrapper exists but its import failed, so look at the module or the object.\n\nThe command does not have to match the project name. The demo project is `expense-tracker` and its command is `expenses`. The lab asks you to use your hyphenated project name for both, which keeps one less name to remember.",
+   "key_points": [
+    "`expenses = \"expense_tracker.cli:app\"`: command → module → object.",
+    "Installing writes a wrapper into `.venv/bin/` that imports `app` and calls it.",
+    "`Failed to spawn`: no command by that name. A traceback from `.venv/bin/...`: the wrapper's import failed.",
+    "Rename the command, the module or the object without updating the line, and the command disappears."
+   ],
+   "exam_note_md": "The usual artefact is an error after a rename. Say which part failed: the command name (left), the module (right, before the colon) or the object (after the colon).",
+   "source_ref": "S5 slide 5; S4 slide 21; expense-tracker 2ecad20; labs/01-scaffold.md troubleshooting",
+   "check": [
+    "cli-program-q04",
+    "cli-program-q05",
+    "cli-program-q06"
+   ]
+  },
+  {
+   "id": "cli-program-s3",
+   "heading": "`__main__.py`: the other door",
+   "body_md": "Slide 6 shows a second way to start the same program:\n\n```bash\npython -m expense_tracker            # runs src/expense_tracker/__main__.py\n```\n\n```python\nfrom expense_tracker.cli import app\n\nif __name__ == \"__main__\":\n    app()\n```\n\n`python -m <package>` asks Python to find the package and run the file `__main__.py` inside it. That file imports the same `app` object and calls it, so both doors lead to the same typer program. The difference is what each door needs. The command needs the `[project.scripts]` line and the wrapper written on install. The `-m` door reads neither: it \"works without the install step\" and only needs Python to be able to import the package. (With the `src/` layout, importable means installed into `.venv`, as session 4 showed. So in practice the `-m` door still needs `uv sync`; what it skips is the wrapper and `[project.scripts]`. That is why you type `uv run python -m ...`.)\n\n**The doors fail independently.** Delete the `[project.scripts]` table from a renamed template and the command is gone while the other door still works:\n\n```console\n$ uv run parking-lot park 1234ABC\nerror: Failed to spawn: `parking-lot`\n  cause: No such file or directory (os error 2)\n$ uv run python -m parking_lot park 1234ABC\nTicket for 1234ABC: 1 h\n```\n\nThe reverse happens on the demo. Session 4's anatomy slide lists a `__main__.py`, but the expense-tracker repository never added one (look at any tag from `v0.1` to `v0.4`), so `uv run expenses report` works while `uv run python -m expense_tracker report` stops with `No module named expense_tracker.__main__; 'expense_tracker' is a package and cannot be directly executed`. On paper, answer from the slides: slide 6 and the session 4 anatomy say `python -m expense_tracker` runs `src/expense_tracker/__main__.py`.\n\n**The file everyone forgets to rename.** The template ships `src/app/__main__.py` with `from app.cli import app`. After you rename the package, nothing you normally run touches it: `uv run <your-app>` goes through the wrapper, and your tests import `<your_package>.cli` directly. So pytest stays green while the import points at a package that no longer exists. Only mypy, which reads every file under `src`, notices, or anyone who tries the `-m` door. That is the second of the three that bite, at the end of this module.",
+   "key_points": [
+    "`python -m <package>` runs the package's `__main__.py`, which calls the same `app`.",
+    "The `-m` door needs no `[project.scripts]` line and no wrapper; only an importable package.",
+    "Each door can break while the other works.",
+    "`__main__.py` is the rename everyone forgets: the tests never import it, mypy does."
+   ],
+   "exam_note_md": "A question may show one door working and the other failing. Name the file each door depends on: `[project.scripts]` for the command, `__main__.py` for `python -m`.",
+   "source_ref": "S5 slide 6; S4 slide 20; project-template src/app/__main__.py; expense-tracker v0.1–v0.4 file list",
+   "check": [
+    "cli-program-q08",
+    "cli-program-q09"
+   ]
+  },
+  {
+   "id": "cli-program-s4",
+   "heading": "typer: the type hints are the specification",
+   "body_md": "Slide 7 shows the whole idea in a few lines:\n\n```python\n@app.command()\ndef add(merchant: str, amount: float) -> None:\n    ...\n```\n\n`@app.command()` registers the function as a command named after it, `add`. typer then reads the signature and builds the command line from it. Each parameter becomes a value the user types, and each type hint says how to convert the text the user typed: `amount` arrives as the text `12.50` and typer hands your function the float `12.50`. One rule decides the shape: **a parameter with no default is an argument; a default is what turns a parameter into an option.** `merchant: str` has no default, so it is an argument. So is `amount: float` here. The type does not decide.\n\n**`--help` is generated, never written.** This is the real help for the lab's command:\n\n```text\n Usage: expenses add [OPTIONS] {merchant} {amount}\n\n╭─ Arguments ──────────────────────────────────────────────────────────────────╮\n│ *    merchant      <str>    [required]                                       │\n│ *    amount        <float>  [required]                                       │\n╰──────────────────────────────────────────────────────────────────────────────╯\n╭─ Options ────────────────────────────────────────────────────────────────────╮\n│ --help          Show this message and exit.                                  │\n╰──────────────────────────────────────────────────────────────────────────────╯\n```\n\nThe slide prints the usage line as `Usage: expenses add [OPTIONS] MERCHANT AMOUNT`; the typer version pinned in the course's `uv.lock` (0.27.2) writes the names in braces. The meaning is the same: after `[OPTIONS]` come the arguments, in the order you type them. An argument you may leave out appears in square brackets, as `report`'s `[path]` does.\n\n**The hints also do the checking.** typer converts every value before your function runs, and refuses what it cannot convert:\n\n```console\n$ uv run expenses add \"Bar Ramon\" twelve\nUsage: expenses add [OPTIONS] {merchant} {amount}\nTry 'expenses add --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Invalid value for 'amount': 'twelve' is not a valid float.                   │\n╰──────────────────────────────────────────────────────────────────────────────╯\n$ echo $?\n2\n```\n\nYour `add` never ran. Compare the `v0.0` script, which read `sys.argv` by position and had no help at all: `python tracker.py --help` printed `could not read --help`, because the script took `--help` for a file name. typer replaced that with one signature that is the specification, the parser, the type check and the help page at once.",
+   "key_points": [
+    "typer reads the signature: function name → command, parameters → values, type hints → conversion.",
+    "No default → argument. A default → option. The type does not decide.",
+    "`--help` and the usage line are generated from the code.",
+    "A value typer cannot convert is refused with exit code 2 before your function runs."
+   ],
+   "exam_note_md": "Expect a signature and a usage line or an error box; you predict one from the other. The slide writes `MERCHANT AMOUNT`, the course's typer writes `{merchant} {amount}`: read both the same way.",
+   "source_ref": "S5 slide 7; labs/01-scaffold.md §5; expense-tracker c746d38 (v0.0) and 2ecad20",
+   "check": [
+    "cli-program-q11",
+    "cli-program-q12",
+    "cli-program-q43"
+   ]
+  },
+  {
+   "id": "cli-program-s5",
+   "heading": "Argument or option",
+   "body_md": "Slide 8 gives the table to learn:\n\n| | Argument | Option |\n|---|---|---|\n| Written | `add \"Bar Ramon\" 12.50` | `--category dining` |\n| In Python | no default | has a default |\n| For | what the command acts on | how it behaves |\n| Missing | error | falls back to the default |\n\nRead the rows as design advice. What the command acts on (the merchant and amount of an expense, the plate of a car) is an argument: the command makes no sense without it, so leaving it out is an error. How the command behaves (one category only, a minimum amount, a date other than today) is an option: it has a sensible default, so leaving it out is fine. The demo follows the table: at `v0.4`, `add` takes `merchant`, `category` and `amount` as arguments and `--date` as an option, and `report` has `--category` and `--minimum` as options.\n\n**A default makes an option, even when a positional value was intended.** Give the lab's `amount` a default (`amount: float = 0.0`) and typer turns it into `--amount`. A forgotten amount is no longer typer's `Missing argument` error: `add \"Bar Ramon\"` now calls your function with 0.0, and only the lab's own check stops it (`amount must be positive`, exit 1). And the natural call fails:\n\n```console\n$ uv run expenses add \"Bar Ramon\" 12.50\nUsage: expenses add [OPTIONS] {merchant}\nTry 'expenses add --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Got unexpected extra argument(s) (12.50)                                     │\n╰──────────────────────────────────────────────────────────────────────────────╯\n```\n\n**`typer.Argument(...)` overrides that.** `report` wants a file that is optional:\n\n```python\npath: str = typer.Argument(\"expenses.csv\", help=\"CSV file to read.\"),\n```\n\nThe usage line becomes `expenses report [OPTIONS] [path]`: `expenses report` reads the sample `expenses.csv`, and `expenses report data/expenses.csv` reads the file `add` writes. The lab's troubleshooting row says the same: drop the default, or use `typer.Argument(...)`.\n\n**argparse, the stdlib fallback.** Slide 10 shows the same table spelled the older way:\n\n```python\nparser = argparse.ArgumentParser()\nparser.add_argument(\"plate\")\nparser.add_argument(\"--hours\", type=int, default=1)\n```\n\nA name without dashes is a positional argument; `--hours` is an option with a default. Its generated help starts `usage: park.py [-h] [--hours HOURS] plate`. argparse ships with Python, so it needs no dependency, but it takes more code: you build the parser call by call instead of writing one signature. It is worth recognising in code you inherit; this course uses typer.",
+   "key_points": [
+    "Argument: what the command acts on; no default; missing means an error.",
+    "Option: how it behaves; has a default; missing means the default.",
+    "A default turns a parameter into an option; `typer.Argument(default)` keeps it positional but optional.",
+    "argparse: no dashes = positional, `--name` = option; standard library, more code."
+   ],
+   "exam_note_md": "A favourite artefact is `Got unexpected extra argument(s)`, or a `--help` that lists an option where an argument was meant. The cause is almost always a default.",
+   "source_ref": "S5 slides 8 and 10; labs/01-scaffold.md troubleshooting; expense-tracker cli.py v0.1–v0.4",
+   "check": [
+    "cli-program-q14",
+    "cli-program-q16",
+    "cli-program-q20"
+   ]
+  },
+  {
+   "id": "cli-program-s6",
+   "heading": "Exit codes: a program that does not lie",
+   "body_md": "Every program ends by handing the shell one number, its exit code. **0 means success; anything else means failure.** You read it with `echo $?` straight after the command. Slide 9 shows the idea with `-5.00`; here is the lab's command run with `0`:\n\n```console\n$ uv run expenses add \"Bar Ramon\" 0\namount must be positive\n$ echo $?\n1\n```\n\nIn typer you choose the number with `raise typer.Exit(code=1)`, as in the lab's shape:\n\n```python\nif amount <= 0:\n    typer.echo(\"amount must be positive\", err=True)\n    raise typer.Exit(code=1)\n```\n\n`err=True` sends the message to standard error, the channel for error messages. Session 7 builds on exactly this: fail loudly at the boundary, with a message on stderr and a non-zero exit.\n\n**Every tool downstream reads that number**, not your message:\n- the shell: `cmd1 && cmd2` runs `cmd2` only if `cmd1` exited 0;\n- CI: a step that exits non-zero turns the run red;\n- tests: `CliRunner` gives you `result.exit_code` (session 8: \"Session 5's exit code, now checked by a machine\").\n\n**\"A program that prints an error and exits 0 is a program that lies.\"** Replace the `raise` with `print(...)` and `return`, and this happens:\n\n```console\n$ uv run expenses add \"Bar Ramon\" 0 && echo \"expense saved\"\namount must be positive\nexpense saved\n```\n\nThe human sees an error; `&&`, CI and any script see success. `raise typer.Exit()` with no code tells the same lie, because its code is 0.\n\nTwo more numbers you will meet. When typer itself refuses the command line (a missing argument, a value it cannot convert, an unknown option), it exits with **2** before your function runs; your own checks use 1. And the slide's `-5.00` begins with a dash, so the typer version in the course's `uv.lock` reads it as an unknown option (`No such option: -5`, exit 2) before `add` can check it. The lab's test uses `0`, which reaches the check. Either way the exit code is non-zero, which is the slide's point. On paper, take slide 9's transcript as given.",
+   "key_points": [
+    "0 means success, anything else failure; `echo $?` shows the last one.",
+    "`raise typer.Exit(code=1)`; a bare `typer.Exit()` exits 0.",
+    "The shell, `&&`, CI and tests read the number, not the text.",
+    "A program that prints an error and exits 0 is a program that lies."
+   ],
+   "exam_note_md": "Expect a transcript with `echo $?` or an `&&` chain and the question of what runs next, or a failing `exit_code` assertion. If the paper shows slide 9's own transcript (`add \"Bar Ramon\" -5.00`, `amount must be positive`, `1`), answer from the slide: the command's check failed and the exit code is 1.",
+   "source_ref": "S5 slide 9; labs/01-scaffold.md §5–6; S7 slide 19; S8 slide 21",
+   "check": [
+    "cli-program-q22",
+    "cli-program-q23",
+    "cli-program-q25"
+   ]
+  },
+  {
+   "id": "cli-program-s7",
+   "heading": "Renaming the template: six places, two spellings",
+   "body_md": "Your repository was generated from `project-template`, whose package is called `app`. The lab's first job is to make it yours, and it starts with two names that are not interchangeable:\n\n| | Form | Example | Used for |\n|---|---|---|---|\n| Distribution name | hyphens | `parking-lot` | the project, and the command you type |\n| Package name | underscores | `parking_lot` | the folder under `src/`, and Python imports |\n\nPython identifiers cannot contain hyphens (`import parking-lot` is a `SyntaxError: invalid syntax`), which is why there are two. The repository itself is named after your topic. Write both names down before you start.\n\n**The six places.** Between them, the two names appear six times, and a typo in any one breaks the install:\n\n1. the folder: `git mv src/app src/parking_lot`;\n2. `name = \"parking-lot\"` under `[project]`;\n3. `parking-lot = \"parking_lot.cli:app\"` under `[project.scripts]`, both spellings on one line;\n4. `packages = [\"src/parking_lot\"]` under `[tool.hatch.build.targets.wheel]`;\n5. `from parking_lot.cli import app` in `src/parking_lot/__main__.py`;\n6. `from parking_lot.cli import app` in `tests/test_cli.py`.\n\nWhat does not change is the typer object `app`, in `app = typer.Typer(...)` and after the colon. The lab's check is a search:\n\n```console\n$ grep -rnI \"app\" pyproject.toml src tests\npyproject.toml:12:parking-lot = \"parking_lot.cli:app\"\nsrc/parking_lot/__main__.py:1:from app.cli import app\nsrc/parking_lot/__main__.py:4:    app()\nsrc/parking_lot/cli.py:3:app = typer.Typer(help=\"A parking lot: tickets and prices.\")\ntests/test_cli.py:3:from parking_lot.cli import app\n...\n```\n\nEvery `app` left should be the object or an import of it. A line that mentions `src/app` or `app.cli`, like line 1 of `__main__.py` above, is a rename you missed.\n\n**Then re-lock, then install:** `uv lock`, then `uv sync`. `uv.lock` records your project under its old name, and CI's `uv sync --locked` refuses a lockfile that disagrees with `pyproject.toml`. The real `uv lock` run says it in two lines, `Removed app v0.1.0` and `Added parking-lot v0.1.0`. Commit `uv.lock` with everything else, then check that `uv run parking-lot --help` prints your help.",
+   "key_points": [
+    "Hyphens for the project and the command (`parking-lot`); underscores for the package and imports (`parking_lot`).",
+    "Six places: folder, `name`, `[project.scripts]`, wheel `packages`, `__main__.py`, `tests/test_cli.py`.",
+    "The typer object `app` keeps its name.",
+    "`uv lock`, then `uv sync`, then commit `uv.lock`."
+   ],
+   "exam_note_md": "A question can show a half-renamed project (a `grep` output or a `pyproject.toml`) and ask which line was missed, or which spelling belongs where.",
+   "source_ref": "S5 slide 12; labs/01-scaffold.md §2–4; project-template",
+   "check": [
+    "cli-program-q30",
+    "cli-program-q31"
+   ]
+  },
+  {
+   "id": "cli-program-s8",
+   "heading": "One real command, the four checks and v0.1",
+   "body_md": "With the names fixed, the lab asks for **one command of your own**, the smallest useful thing your project does. It must have at least one argument, one option with a default, a non-zero exit when the input makes no sense, and type hints on every parameter. The lab's shape is the `add` command from the exit-code section with an empty callback above it:\n\n```python\n@app.callback()\ndef main() -> None:\n    \"\"\"A terminal expense tracker.\"\"\"\n```\n\nNotice that the shape has two arguments and no option; yours needs one, such as `--hours`. Keep the callback (the last section explains why). The command must be about your own project: a parking lot's `park` with `plate` and `--hours`, not `add` with the nouns swapped.\n\n**Fix what the template left behind.** Rewrite `tests/test_cli.py` for your command, one test for the normal case and one for the failure, both through `CliRunner`. Delete the README's rename banner and say what the program does and for whom, how to install it (`uv sync`) and how to run it, with a real copy-pasteable example: \"A stranger will mark it.\" Put your group's names in `LICENSE`; it currently names the lecturer, and the work is yours.\n\n**Run the four checks CI runs**, before you push:\n\n```bash\nuv run ruff format .        # fixes formatting in place\nuv run ruff check .         # lint\nuv run mypy src tests       # types\nuv run pytest               # tests\n```\n\nThey are exactly what `.github/workflows/check.yml` runs. If they pass here, they pass there. Two details of `check.yml`: it first runs `uv sync --locked`, and it runs the formatter as `ruff format --check .`, which changes nothing and fails if a committed file would be reformatted. Format before you commit, or CI goes red at Formatting while your laptop looks clean.\n\n**Commit, push, tag.** `git add -A`, `git commit -m \"Scaffold the project\"`, `git push`, then `git tag -a v0.1 -m \"Scaffolded project\"` and `git push origin v0.1`. A plain `git push` sends your commits and leaves the tag behind, so the tag needs that push of its own. A tag is a permanent name for one commit. Checkpoint 1 is marked at `v0.1`, so a missing tag means there is nothing to mark.\n\n**Checkpoint 1: three binary items.**\n\n1. `uv sync && uv run <your-app> --help` works from a clean clone.\n2. `src/` layout, package importable.\n3. README: what it does, how to install, how to run.\n\nProve items 1 and 2 the way the marker will: clone into an empty folder, `git checkout v0.1`, `uv sync`, `uv run <your-app> --help`, and `uv run python -c \"import <your_package>; print('import OK')\"`. A clean clone has no `.venv`, no caches and nothing you forgot to commit, so it catches the file that only exists on your laptop.",
+   "key_points": [
+    "One command of your own: an argument, an option, a non-zero exit, type hints everywhere.",
+    "Rewrite the tests, the README and the LICENSE; the template's versions are not yours.",
+    "The four checks you run locally are the four CI runs.",
+    "CP1: clean-clone install and `--help`; `src/` layout, importable; README says what, how to install, how to run."
+   ],
+   "exam_note_md": "CP1 is the course's Definition of Done in miniature: public, binary, checkable. A question may ask which situation fails which item, or what a clean clone catches that your laptop cannot.",
+   "source_ref": "S5 slides 12 and 14; labs/01-scaffold.md §5–10; S4 slide 17; project-template check.yml",
+   "check": [
+    "cli-program-q32",
+    "cli-program-q33",
+    "cli-program-q44"
+   ]
+  },
+  {
+   "id": "cli-program-s9",
+   "heading": "The three that bite",
+   "body_md": "Slide 13 names the three mistakes that turn the first push red. All three are in the lab's troubleshooting table, and each has a message you can learn to recognise.\n\n**1. `uv lock` after renaming.** CI's first real step is `uv sync --locked`, which refuses a lockfile that disagrees with `pyproject.toml`:\n\n```text\nerror: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.\n\nhint: To update the lockfile, run `uv lock`.\n```\n\nRun `uv lock`, commit `uv.lock`, push. One subtlety: on your laptop, `uv run` and `uv sync` quietly refresh a stale `uv.lock`, so everything works there. CI only sees the committed file, which is why committing `uv.lock` is half of the fix.\n\n**2. `__main__.py` still imports `app.cli`.** pytest passes; mypy fails; CI is red:\n\n```text\nsrc/parking_lot/__main__.py:1: error: Cannot find implementation or library stub for module named \"app.cli\"  [import-not-found]\nsrc/parking_lot/__main__.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports\nFound 1 error in 1 file (checked 4 source files)\n```\n\nThe tests import `parking_lot.cli`, so they never load `__main__.py`; mypy reads every file under `src` and follows its imports. The error is real, not a matter of style: `uv run python -m parking_lot` crashes with `ModuleNotFoundError: No module named 'app'`. Fix the import; do not silence it.\n\n**3. One command, no `@app.callback()`.** With a single command, typer assumes the command is the program and drops its name. The usage line loses `COMMAND`, `--help` lists no commands, and `<app> <command> ...` fails:\n\n```console\n$ uv run parking-lot park 1234ABC\nUsage: parking-lot [OPTIONS] {plate}\nTry 'parking-lot --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Got unexpected extra argument(s) (1234ABC)                                   │\n╰──────────────────────────────────────────────────────────────────────────────╯\n```\n\ntyper read the word `park` as the plate, so `1234ABC` was left over. Your tests, which call `runner.invoke(app, [\"park\", ...])`, fail with exit code 2. When the second parameter is also an argument (no default) whose type cannot take the shifted word, as with the lab's `amount: float`, the box says `Invalid value for 'amount'` instead, because typer converts every value before it checks for left-over ones. Here `hours` is an option, so `1234ABC` is simply left over. Same cause, different message: read the usage line. The empty callback from the lab tells typer that more commands will come, so yours keeps its name. The demo did the same from its first typer commit: `2ecad20` gave `cli.py` a single command, `report`, with an empty `@app.callback()` (`def main() -> None: pass`) above it, which is why `uv run expenses report` kept the word `report` before `add` existed.",
+   "key_points": [
+    "Stale `uv.lock` → CI's `uv sync --locked` refuses it: run `uv lock`, commit `uv.lock`.",
+    "`__main__.py` still importing `app.cli` → pytest green, mypy red: fix the import.",
+    "One command and no `@app.callback()` → the command's name is swallowed: add the empty callback."
+   ],
+   "exam_note_md": "This is the most examinable slide of the session: an error from CI or the terminal, and you name which of the three it is, why the other checks did not catch it, and the fix in words.",
+   "source_ref": "S5 slide 13; labs/01-scaffold.md §4–5 and troubleshooting",
+   "check": [
+    "cli-program-q35",
+    "cli-program-q36",
+    "cli-program-q37"
+   ]
+  }
+ ],
+ "terms": [
+  {
+   "term": "Usage line",
+   "definition_md": "The first line of `--help` and of a usage error. The slide prints the argument names in capitals (`MERCHANT AMOUNT`); the typer pinned in the course's `uv.lock` prints them in braces (`{merchant} {amount}`). Read both the same way.",
+   "section_ref": "cli-program-s4"
+  },
+  {
+   "term": "Script",
+   "definition_md": "A file run by an interpreter, as in `python tracker.py`: no name, no version, no dependencies, no home for tests.",
+   "section_ref": "cli-program-s1"
+  },
+  {
+   "term": "`uv run`",
+   "definition_md": "Brings the project's environment in line with `pyproject.toml` and `uv.lock`, then runs the command inside it.",
+   "section_ref": "cli-program-s1"
+  },
+  {
+   "term": "Entry point",
+   "definition_md": "Where a program starts. In this course, the `[project.scripts]` line that names a command and the object it runs.",
+   "section_ref": "cli-program-s2"
+  },
+  {
+   "term": "`[project.scripts]`",
+   "definition_md": "The table in `pyproject.toml` that turns a name into a command: `expenses = \"expense_tracker.cli:app\"` reads command → module → object.",
+   "section_ref": "cli-program-s2"
+  },
+  {
+   "term": "Wrapper",
+   "definition_md": "The small program uv writes into `.venv/bin/<command>` on install. It imports the object named in `[project.scripts]` and calls it.",
+   "section_ref": "cli-program-s2"
+  },
+  {
+   "term": "`__main__.py`",
+   "definition_md": "The file `python -m <package>` runs. In the template it imports `app` from the package's `cli` module and calls it.",
+   "section_ref": "cli-program-s3"
+  },
+  {
+   "term": "`python -m`",
+   "definition_md": "Runs a package's `__main__.py`: the other door into the program. It does not use `[project.scripts]` or the wrapper.",
+   "section_ref": "cli-program-s3"
+  },
+  {
+   "term": "typer",
+   "definition_md": "The library this course uses to build command-line interfaces from function signatures: the type hints are the specification.",
+   "section_ref": "cli-program-s4"
+  },
+  {
+   "term": "Usage line",
+   "definition_md": "The first line of `--help`, generated by typer, such as `Usage: expenses add [OPTIONS] {merchant} {amount}`. Arguments follow `[OPTIONS]` in order; `[path]` in brackets is optional.",
+   "section_ref": "cli-program-s4"
+  },
+  {
+   "term": "Argument",
+   "definition_md": "A value typed by position, for what the command acts on. In typer, a parameter with no default. Missing means an error.",
+   "section_ref": "cli-program-s5"
+  },
+  {
+   "term": "Option",
+   "definition_md": "A value given by name, such as `--category dining`, for how the command behaves. In typer, a parameter with a default. Missing means the default.",
+   "section_ref": "cli-program-s5"
+  },
+  {
+   "term": "`typer.Argument`",
+   "definition_md": "Overrides the default rule: `typer.Argument(\"expenses.csv\")` keeps `path` positional while giving it a default.",
+   "section_ref": "cli-program-s5"
+  },
+  {
+   "term": "argparse",
+   "definition_md": "The command-line parser in Python's standard library: no dependency, more code. Worth recognising in code you inherit.",
+   "section_ref": "cli-program-s5"
+  },
+  {
+   "term": "Exit code",
+   "definition_md": "The number a program hands back when it ends: 0 means success, anything else failure. `echo $?` shows the last one.",
+   "section_ref": "cli-program-s6"
+  },
+  {
+   "term": "`typer.Exit`",
+   "definition_md": "Raised to end a typer command with a chosen exit code: `raise typer.Exit(code=1)`. Without a code it exits 0.",
+   "section_ref": "cli-program-s6"
+  },
+  {
+   "term": "Distribution name",
+   "definition_md": "The project's name with hyphens, such as `parking-lot`: `name` in `pyproject.toml`, and the command you type.",
+   "section_ref": "cli-program-s7"
+  },
+  {
+   "term": "Package name",
+   "definition_md": "The import name with underscores, such as `parking_lot`: the folder under `src/` and every `import`.",
+   "section_ref": "cli-program-s7"
+  },
+  {
+   "term": "Clean clone",
+   "definition_md": "A fresh `git clone` into an empty folder: no `.venv`, no caches, nothing uncommitted. How Checkpoint 1 is checked.",
+   "section_ref": "cli-program-s8"
+  },
+  {
+   "term": "Tag",
+   "definition_md": "A permanent name for one commit, such as `v0.1`. Checkpoints are marked at a tag.",
+   "section_ref": "cli-program-s8"
+  },
+  {
+   "term": "`@app.callback()`",
+   "definition_md": "A function typer runs before any command. Left empty, it tells typer there will be several commands, so a single command keeps its name.",
+   "section_ref": "cli-program-s9"
+  }
+ ],
+ "traps": [
+  "**The command is named after the package.** The command is whatever the left side of `[project.scripts]` says. The demo's package is `expense_tracker`, its project `expense-tracker`, and its command `expenses`.",
+  "**If pytest passes, the rename is complete.** The tests never import `__main__.py`, so an old `from app.cli import app` survives them. mypy, which reads every file under `src`, is what catches it.",
+  "**A default just makes an argument optional.** In typer a default turns the parameter into an option (`--amount`). To keep it positional and optional, use `typer.Argument(default)`.",
+  "**The type hint decides argument or option.** The default decides. The type hint decides how the text is converted, and `amount: float` without a default is an argument.",
+  "**Printing an error is enough.** The shell, `&&`, CI and tests read the exit code, not the text. A program that prints an error and exits 0 is a program that lies.",
+  "**`raise typer.Exit()` reports a failure.** Without `code=1` it exits 0, exactly like a normal return.",
+  "**It works on my laptop, so CI will be green.** CI starts from the committed files and runs `uv sync --locked`. Your laptop has a refreshed `uv.lock`, a `.venv` and maybe files you never committed.",
+  "**One command does not need a callback.** Without `@app.callback()`, typer makes that command the whole program and its name stops being a word you type, so `<app> <command>` and the tests fail.",
+  "**`python src/<package>/cli.py` is the same as `uv run <app>`.** The file route uses whatever interpreter you name; for the demo it only defines `app` and never calls it.",
+  "**Hyphens and underscores are interchangeable.** `import parking-lot` is a `SyntaxError`. The package and every import use underscores; only the project name and the command use hyphens.",
+  "**`git push` publishes the tag.** A plain `git push` sends commits only; the tag needs `git push origin v0.1`, and without it there is nothing at `v0.1` to mark."
+ ],
+ "flashcards": [
+  {
+   "id": "cli-program-f01",
+   "front_md": "Slide 4 contrasts `python tracker.py` with `uv run expenses report`. What does the second one have?",
+   "back_md": "A name, a version, dependencies and an entry point, all declared in `pyproject.toml`. Same code.",
+   "kind": "concept",
+   "section_ref": "cli-program-s1"
+  },
+  {
+   "id": "cli-program-f02",
+   "front_md": "Why does `python3 src/expense_tracker/cli.py` fail with `No module named 'typer'` while `uv run expenses` works?",
+   "back_md": "A file run by an interpreter only gets that interpreter's packages. typer lives in the project's `.venv`, which `uv run` uses.",
+   "kind": "reading",
+   "section_ref": "cli-program-s1"
+  },
+  {
+   "id": "cli-program-f03",
+   "front_md": "Why does `uv run python src/expense_tracker/cli.py report` print nothing at `v0.4`?",
+   "back_md": "Running the file only creates `app` and defines the commands; no line calls `app()`. The wrapper or `__main__.py` makes that call.",
+   "kind": "concept",
+   "section_ref": "cli-program-s1"
+  },
+  {
+   "id": "cli-program-f04",
+   "front_md": "Read `expenses = \"expense_tracker.cli:app\"` in three steps.",
+   "back_md": "Command `expenses` → module `expense_tracker.cli` → object `app`.",
+   "kind": "recall",
+   "section_ref": "cli-program-s2"
+  },
+  {
+   "id": "cli-program-f05",
+   "front_md": "What does uv write into `.venv/bin/expenses` on install?",
+   "back_md": "A wrapper that runs `from expense_tracker.cli import app` and then `sys.exit(app())`.",
+   "kind": "concept",
+   "section_ref": "cli-program-s2"
+  },
+  {
+   "id": "cli-program-f06",
+   "front_md": "uv answers `error: Failed to spawn` for `parking-lot`, or prints a traceback starting in `.venv/bin/parking-lot`. What does each mean?",
+   "back_md": "Failed to spawn: no command by that name was installed. Traceback from the wrapper: the command exists but its import of the module or object failed.",
+   "kind": "reading",
+   "section_ref": "cli-program-s2"
+  },
+  {
+   "id": "cli-program-f07",
+   "front_md": "`uv run expenses` versus `python -m expense_tracker`: what does each door need?",
+   "back_md": "The command needs `[project.scripts]` and the wrapper written on install. `-m` needs the package's `__main__.py` and an importable package.",
+   "kind": "distinction",
+   "section_ref": "cli-program-s3"
+  },
+  {
+   "id": "cli-program-f08",
+   "front_md": "What does the template's `__main__.py` do, and what must change in it when you rename the package?",
+   "back_md": "It imports the typer `app` from `app.cli` and calls it, so `python -m app` works. After the rename its import must name your package's `cli` module.",
+   "kind": "concept",
+   "section_ref": "cli-program-s3"
+  },
+  {
+   "id": "cli-program-f09",
+   "front_md": "Why is `__main__.py` the rename everyone forgets?",
+   "back_md": "Neither the command (it uses the wrapper) nor the tests (they import `<package>.cli`) load it. Only mypy, or using `python -m`, notices.",
+   "kind": "concept",
+   "section_ref": "cli-program-s3"
+  },
+  {
+   "id": "cli-program-f10",
+   "front_md": "What does \"the type hints are the specification\" mean in typer?",
+   "back_md": "typer builds the command line from the signature: the function name is the command, parameters are values, type hints say how to convert them, and `--help` is generated.",
+   "kind": "concept",
+   "section_ref": "cli-program-s4"
+  },
+  {
+   "id": "cli-program-f11",
+   "front_md": "In typer, what turns a parameter into an option?",
+   "back_md": "A default value. No default makes an argument, whatever the type.",
+   "kind": "distinction",
+   "section_ref": "cli-program-s5"
+  },
+  {
+   "id": "cli-program-f12",
+   "front_md": "Argument or option: the \"For\" row of the table.",
+   "back_md": "Argument: what the command acts on. Option: how it behaves.",
+   "kind": "recall",
+   "section_ref": "cli-program-s5"
+  },
+  {
+   "id": "cli-program-f13",
+   "front_md": "Argument or option: the \"Missing\" row of the table.",
+   "back_md": "Missing argument: error. Missing option: falls back to the default.",
+   "kind": "recall",
+   "section_ref": "cli-program-s5"
+  },
+  {
+   "id": "cli-program-f14",
+   "front_md": "What does `typer.Argument(\"expenses.csv\")` do for `report`'s `path`?",
+   "back_md": "Keeps it positional but optional: `expenses report` reads `expenses.csv`, `expenses report data/expenses.csv` reads the other file. Usage shows `[path]`.",
+   "kind": "concept",
+   "section_ref": "cli-program-s5"
+  },
+  {
+   "id": "cli-program-f15",
+   "front_md": "`Got unexpected extra argument(s) (12.50)` right after you gave `amount` a default. Why?",
+   "back_md": "The default turned `amount` into `--amount`, so the positional `12.50` has no slot.",
+   "kind": "reading",
+   "section_ref": "cli-program-s5"
+  },
+  {
+   "id": "cli-program-f16",
+   "front_md": "The slide writes `MERCHANT AMOUNT`, the course's typer writes `{merchant} {amount}`. What do both mean?",
+   "back_md": "Required arguments, in the order you type them, after `[OPTIONS]`. Square brackets, as in `[path]`, mark an optional argument.",
+   "kind": "reading",
+   "section_ref": "cli-program-s4"
+  },
+  {
+   "id": "cli-program-f17",
+   "front_md": "Why is argparse worth recognising, and why does the course use typer instead?",
+   "back_md": "argparse ships with Python: no dependency, more code, common in inherited code. typer builds the same interface from one signature.",
+   "kind": "distinction",
+   "section_ref": "cli-program-s5"
+  },
+  {
+   "id": "cli-program-f18",
+   "front_md": "What does an exit code of 0 mean, and how do you see it?",
+   "back_md": "0 means success; anything else means failure. `echo $?` straight after the command.",
+   "kind": "recall",
+   "section_ref": "cli-program-s6"
+  },
+  {
+   "id": "cli-program-f19",
+   "front_md": "How does a typer command fail properly?",
+   "back_md": "Message to stderr with `typer.echo(..., err=True)`, then `raise typer.Exit(code=1)`.",
+   "kind": "recall",
+   "section_ref": "cli-program-s6"
+  },
+  {
+   "id": "cli-program-f20",
+   "front_md": "\"A program that prints an error and exits 0 is a program that lies.\" Who is lied to?",
+   "back_md": "Every tool that reads the number: the shell (`&&` carries on), CI (stays green), scripts and tests checking `exit_code`.",
+   "kind": "concept",
+   "section_ref": "cli-program-s6"
+  },
+  {
+   "id": "cli-program-f21",
+   "front_md": "Exit code 2 from typer versus exit code 1 from your command?",
+   "back_md": "2: typer refused the command line (missing argument, bad type, unknown option) before your function ran. 1: your own check failed.",
+   "kind": "distinction",
+   "section_ref": "cli-program-s6"
+  },
+  {
+   "id": "cli-program-f22",
+   "front_md": "Distribution name versus package name, for the parking lot?",
+   "back_md": "`parking-lot` (hyphens) for the project and the command; `parking_lot` (underscores) for the folder under `src/` and imports.",
+   "kind": "distinction",
+   "section_ref": "cli-program-s7"
+  },
+  {
+   "id": "cli-program-f23",
+   "front_md": "The six places the template's `app` must be renamed.",
+   "back_md": "The folder `src/app`; in `pyproject.toml` the `name`, the `[project.scripts]` line and the wheel `packages` line; the import in `__main__.py`; the import in `tests/test_cli.py`.",
+   "kind": "recall",
+   "section_ref": "cli-program-s7"
+  },
+  {
+   "id": "cli-program-f24",
+   "front_md": "The lab's path from template to `v0.1`, in order.",
+   "back_md": "Rename in six places; `uv lock` then `uv sync`; one real command; fix tests, README, LICENSE; the four checks; commit, push, tag `v0.1` and push the tag.",
+   "kind": "recall",
+   "section_ref": "cli-program-s8"
+  },
+  {
+   "id": "cli-program-f25",
+   "front_md": "Checkpoint 1's three binary items.",
+   "back_md": "1. `uv sync && uv run <your-app> --help` works from a clean clone. 2. `src/` layout, package importable. 3. README: what it does, how to install, how to run.",
+   "kind": "recall",
+   "section_ref": "cli-program-s8"
+  },
+  {
+   "id": "cli-program-f26",
+   "front_md": "What does a clean clone catch that your laptop cannot?",
+   "back_md": "Anything you forgot to commit, and anything that only works because of your `.venv` or caches.",
+   "kind": "concept",
+   "section_ref": "cli-program-s8"
+  },
+  {
+   "id": "cli-program-f27",
+   "front_md": "`The lockfile at uv.lock needs to be updated, but --locked was provided` in CI. Meaning and fix?",
+   "back_md": "The committed `uv.lock` disagrees with `pyproject.toml` (after a rename). Run `uv lock`, commit `uv.lock`, push.",
+   "kind": "reading",
+   "section_ref": "cli-program-s9"
+  },
+  {
+   "id": "cli-program-f28",
+   "front_md": "mypy: `Cannot find implementation or library stub for module named \"app.cli\"` in `__main__.py`. Meaning?",
+   "back_md": "The import was not renamed. pytest passes because the tests never load `__main__.py`; fix the import, do not ignore it.",
+   "kind": "reading",
+   "section_ref": "cli-program-s9"
+  },
+  {
+   "id": "cli-program-f29",
+   "front_md": "One command and no `@app.callback()`: what goes wrong?",
+   "back_md": "typer drops the command's name, so `<app> <command> ...` fails (the command word fills the first argument) and the tests get exit code 2.",
+   "kind": "concept",
+   "section_ref": "cli-program-s9"
+  }
+ ],
+ "questions": [
+  {
+   "id": "cli-program-q01",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Slide 4 of session 5 shows two ways to run the same code:\n\n```bash\npython tracker.py                    # a file, run by an interpreter\nuv run expenses report               # a command, installed from a project\n```\n\nWhat does the second way have that the first does not?",
+   "explanation_md": "Slide 4: \"Same code. The second one has a name, a version, dependencies and an entry point.\" In the expense-tracker these are `name = \"expense-tracker\"`, `version = \"0.1.0\"`, `dependencies = [\"typer>=0.12\"]` and `[project.scripts] expenses = \"expense_tracker.cli:app\"`. The file route depends on which interpreter you pick and which folder you stand in. The command route is resolved by `uv run` from `pyproject.toml` and `uv.lock`, so every teammate and CI get the same versions.",
+   "section_ref": "cli-program-s1",
+   "source_ref": "S5 slide 4; S4 slides 19–23",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "A faster interpreter, because `uv run` compiles the code before running it",
+     "correct": false,
+     "why_md": "uv runs the same CPython on the same code. Speed is not the difference the slide draws; packaging is."
+    },
+    {
+     "text_md": "A name, a version, dependencies and an entry point, declared in `pyproject.toml`",
+     "correct": true,
+     "why_md": "These are the slide's four words, and each is a line of `pyproject.toml`: `name`, `version`, `dependencies` and `[project.scripts]`."
+    },
+    {
+     "text_md": "Different code, rewritten so that typer is able to run it as a command",
+     "correct": false,
+     "why_md": "The slide says \"Same code.\" The code is identical; what changes is the project around it."
+    },
+    {
+     "text_md": "A system-wide install, so that `expenses` works in any terminal without `uv run`",
+     "correct": false,
+     "why_md": "Installing writes the command into the project's `.venv/bin/`. Outside that environment a terminal has no `expenses` command, which is why you type `uv run`."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q02",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "On the expense-tracker at `v0.4`, a teammate who missed session 5 runs the CLI file with the system Python:\n\n```console\n$ python3 src/expense_tracker/cli.py report\nTraceback (most recent call last):\n  File \"src/expense_tracker/cli.py\", line 5, in <module>\n    import typer\nModuleNotFoundError: No module named 'typer'\n```\n\n`uv run expenses report` works on the same laptop, in the same folder. What explains the difference?",
+   "explanation_md": "The first command is \"a file, run by an interpreter\": you chose `python3`, and it only has the packages installed for it. typer lives in the project's environment, which uv builds from `pyproject.toml` and the pinned `uv.lock`. `uv run expenses report` resolves that environment, installs what is missing and runs the command, which is why it works from the same folder. The fix is to use the project's door, not to install packages by hand where nobody else can see them.",
+   "section_ref": "cli-program-s1",
+   "source_ref": "S5 slide 4; S4 slide 23",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "typer is missing from `pyproject.toml` and has to be added to `dependencies`",
+     "correct": false,
+     "why_md": "It is already there (`typer>=0.12`). If it were missing, `uv run expenses report` would fail too."
+    },
+    {
+     "text_md": "The laptop needs `pip install typer`, so that every Python on it has typer",
+     "correct": false,
+     "why_md": "The careless fix: it installs an unpinned copy outside the project, invisible to teammates and CI. The project's environment already has the pinned typer."
+    },
+    {
+     "text_md": "`python3` is the system interpreter; typer is only in the project's `.venv`",
+     "correct": true,
+     "why_md": "A file run by an interpreter gets that interpreter's packages. `uv run` runs the command inside the environment built from `pyproject.toml` and `uv.lock`."
+    },
+    {
+     "text_md": "Line 5 of `cli.py` contains a mistake, and the import should be written differently",
+     "correct": false,
+     "why_md": "`import typer` is correct. The message says the module was not found, not that the line is wrong."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q03",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-code",
+    "predict-output"
+   ],
+   "stem_md": "Same project, `v0.4`. This time the teammate uses the project's interpreter:\n\n```console\n$ uv run python src/expense_tracker/cli.py report\n$ echo $?\n0\n```\n\nNothing is printed. This is the shape of the whole file:\n\n```python\nimport csv\nimport datetime\nfrom pathlib import Path\n\nimport typer\n\nfrom expense_tracker.report import (...)\n\nDATA_FILE = Path(\"data\") / \"expenses.csv\"\n\napp = typer.Typer(help=\"A terminal expense tracker.\")\n\n\n@app.callback()\ndef main() -> None:\n    pass\n\n\n@app.command()\ndef report(...) -> None:\n    ...\n\n\n@app.command()\ndef add(...) -> None:\n    ...\n```\n\nWhy did no report appear?",
+   "explanation_md": "A file run by an interpreter executes its top-level statements: imports, `DATA_FILE`, `app = typer.Typer(...)`, and the `def`s with their decorators. Defining a command is not running it. Something has to call `app()`: the wrapper that `[project.scripts]` writes on install, or `__main__.py` for `python -m`. The template's `cli.py` ends with `if __name__ == \"__main__\": app()`; the demo's does not. The exit code 0 is honest here: nothing failed, because nothing ran. The program's door is `uv run expenses report`.",
+   "section_ref": "cli-program-s1",
+   "source_ref": "S5 slides 4–6; expense-tracker v0.4 cli.py",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Running the file defines `app` and its commands, but no line calls `app()`",
+     "correct": true,
+     "why_md": "A file runs top to bottom. Nothing at the top level hands the command line to typer, so `report` never runs. The wrapper and `__main__.py` exist to make that call."
+    },
+    {
+     "text_md": "The report went to stderr, which the terminal hides when the exit code is 0",
+     "correct": false,
+     "why_md": "The terminal shows stderr whatever the exit code. Nothing was printed on either channel because nothing ran."
+    },
+    {
+     "text_md": "`report` found no rows in `expenses.csv`, so it had nothing to print",
+     "correct": false,
+     "why_md": "The report always starts with a header line (\"Expense report for ...\"). An empty file would still print it."
+    },
+    {
+     "text_md": "`uv run` only accepts commands, so it skipped the file and exited",
+     "correct": false,
+     "why_md": "`uv run python file.py` does run the file, with the project's interpreter. That is why there is no `No module named 'typer'` this time."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q04",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept",
+    "read-tool-output"
+   ],
+   "stem_md": "A teammate edits one line of the expense-tracker's `pyproject.toml`, changes nothing else and runs `uv sync`:\n\n```toml\n[project.scripts]\nspend = \"expense_tracker.cli:app\"\n```\n\nTheir next command fails:\n\n```console\n$ uv run expenses report\nerror: Failed to spawn: `expenses`\n  cause: No such file or directory (os error 2)\n```\n\nWhich statement explains the error?",
+   "explanation_md": "Slide 5 reads the line as command, module, object, and says: \"Rename either side and the command disappears.\" Here the left side was renamed. On install, uv writes a wrapper named after the left side into `.venv/bin/`, and `uv sync` replaced the old wrapper `expenses` with a new one, `spend`. `uv run expenses` has nothing to start, which is lab 01's `Failed to spawn` row. `uv run spend report` works. The module and the object on the right still exist, so no import error appears. Real run: `uv lock --check` passed after the edit.",
+   "section_ref": "cli-program-s2",
+   "source_ref": "S5 slide 5; labs/01-scaffold.md troubleshooting",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "uv could not download a package called `expenses` from PyPI when it ran the command",
+     "correct": false,
+     "why_md": "Nothing is downloaded when a command runs; packages come from `dependencies`. The message says uv tried to start a program called `expenses` and found none."
+    },
+    {
+     "text_md": "The module path is wrong, so Python cannot import `expense_tracker.cli` and start `app`",
+     "correct": false,
+     "why_md": "An import problem would be a `ModuleNotFoundError` or `ImportError` raised by an existing wrapper. The right side of the line is unchanged, and no wrapper named `expenses` exists to run."
+    },
+    {
+     "text_md": "`uv.lock` is out of date and must be refreshed with `uv lock` before any command runs",
+     "correct": false,
+     "why_md": "The lockfile records dependencies, not command names, and `uv lock --check` still passes. Refreshing it would not bring `expenses` back."
+    },
+    {
+     "text_md": "The left side names the command; it is now `spend`, so `expenses` no longer exists",
+     "correct": true,
+     "why_md": "Slide 5: the left side is the command, and renaming either side makes the old command disappear. After `uv sync` the wrapper in `.venv/bin/` is called `spend`."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q05",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-diff",
+    "concept"
+   ],
+   "stem_md": "Commit `2ecad20` (\"Move the report into the package behind a typer CLI\") changed these lines of `pyproject.toml`:\n\n```diff\n [project.scripts]\n-expense-tracker = \"expense_tracker:main\"\n+expenses = \"expense_tracker.cli:app\"\n```\n\nAfter this commit and `uv sync`, what does `uv run expenses report` run?",
+   "explanation_md": "Read the new line as slide 5 does: command `expenses` → module `expense_tracker.cli` → object `app`. On install, uv writes a wrapper that runs `from expense_tracker.cli import app` and `sys.exit(app())`, and typer reads `report` from the command line. The left side changed too, so the old command is gone: on this commit, `uv run expense-tracker report` gives `error: Failed to spawn`. The project stays `expense-tracker`; only the command became `expenses`.",
+   "section_ref": "cli-program-s2",
+   "source_ref": "expense-tracker 2ecad20; S5 slide 5",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The object `app` in `expense_tracker.cli`, which reads `report` as a command",
+     "correct": true,
+     "why_md": "The right side changed to `expense_tracker.cli:app`: module `expense_tracker.cli`, object `app`, the typer app that knows `report`."
+    },
+    {
+     "text_md": "The function `main` in `src/expense_tracker/__init__.py`, as before the commit",
+     "correct": false,
+     "why_md": "That was the old right side. The diff replaces it, and `2ecad20` also deletes `main` from `__init__.py`."
+    },
+    {
+     "text_md": "The file `cli.py` from top to bottom, as `python cli.py report` would",
+     "correct": false,
+     "why_md": "The wrapper imports `app` and calls it. Run as a file, `cli.py` would only define `app`."
+    },
+    {
+     "text_md": "The package's `__main__.py`, which every installed command goes through",
+     "correct": false,
+     "why_md": "The command goes through the wrapper written from `[project.scripts]`; the demo has no `__main__.py` at all."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q06",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Your group is renaming the template to `parking-lot`. You moved the folder to `src/parking_lot`, fixed `name`, the wheel `packages` line and both imports, and ran `uv lock` and `uv sync`. Then:\n\n```console\n$ uv run parking-lot --help\nerror: Failed to spawn: `parking-lot`\n  cause: No such file or directory (os error 2)\n```\n\n`pyproject.toml` still contains:\n\n```toml\n[project.scripts]\napp = \"app.cli:app\"\n```\n\nWhat is the problem?",
+   "explanation_md": "`Failed to spawn` means uv found no command by that name in the environment. The lab's troubleshooting table gives the cause: \"`[project.scripts]` does not match the command you typed\". Here the left side is still `app`, so the command you can type is `app`, and its right side still points at `app.cli`, a module that no longer exists. Running it confirms both halves are wrong:\n\n```console\n$ uv run app --help\nTraceback (most recent call last):\n  File \".venv/bin/app\", line 4, in <module>\n    from app.cli import app\nModuleNotFoundError: No module named 'app'\n```\n\nThe fix is the third of the six places: `parking-lot = \"parking_lot.cli:app\"`.",
+   "section_ref": "cli-program-s2",
+   "source_ref": "labs/01-scaffold.md §3 and troubleshooting; S5 slide 5",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`uv.lock` is still out of date; run `uv lock` once more and the command appears",
+     "correct": false,
+     "why_md": "A stale lockfile gives a different message (`needs to be updated`), and the lockfile records versions, not commands."
+    },
+    {
+     "text_md": "The left side of `[project.scripts]` is still `app`, so no `parking-lot` exists",
+     "correct": true,
+     "why_md": "No line names `parking-lot`, so no wrapper was written for it. Both sides need the new names: `parking-lot = \"parking_lot.cli:app\"`."
+    },
+    {
+     "text_md": "The `.venv` is damaged; delete it and run `uv sync` to rebuild it from scratch",
+     "correct": false,
+     "why_md": "The careless move. A fresh environment installs exactly the same wrong command, because it reads the same table."
+    },
+    {
+     "text_md": "The package folder must be called `src/parking-lot` so that it matches the command",
+     "correct": false,
+     "why_md": "Python packages cannot contain hyphens. The folder uses underscores; only the command uses hyphens."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q07",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output"
+   ],
+   "stem_md": "A teammate tidied up `src/parking_lot/cli.py` and pushed. Now:\n\n```console\n$ uv run parking-lot --help\nTraceback (most recent call last):\n  File \".venv/bin/parking-lot\", line 4, in <module>\n    from parking_lot.cli import app\nImportError: cannot import name 'app' from 'parking_lot.cli' (src/parking_lot/cli.py)\n```\n\n`[project.scripts]` says `parking-lot = \"parking_lot.cli:app\"`. What did the teammate most likely change?",
+   "explanation_md": "Read the traceback the way slide 5 reads the line: command → module → object. The first frame is the wrapper in `.venv/bin/parking-lot`, so the command exists. Its import found the module, because the message prints the path of `cli.py`. What failed is the object after the colon. The rename moved the object, not the line, and \"rename either side and the command disappears\". This is why the lab says the one `app` that must stay is the typer object itself. Real run: renaming `app` to `cli` in `cli.py` produced exactly this `ImportError`.",
+   "section_ref": "cli-program-s2",
+   "source_ref": "S5 slide 5; labs/01-scaffold.md §3",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "They renamed the package folder, so Python can no longer find `parking_lot`",
+     "correct": false,
+     "why_md": "Then the error would be `ModuleNotFoundError: No module named 'parking_lot'`. Here the module was found: its file path is printed."
+    },
+    {
+     "text_md": "They broke `__main__.py`, which the command loads before `cli.py`",
+     "correct": false,
+     "why_md": "The wrapper never touches `__main__.py`. The traceback shows it importing straight from `parking_lot.cli`."
+    },
+    {
+     "text_md": "They renamed the typer object in `cli.py`, so no `app` exists to import",
+     "correct": true,
+     "why_md": "Module found, object missing. For example `app = typer.Typer(...)` became `cli = typer.Typer(...)`, and the wrapper still asks for `app`."
+    },
+    {
+     "text_md": "They removed typer from the dependencies, so `cli.py` can no longer import it",
+     "correct": false,
+     "why_md": "Then the message would name typer (`No module named 'typer'`), not the object `app`."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q08",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "The template ships `src/app/__main__.py`:\n\n```python\nfrom app.cli import app\n\nif __name__ == \"__main__\":\n    app()\n```\n\nWhat does this file give the project?",
+   "explanation_md": "`python -m <package>` makes Python find the package and run its `__main__.py`. The template's file imports the same `app` object as the command does and calls it, so both doors lead to one program. Slide 6 adds two facts worth keeping: it \"works without the install step\", because it does not depend on the wrapper; and \"the template ships one, and it is the file everyone forgets to rename\".",
+   "section_ref": "cli-program-s3",
+   "source_ref": "S5 slide 6; S4 slide 20",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "It marks `src/app/` as a package, so that `import app` can work at all",
+     "correct": false,
+     "why_md": "That is the job of `__init__.py`, which the session 4 anatomy lists separately."
+    },
+    {
+     "text_md": "It is the file `uv run app` executes, so without it the command fails",
+     "correct": false,
+     "why_md": "The command goes through the wrapper written from `[project.scripts]`, which imports `app.cli` directly."
+    },
+    {
+     "text_md": "It holds the command-line tests, which pytest discovers by the file name",
+     "correct": false,
+     "why_md": "Tests live in `tests/` in files called `test_*.py`. `__main__.py` is part of the package."
+    },
+    {
+     "text_md": "A second way in: `python -m app` runs it, and it calls the same `app`",
+     "correct": true,
+     "why_md": "Slide 6: the other door. It does not read `[project.scripts]` and needs no wrapper, only an importable package."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q09",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "A teammate tries both doors on your renamed project (`parking-lot` / `parking_lot`):\n\n```console\n$ uv run parking-lot park 1234ABC\nTicket for 1234ABC: 1 h\n$ uv run python -m parking_lot park 1234ABC\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 203, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"src/parking_lot/__main__.py\", line 1, in <module>\n    from app.cli import app\nModuleNotFoundError: No module named 'app'\n```\n\nWhat can you conclude?",
+   "explanation_md": "Read the last frame: the crash is on line 1 of `src/parking_lot/__main__.py`, which still says `from app.cli import app`. The two doors are independent. The command's wrapper was written from `parking-lot = \"parking_lot.cli:app\"` and imports the renamed module, so it works; `python -m` runs `__main__.py`, the file everyone forgets to rename. The tests import `parking_lot.cli` too, so pytest stays green, and mypy is the check that reports this file. The fix is one import.",
+   "section_ref": "cli-program-s3",
+   "source_ref": "S5 slide 6; labs/01-scaffold.md §3c and troubleshooting",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The package was never installed; run `uv sync` and both doors will work",
+     "correct": false,
+     "why_md": "The command imports `parking_lot.cli` from the same environment and works, so the package is installed. The module Python cannot find is `app`."
+    },
+    {
+     "text_md": "`[project.scripts]` still points at `app.cli`, so the `-m` door cannot find it",
+     "correct": false,
+     "why_md": "`python -m` never reads `[project.scripts]`, and the working command shows that line is already right."
+    },
+    {
+     "text_md": "`__main__.py` still imports the old `app`; the command never loads that file",
+     "correct": true,
+     "why_md": "The last frame is line 1 of `src/parking_lot/__main__.py`. The command goes through the wrapper, which imports `parking_lot.cli` directly."
+    },
+    {
+     "text_md": "`python -m` cannot run packages that live under `src/`, so use the command only",
+     "correct": false,
+     "why_md": "Python found and started `src/parking_lot/__main__.py`; the crash is inside it, at the old import."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q10",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "concept",
+    "read-tool-output"
+   ],
+   "stem_md": "A new teammate joins your group (project `parking-lot`, package `parking_lot`). The README says `uv run parking-lot park 1234ABC`; another teammate always types `uv run python -m parking_lot park 1234ABC`. Yesterday someone deleted the `[project.scripts]` table by accident, and this happened:\n\n```console\n$ uv run parking-lot park 1234ABC\nerror: Failed to spawn: `parking-lot`\n  cause: No such file or directory (os error 2)\n$ uv run python -m parking_lot park 1234ABC\nTicket for 1234ABC: 1 h\n```\n\nExplain the two doors to the new teammate.",
+   "explanation_md": "This question checks that you can tell the two doors apart: what each needs, and what breaks each one. The command door is `[project.scripts]` plus the wrapper written on install; the `-m` door is `__main__.py`. Both call the same `app`. The transcript is real: with the table deleted, uv has no `parking-lot` command to spawn, while `python -m` still runs `__main__.py`. Part 3 connects to the second of the three that bite.",
+   "section_ref": "cli-program-s3",
+   "source_ref": "S5 slides 5–6; labs/01-scaffold.md troubleshooting",
+   "origin": "lab",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "On a healthy project, what happens, step by step, when you type `uv run parking-lot park 1234ABC`?",
+     "marks": 2,
+     "model_answer_md": "`uv run` makes `.venv` match `pyproject.toml` and `uv.lock`, then runs the command `parking-lot`. That command is a wrapper uv wrote on install from `parking-lot = \"parking_lot.cli:app\"`: it imports the module `parking_lot.cli`, takes the object `app` and calls it, and typer reads `park 1234ABC`.",
+     "rubric": [
+      "Says the command comes from the `[project.scripts]` line: command → module `parking_lot.cli` → object `app`",
+      "Says a wrapper is written into the environment on install and it imports `app` and calls it",
+      "Mentions that `uv run` first brings the environment in line with `pyproject.toml` and `uv.lock`"
+     ],
+     "weak_answers_md": "A common answer is just \"uv runs `cli.py`\". It misses the mechanism the slide teaches: the name is looked up in `[project.scripts]`, and an installed wrapper imports the object and calls it. Saying \"it runs the package\" is too vague to earn either mark. Mentioning only that uv installs dependencies, without how the command is found, gets one mark at most."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Why does the second command still work after the table was deleted?",
+     "marks": 2,
+     "model_answer_md": "`python -m parking_lot` does not read `[project.scripts]` and needs no wrapper. Python finds the package and runs its `__main__.py`, which imports the same `app` from `parking_lot.cli` and calls it. The doors lead to the same program but fail independently.",
+     "rubric": [
+      "Says `python -m` runs the package's `__main__.py`",
+      "Says this door does not depend on `[project.scripts]` or the wrapper",
+      "Says both doors end at the same `app` object"
+     ],
+     "weak_answers_md": "Weak answers say \"`-m` is more reliable\" or \"it bypasses uv\". It does not bypass uv here (`uv run python` still picks the project's interpreter); it bypasses the wrapper. Full marks need the file it runs (`__main__.py`) and the reason it does not care about the deleted table."
+    },
+    {
+     "label": "3",
+     "prompt_md": "After a later rename, `uv run parking-lot` works but `uv run python -m parking_lot` fails. Which file do you check first, and why is it easy to forget?",
+     "marks": 2,
+     "model_answer_md": "`src/parking_lot/__main__.py`: it probably still imports `app.cli`. Nothing in the normal workflow loads it, because the command goes through the wrapper and the tests import `parking_lot.cli`, so only mypy or using `-m` reveals it.",
+     "rubric": [
+      "Names `__main__.py` and its import of the old name (`app.cli`)",
+      "Explains that neither the command nor the tests load `__main__.py`, so only mypy or `python -m` shows the problem"
+     ],
+     "weak_answers_md": "Naming `cli.py` or `pyproject.toml` misses that the working command proves both are fine. Naming `__main__.py` without saying why it slips through (the tests and the command never load it) earns one mark."
+    }
+   ],
+   "lines": "6–8"
+  },
+  {
+   "id": "cli-program-q11",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "In typer, what decides whether a function parameter becomes an argument or an option on the command line?",
+   "explanation_md": "The rule is about the default. `def add(merchant: str, amount: float)` has two arguments because neither has a default; `date: str = typer.Option(\"\", ...)` in the demo's `add` is an option because it has one. The type hint still matters: it is how typer converts and checks the value. The one way to have a default and stay positional is `typer.Argument(default)`, as `report`'s `path` does.",
+   "section_ref": "cli-program-s4",
+   "source_ref": "S5 slides 7–8",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "Whether it has a default: none gives an argument, one gives an option",
+     "correct": true,
+     "why_md": "Slide 7: \"a default is what turns a parameter into an option\". Slide 8 repeats it in the \"In Python\" row."
+    },
+    {
+     "text_md": "Its type hint: `str` parameters become arguments and numbers become options",
+     "correct": false,
+     "why_md": "In slide 7, `amount: float` is an argument. The type decides how the text is converted, not which kind it is."
+    },
+    {
+     "text_md": "Its position: the first parameter is the argument and the rest are options",
+     "correct": false,
+     "why_md": "The demo's `add` at `v0.4` has three arguments in a row: `merchant`, `category`, `amount`."
+    },
+    {
+     "text_md": "Whether it has a `help=` text: documented parameters become options",
+     "correct": false,
+     "why_md": "`report`'s `path` has `help=` and is an argument. Help text only shows up in `--help`."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q12",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "predict-output",
+    "read-code"
+   ],
+   "stem_md": "The `add` command of the expense-tracker at `v0.4`:\n\n```python\n@app.command()\ndef add(\n    merchant: str,\n    category: str,\n    amount: float,\n    date: str = typer.Option(\"\", help=\"YYYY-MM-DD, defaults to today.\"),\n) -> None:\n```\n\nWhich usage line does `uv run expenses add --help` print? (The typer version pinned in the course's `uv.lock` writes argument names in braces.)",
+   "explanation_md": "typer builds the usage line from the signature: the command name, `[OPTIONS]` for everything with a default, then each argument in order. Run on the repository, the help shows `Usage: expenses add [OPTIONS] {merchant} {category} {amount}`, an Arguments box with three `[required]` entries, and `--date` in the Options box. In slide 7's capitals style (`MERCHANT AMOUNT` for the lab's two-argument `add`) this line would read `MERCHANT CATEGORY AMOUNT`; braces or capitals, the reading is identical. `--help` is generated, never written.",
+   "section_ref": "cli-program-s4",
+   "source_ref": "S5 slide 7; expense-tracker v0.4 cli.py",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`Usage: expenses add [OPTIONS] {merchant} {category} {amount} {date}`",
+     "correct": false,
+     "why_md": "`date` has a default, so it is an option. Options are summarised by `[OPTIONS]` and listed as `--date` in the help."
+    },
+    {
+     "text_md": "`Usage: expenses add [OPTIONS] {merchant} {category} {amount}`",
+     "correct": true,
+     "why_md": "Three parameters without defaults are three required arguments, in order; `--date` hides inside `[OPTIONS]`."
+    },
+    {
+     "text_md": "`Usage: expenses add [OPTIONS] {merchant}`",
+     "correct": false,
+     "why_md": "This treats only the first parameter as an argument. Position does not decide; the default does."
+    },
+    {
+     "text_md": "`Usage: expenses add [OPTIONS] [merchant] [category] [amount]`",
+     "correct": false,
+     "why_md": "Square brackets mark an argument you may leave out. These three have no default, so the help marks each `[required]`."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q13",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output"
+   ],
+   "stem_md": "With the lab's `add(merchant: str, amount: float)`:\n\n```console\n$ uv run expenses add Bar Ramon 12.50\nUsage: expenses add [OPTIONS] {merchant} {amount}\nTry 'expenses add --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Invalid value for 'amount': 'Ramon' is not a valid float.                    │\n╰──────────────────────────────────────────────────────────────────────────────╯\n$ echo $?\n2\n```\n\nWhat happened?",
+   "explanation_md": "Arguments are positional, and the shell splits unquoted words, so `add` received three values: `Bar`, `Ramon`, `12.50`. typer filled `merchant` with `Bar` and tried to turn `Ramon` into the `float` the type hint asks for. That failed, so typer refused the whole command line with exit code 2 before your function ran. The type hints are the specification and the first check. Typing it as the lab does, `add \"Bar Ramon\" 12.50`, gives `Added Bar Ramon: 12.50`.",
+   "section_ref": "cli-program-s4",
+   "source_ref": "S5 slides 7–8; labs/01-scaffold.md §5",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "typer cannot read decimals such as `12.50`, so amounts must be whole numbers",
+     "correct": false,
+     "why_md": "`12.50` was never looked at, and `add \"Bar Ramon\" 12.50` works. The value typer refused is `Ramon`."
+    },
+    {
+     "text_md": "The function's own check rejected the amount, and it chose exit code 2 for that",
+     "correct": false,
+     "why_md": "The function never ran. Its own check prints `amount must be positive` and exits 1; the boxed error is typer's."
+    },
+    {
+     "text_md": "`merchant` has to be passed as `--merchant`, because its type hint is `str`",
+     "correct": false,
+     "why_md": "`merchant` has no default, so it is an argument. The type never makes something an option."
+    },
+    {
+     "text_md": "Unquoted, `Bar Ramon` is two words, so `Ramon` filled `amount` and failed",
+     "correct": true,
+     "why_md": "Arguments are filled in order: `merchant` = `Bar`, `amount` = `Ramon`. typer converts with the `float` hint before calling `add`."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q14",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept",
+    "judgement"
+   ],
+   "stem_md": "Your group's gradebook gets a `report` command. It must read a grades file, and it can round the averages to one decimal if the user asks. Following the session 5 table, how should the two be exposed?",
+   "explanation_md": "Slide 8's \"For\" row: an argument is what the command acts on, an option is how it behaves. The \"Missing\" row follows from it: a missing argument is an error, a missing option falls back to its default. The demo does the same thing: `report [path] --category --min`, where the file is an argument (optional only through `typer.Argument(\"expenses.csv\")`) and the filters are options.",
+   "section_ref": "cli-program-s5",
+   "source_ref": "S5 slide 8",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "Both as options, so that users can type them in any order they like",
+     "correct": false,
+     "why_md": "The file is what the command acts on. As an option it would silently fall back to a default when forgotten."
+    },
+    {
+     "text_md": "Both as arguments, so that the user always states both explicitly",
+     "correct": false,
+     "why_md": "Rounding is how the command behaves and has a sensible default. Forcing it on every call is noise."
+    },
+    {
+     "text_md": "The grades file as an argument, the rounding as an option with a default",
+     "correct": true,
+     "why_md": "What it acts on is an argument (missing means error); how it behaves is an option (missing means default)."
+    },
+    {
+     "text_md": "The rounding as an argument, the grades file as an option with a default",
+     "correct": false,
+     "why_md": "This reverses the table: the thing acted on becomes optional and the behaviour becomes compulsory."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q15",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "read-code",
+    "concept"
+   ],
+   "stem_md": "The expense-tracker declares `report` like this:\n\n```python\n@app.command()\ndef report(\n    path: str = typer.Argument(\"expenses.csv\", help=\"CSV file to read.\"),\n    category: str = typer.Option(\"\", help=\"Only this category.\"),\n    minimum: float = typer.Option(0.0, \"--minimum\", \"--min\", help=\"Ignore amounts below this.\"),\n) -> None:\n```\n\nWhat does `typer.Argument(\"expenses.csv\", ...)` do for `path`?",
+   "explanation_md": "A parameter with a default becomes an option \"even when a positional value was intended\", and `typer.Argument(...)` overrides that. The real help shows `Usage: expenses report [OPTIONS] [path]` with `[default: expenses.csv]`. So `uv run expenses report` reads the sample file and `uv run expenses report data/expenses.csv` reads the file that `add` writes, both positional. The two filters use `typer.Option`, which is what a default would have given them anyway, plus help text and a short alias.",
+   "section_ref": "cli-program-s5",
+   "source_ref": "S5 slide 8; expense-tracker 2ecad20",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "It keeps `path` positional but optional, defaulting to `expenses.csv`",
+     "correct": true,
+     "why_md": "Slide 8: `typer.Argument(...)` overrides the default rule. The usage line shows `[path]`, an argument you may leave out."
+    },
+    {
+     "text_md": "It makes `path` required, so `expenses report` without a file is an error",
+     "correct": false,
+     "why_md": "The first value is the default. `uv run expenses report` reads `expenses.csv`, as the README shows."
+    },
+    {
+     "text_md": "It turns `path` into an option, so users type `--path data/expenses.csv`",
+     "correct": false,
+     "why_md": "That is what a plain default would do. `typer.Argument` exists to prevent it."
+    },
+    {
+     "text_md": "It checks that the file exists before `report` is allowed to run",
+     "correct": false,
+     "why_md": "typer does not check files here. A missing file is handled by `report` itself: `could not read nosuch.csv`, exit 1."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q16",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "predict-output"
+   ],
+   "stem_md": "Your teammate's command and its help:\n\n```python\n@app.command()\ndef park(plate: str, hours: int = 1) -> None:\n```\n\n```text\n Usage: parking-lot park [OPTIONS] {plate}\n\n╭─ Arguments ──────────────────────────────────────────────────────────────────╮\n│ *    plate      <str>  [required]                                            │\n╰──────────────────────────────────────────────────────────────────────────────╯\n╭─ Options ────────────────────────────────────────────────────────────────────╮\n│ --hours        <int>  [default: 1]                                           │\n│ --help                Show this message and exit.                            │\n╰──────────────────────────────────────────────────────────────────────────────╯\n```\n\nWhich of these commands does typer accept?",
+   "explanation_md": "Read the help as the table: `{plate}` after `[OPTIONS]` is a required argument, typed by position; `--hours` is an option with `[default: 1]`, typed by name or left out. All three wrong commands are refused by typer itself with exit code 2 before `park` runs, each with the message quoted in its explanation. The help was generated from the two-parameter signature; nobody wrote it.",
+   "section_ref": "cli-program-s5",
+   "source_ref": "S5 slides 7–8",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`uv run parking-lot park --plate 1234ABC`",
+     "correct": false,
+     "why_md": "`plate` has no default, so it is an argument with no `--plate` form. Real result: `No such option: --plate`."
+    },
+    {
+     "text_md": "`uv run parking-lot park 1234ABC --hours 3`",
+     "correct": true,
+     "why_md": "The argument by position, the option by name. Real result: `Ticket for 1234ABC: 3 h`."
+    },
+    {
+     "text_md": "`uv run parking-lot park 1234ABC 3`",
+     "correct": false,
+     "why_md": "`hours` is an option, so a bare `3` has no slot. Real result: `Got unexpected extra argument(s) (3)`."
+    },
+    {
+     "text_md": "`uv run parking-lot park --hours 3`",
+     "correct": false,
+     "why_md": "A missing argument is an error, not a default. Real result: `Missing argument 'plate'.`"
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q17",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "read-code"
+   ],
+   "stem_md": "A student gives the lab's `amount` a default, to make it optional:\n\n```python\n@app.command()\ndef add(merchant: str, amount: float = 0.0) -> None:\n```\n\n```console\n$ uv run expenses add \"Bar Ramon\" 12.50\nUsage: expenses add [OPTIONS] {merchant}\nTry 'expenses add --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Got unexpected extra argument(s) (12.50)                                     │\n╰──────────────────────────────────────────────────────────────────────────────╯\n```\n\nWhat is the cause?",
+   "explanation_md": "\"A parameter with a default becomes an option, even when a positional value was intended.\" The usage line has lost `{amount}`, and the help now lists `--amount <float> [default: 0.0]`. Worse than the error: typer now accepts `uv run expenses add \"Bar Ramon\"` and calls `add` with 0.0, so a forgotten amount is caught only by the function's own check (`amount must be positive`, exit 1) instead of by typer's `Missing argument`. The lab's troubleshooting row gives both fixes: drop the default, or use `typer.Argument(...)` if the value should be positional and optional.",
+   "section_ref": "cli-program-s5",
+   "source_ref": "S5 slide 8; labs/01-scaffold.md troubleshooting",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`12.50` is not a valid float for typer, so it is reported as an extra value",
+     "correct": false,
+     "why_md": "Floats like `12.50` convert fine; the same call worked before the change. The value has no slot, which is a different problem."
+    },
+    {
+     "text_md": "`merchant` needs a default as well, so typer can tell where it ends",
+     "correct": false,
+     "why_md": "That would turn `merchant` into `--merchant` too. Defaults caused the problem, and another one cannot cure it."
+    },
+    {
+     "text_md": "The shell split `Bar Ramon` into two words, so one word was left over",
+     "correct": false,
+     "why_md": "`\"Bar Ramon\"` is quoted, so it arrives as one value. The leftover typer names is `12.50`, not `Ramon`."
+    },
+    {
+     "text_md": "The default made `amount` the option `--amount`, so `12.50` has no slot",
+     "correct": true,
+     "why_md": "The usage line no longer lists `{amount}`. A positional value with nowhere to go is an extra argument."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q18",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "read-code"
+   ],
+   "stem_md": "The README of the expense-tracker says `uv run expenses report data/expenses.csv`. A teammate tidies `report` by replacing\n\n```python\npath: str = typer.Argument(\"expenses.csv\", help=\"CSV file to read.\"),\n```\n\nwith `path: str = \"expenses.csv\",`. Now:\n\n```console\n$ uv run expenses report data/expenses.csv\nUsage: expenses report [OPTIONS]\nTry 'expenses report --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Got unexpected extra argument(s) (data/expenses.csv)                         │\n╰──────────────────────────────────────────────────────────────────────────────╯\n```\n\nWhat has happened?",
+   "explanation_md": "Removing `typer.Argument` left a plain default, and a default turns a parameter into an option. The real help now reads:\n\n```text\n Usage: expenses report [OPTIONS]\n\n╭─ Options ────────────────────────────────────────────────────────────────────╮\n│ --path                 <str>    [default: expenses.csv]                      │\n│ --category             <str>    Only this category.                          │\n│ --minimum,--min        <float>  Ignore amounts below this. [default: 0.0]    │\n│ --help                          Show this message and exit.                  │\n╰──────────────────────────────────────────────────────────────────────────────╯\n```\n\nThe tidy-up changed the interface and broke the README's example. It also breaks the demo's own test from session 8: `runner.invoke(app, [\"report\", \"nosuch.csv\"])` now gets exit code 2 instead of 1 (`assert 2 == 1`). Restore `typer.Argument(\"expenses.csv\", ...)`.",
+   "section_ref": "cli-program-s5",
+   "source_ref": "S5 slide 8; expense-tracker v0.4 cli.py and tests/test_io.py",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`data/expenses.csv` does not exist yet, so typer refuses to accept the path",
+     "correct": false,
+     "why_md": "typer does not check files. A missing file is handled inside `report`: `could not read ...`, exit 1. The box is about an extra argument."
+    },
+    {
+     "text_md": "The README is out of date: `report` never accepted a file path at all",
+     "correct": false,
+     "why_md": "It did, from `v0.1` to `v0.4`, through `typer.Argument`. The README describes the real interface."
+    },
+    {
+     "text_md": "The plain default made `path` the option `--path`, so the file has no slot",
+     "correct": true,
+     "why_md": "The usage line lost `[path]`. Restoring `typer.Argument` brings back the positional, optional file."
+    },
+    {
+     "text_md": "typer only accepts paths that start with `./`, so it needs `./data/expenses.csv`",
+     "correct": false,
+     "why_md": "No such rule exists. typer receives a string either way; the problem is that the string has no slot."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q19",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "compare",
+    "read-code"
+   ],
+   "stem_md": "You inherit a parking script built on `argparse`:\n\n```python\nparser = argparse.ArgumentParser()\nparser.add_argument(\"plate\")\nparser.add_argument(\"--hours\", type=int, default=1)\n```\n\n```console\n$ python park.py --help\nusage: park.py [-h] [--hours HOURS] plate\n\npositional arguments:\n  plate\n\noptions:\n  -h, --help     show this help message and exit\n  --hours HOURS\n```\n\nWhich typer signature describes the same command-line interface?",
+   "explanation_md": "Slide 10's argparse code and the typer rule describe the same table. In argparse a name without dashes is positional and `--hours` with `default=1` is an option; in typer a parameter without a default is an argument and one with a default is an option, and the type hint does the job of `type=int`. Both versions refuse a call without a plate with exit code 2 (`park.py: error: the following arguments are required: plate` and `Missing argument 'plate'.`). argparse needs no dependency but more code; this course uses typer.",
+   "section_ref": "cli-program-s5",
+   "source_ref": "S5 slide 10; S5 slides 7–8",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`def park(plate: str, hours: int = 1) -> None`",
+     "correct": true,
+     "why_md": "No default makes `plate` an argument; the default makes `hours` the option `--hours`; `int` matches `type=int`."
+    },
+    {
+     "text_md": "`def park(plate: str = \"\", hours: int = 1) -> None`",
+     "correct": false,
+     "why_md": "The default turns `plate` into `--plate`, an option. In argparse it is positional and required."
+    },
+    {
+     "text_md": "`def park(plate: str, hours: int) -> None`",
+     "correct": false,
+     "why_md": "Without a default, `hours` becomes a second required argument instead of an optional `--hours`."
+    },
+    {
+     "text_md": "`def park(hours: int, plate: str = \"\") -> None`",
+     "correct": false,
+     "why_md": "This swaps the roles: `hours` becomes the required argument and `plate` an option."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q20",
+   "type": "sort",
+   "level": "core",
+   "skills": [
+    "read-code",
+    "concept"
+   ],
+   "stem_md": "Each line is a parameter from a real typer command seen in this module. Sort it by what typer makes of it on the command line.",
+   "explanation_md": "One rule and one override sort every line. No default: required argument. A plain default (or `typer.Option`): option. `typer.Argument(default)`: optional argument, written in square brackets in the usage line. The type hint never decides the kind; it only tells typer how to convert the text. Every classification here matches the real `--help` output of the command it comes from.",
+   "section_ref": "cli-program-s5",
+   "source_ref": "S5 slides 7–8; expense-tracker cli.py; labs/01-scaffold.md",
+   "origin": "slides",
+   "verified_by": "run",
+   "categories": [
+    {
+     "id": "required",
+     "label": "Required argument"
+    },
+    {
+     "id": "optional",
+     "label": "Optional argument"
+    },
+    {
+     "id": "option",
+     "label": "Option"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "`merchant: str` in the lab's `add`",
+     "category": "required",
+     "why_md": "No default, so it is an argument, and a missing argument is an error."
+    },
+    {
+     "text_md": "`amount: float` in the lab's `add`",
+     "category": "required",
+     "why_md": "The type is `float`, but types do not make options. No default, so required argument."
+    },
+    {
+     "text_md": "`path: str = typer.Argument(\"expenses.csv\", help=\"CSV file to read.\")` in `report`",
+     "category": "optional",
+     "why_md": "`typer.Argument` keeps it positional; its default makes it optional, shown as `[path]`."
+    },
+    {
+     "text_md": "`category: str = typer.Option(\"\", help=\"Only this category.\")` in `report`",
+     "category": "option",
+     "why_md": "Given by name as `--category dining`; missing means the empty default, all categories."
+    },
+    {
+     "text_md": "`date: str = typer.Option(\"\", help=\"YYYY-MM-DD, defaults to today.\")` in the demo's `add`",
+     "category": "option",
+     "why_md": "How the command behaves: a different date from today. Typed as `--date 2026-03-01`."
+    },
+    {
+     "text_md": "`plate: str` in `park`",
+     "category": "required",
+     "why_md": "What the command acts on, with no default: `parking-lot park 1234ABC`."
+    },
+    {
+     "text_md": "`hours: int = 1` in `park`",
+     "category": "option",
+     "why_md": "A plain default makes an option: `--hours 3`, or 1 when left out."
+    },
+    {
+     "text_md": "`amount: float = 0.0` in a student's `add`",
+     "category": "option",
+     "why_md": "The default turned it into `--amount`, which is why `add \"Bar Ramon\" 12.50` is refused."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q21",
+   "type": "open",
+   "level": "hard",
+   "skills": [
+    "compare",
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "The same parking command, written twice. The `argparse` version, run without a plate:\n\n```python\nparser = argparse.ArgumentParser()\nparser.add_argument(\"plate\")\nparser.add_argument(\"--hours\", type=int, default=1)\n```\n\n```console\n$ python park.py\nusage: park.py [-h] [--hours HOURS] plate\npark.py: error: the following arguments are required: plate\n$ echo $?\n2\n```\n\nThe typer version, run the same way:\n\n```python\n@app.command()\ndef park(plate: str, hours: int = 1) -> None:\n    ...\n```\n\n```console\n$ uv run parking-lot park --hours 3\nUsage: parking-lot park [OPTIONS] {plate}\nTry 'parking-lot park --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Missing argument 'plate'.                                                    │\n╰──────────────────────────────────────────────────────────────────────────────╯\n$ echo $?\n2\n```",
+   "explanation_md": "A compare question in the teacher's style: two artefacts that do the same job, then a judgement. Both outputs are real runs. The links to make are slide 8's table (argument for what the command acts on, option for how it behaves), slide 10's verdict on argparse (\"no dependency, more code\", \"worth recognising\"), and slide 9's exit codes (non-zero is failure, whoever produced it).",
+   "section_ref": "cli-program-s5",
+   "source_ref": "S5 slides 7–10",
+   "origin": "slides",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Both versions describe the same interface. Which value is the argument and which the option, and how does each library decide?",
+     "marks": 2,
+     "model_answer_md": "`plate` is the argument: it is what the command acts on and it is required. `--hours` is an option with default 1. argparse decides by the name you register (no dashes is positional, `--hours` an option); typer decides by the signature (no default is an argument, a default an option).",
+     "rubric": [
+      "Identifies `plate` as the required argument and `--hours` as the option with default 1",
+      "argparse's rule: a name without dashes is positional, a `--` name is an option",
+      "typer's rule: no default gives an argument, a default gives an option"
+     ],
+     "weak_answers_md": "Many answers name the argument and the option correctly but stop there, which is one mark. Saying typer decides by the type (\"int becomes an option\") is the classic confusion: `amount: float` in the lab is an argument. Saying argparse decides by `default=` alone misses that the dashes do the work."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Give one reason the course uses typer, and one reason argparse is still worth recognising.",
+     "marks": 2,
+     "model_answer_md": "typer: the type hints are the specification, so the parser, the conversion to `int` and the `--help` page come from one signature with less code. argparse ships with Python, needs no dependency, and is common in code you will inherit.",
+     "rubric": [
+      "A typer reason from the session: one signature is the spec; conversion from type hints; `--help` generated; less code",
+      "An argparse reason: standard library, no dependency; met in inherited code"
+     ],
+     "weak_answers_md": "\"typer is newer\" or \"argparse is old\" are not reasons. \"typer is faster\" is not true in any way the course discussed. The slide's own words are the safest: argparse is \"no dependency, more code\" and \"worth recognising in code you inherit\"."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Both runs end with exit code 2. What does that tell a script or CI that runs the command?",
+     "marks": 1,
+     "model_answer_md": "Any non-zero code means failure, so an `&&` chain stops and a CI step turns red. Here the library refused the command line before the program's own code ran.",
+     "rubric": [
+      "Non-zero is read as failure by `&&`, scripts and CI",
+      "Notes that the library rejected the input before the program's logic ran"
+     ],
+     "weak_answers_md": "Answers that say \"2 means two errors\" or \"2 is a warning\" misread exit codes: only 0 is success. Mentioning that a human sees the message is not the point; tools read the number."
+    }
+   ],
+   "lines": "5–8"
+  },
+  {
+   "id": "cli-program-q22",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "A command finishes and you type `echo $?`. Which reading of the number is right?",
+   "explanation_md": "\"0 means success; anything else means failure.\" `echo $?` prints the exit code of the last command. In typer you set it with `raise typer.Exit(code=1)`. The number matters because \"every tool downstream reads that number: the shell, `&&`, CI\". A human may read the message; machines read only the code.",
+   "section_ref": "cli-program-s6",
+   "source_ref": "S5 slide 9",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "`1` means the command succeeded and `0` means it did nothing",
+     "correct": false,
+     "why_md": "Inverted. Slide 9: 0 means success."
+    },
+    {
+     "text_md": "`0` means success, and any other number means failure",
+     "correct": true,
+     "why_md": "Slide 9, word for word. Every downstream tool reads it this way."
+    },
+    {
+     "text_md": "The number counts the error lines the command printed",
+     "correct": false,
+     "why_md": "It is a status the program chooses, such as `typer.Exit(code=1)`; nothing is counted."
+    },
+    {
+     "text_md": "Only negative numbers mean failure; positive ones are warnings",
+     "correct": false,
+     "why_md": "There are no warning codes. Anything other than 0 is failure."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q23",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-code",
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "A teammate wrote:\n\n```python\n@app.command()\ndef add(merchant: str, amount: float) -> None:\n    if amount <= 0:\n        print(\"amount must be positive\")\n        return\n    typer.echo(f\"Added {merchant}: {amount:.2f}\")\n```\n\n```console\n$ uv run expenses add \"Bar Ramon\" 0\namount must be positive\n$ echo $?\n0\n$ uv run expenses add \"Bar Ramon\" 0 && echo \"expense saved\"\namount must be positive\nexpense saved\n```\n\nWhat is wrong?",
+   "explanation_md": "The human reads \"amount must be positive\"; every tool reads 0 and concludes the expense was saved. `&&` ran `echo \"expense saved\"`, a CI step would stay green, and a script would carry on. The lab's shape ends the error path with `typer.echo(..., err=True)` and `raise typer.Exit(code=1)`, and its second test asserts `result.exit_code == 1`, which would catch this version immediately. Real runs: this code gives `echo $?` 0; the lab's code gives 1.",
+   "section_ref": "cli-program-s6",
+   "source_ref": "S5 slide 9; labs/01-scaffold.md §5–6",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The `&&` is the mistake; with `;` the second command would have been skipped",
+     "correct": false,
+     "why_md": "`;` runs the next command whatever happens. `&&` is the right operator, and it did its job: it trusted the 0."
+    },
+    {
+     "text_md": "`print` must become `typer.echo`, because only typer's output sets the exit code",
+     "correct": false,
+     "why_md": "How you print does not set the exit code. `typer.echo` followed by `return` still exits 0."
+    },
+    {
+     "text_md": "The check should be `amount < 0`, so that a zero amount is accepted as valid",
+     "correct": false,
+     "why_md": "That changes the rule and leaves the problem: whatever the rule, a rejected input must end with a non-zero exit."
+    },
+    {
+     "text_md": "It exits 0 after an error, so tools read success; raise `typer.Exit(code=1)`",
+     "correct": true,
+     "why_md": "A program that prints an error and exits 0 is a program that lies. `&&` ran the next command because of that 0."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q24",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "predict-output"
+   ],
+   "stem_md": "The lab's `add` exits with code 1 when the amount is not positive. What appears in the terminal?\n\n```console\n$ uv run expenses add \"Bar Ramon\" 0 && uv run expenses add Zara 39.90\n```",
+   "explanation_md": "`&&` reads the exit code of its left side: 0 runs the right side, anything else stops. Real runs: with the lab's `add`, only `amount must be positive` appears and the chain's status is 1. With the version that prints and returns, the same line prints `amount must be positive` and then `Added Zara: 39.90`. This is why the partial-submission check is written as `uv run ruff check . && ... && uv run pytest`: each step only runs if the one before told the truth about success.",
+   "section_ref": "cli-program-s6",
+   "source_ref": "S5 slide 9; labs/01-scaffold.md §5",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`amount must be positive` only; the second `add` never runs",
+     "correct": true,
+     "why_md": "The first command exits 1, and `&&` runs the right side only after a 0."
+    },
+    {
+     "text_md": "`amount must be positive`, then `Added Zara: 39.90`",
+     "correct": false,
+     "why_md": "This is what the lying version prints: it exits 0, so `&&` carries on. Real run, wrong program."
+    },
+    {
+     "text_md": "`Added Zara: 39.90` only, because a chain hides error messages",
+     "correct": false,
+     "why_md": "Nothing hides the message: it is printed to stderr, which the terminal shows."
+    },
+    {
+     "text_md": "Nothing, because `&&` checks that both commands will succeed first",
+     "correct": false,
+     "why_md": "`&&` runs left to right. The left command runs and prints; only then is its code checked."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q25",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "```python\n@app.command()\ndef add(merchant: str, amount: float) -> None:\n    if amount <= 0:\n        typer.echo(\"amount must be positive\", err=True)\n        raise typer.Exit()\n    typer.echo(f\"Added {merchant}: {amount:.2f}\")\n```\n\n```console\n$ uv run expenses add \"Bar Ramon\" 0\namount must be positive\n$ echo $?\n0\n```\n\nWhich change makes the command tell the truth?",
+   "explanation_md": "The message is right and it goes to stderr, as session 7 asks, but the program still says \"success\". `typer.Exit()` with no argument is a normal exit, code 0: real run, `echo $?` printed 0 and `&& echo \"expense saved\"` ran. Slide 9 and the lab both write `raise typer.Exit(code=1)`. Careful reading is the skill here: the code looks like the lab's shape and differs by one argument.",
+   "section_ref": "cli-program-s6",
+   "source_ref": "S5 slide 9; labs/01-scaffold.md §5",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Remove `err=True`, so the message goes to standard output",
+     "correct": false,
+     "why_md": "Which channel the message uses does not change the exit code; it would still be 0."
+    },
+    {
+     "text_md": "Replace `raise typer.Exit()` with `return`, so the function ends cleanly",
+     "correct": false,
+     "why_md": "`return` ends the command normally, which is exit code 0: the same lie."
+    },
+    {
+     "text_md": "Give the exit a non-zero code: `raise typer.Exit(code=1)`",
+     "correct": true,
+     "why_md": "A bare `typer.Exit()` uses code 0. Slide 9 spells out `code=1`."
+    },
+    {
+     "text_md": "Move the amount check into the `@app.callback()`, which runs first",
+     "correct": false,
+     "why_md": "The callback runs before every command and does not receive `amount`. Where the check lives does not set the code."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q26",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "These are your group's two tests from lab 01 §6. After a teammate edits `add`, pytest prints:\n\n```text\n    def test_add_rejects_a_non_positive_amount() -> None:\n        result = runner.invoke(app, [\"add\", \"Bar Ramon\", \"0\"])\n>       assert result.exit_code == 1\nE       assert 0 == 1\nE        +  where 0 = <Result okay>.exit_code\n\ntests/test_cli.py:16: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_cli.py::test_add_rejects_a_non_positive_amount - assert 0 == 1\n========================= 1 failed, 1 passed in 0.04s ==========================\n```\n\nWhen they run `uv run expenses add \"Bar Ramon\" 0` by hand, the terminal shows `amount must be positive`. What can you conclude?",
+   "explanation_md": "The assertion compares the real exit code (0) with the expected one (1), and `<Result okay>` confirms the command ended normally. Unlike the sample paper's discount question, you can tell which side is right here: lab 01 says the command must have \"a non-zero exit when the input makes no sense\", and slide 9 calls the alternative a program that lies. Session 8 named this test's job: \"Session 5's exit code, now checked by a machine.\" Real run: replacing `raise typer.Exit(code=1)` with `print` and `return` produced exactly this failure.",
+   "section_ref": "cli-program-s6",
+   "source_ref": "S5 slide 9; labs/01-scaffold.md §6; S8 slide 21",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The test is wrong: the message appears, so the command handles the case",
+     "correct": false,
+     "why_md": "The message is for people. The test checks the number that `&&`, CI and scripts read, and the lab asks for a non-zero exit."
+    },
+    {
+     "text_md": "The test is flaky because `CliRunner` is unreliable; rerun it until it passes",
+     "correct": false,
+     "why_md": "Nothing here is random: the command exits 0 every time with this input."
+    },
+    {
+     "text_md": "Change the test to expect `0`, since that is what the command returns now",
+     "correct": false,
+     "why_md": "That makes the test agree with the lie. The lab's requirement is a non-zero exit when the input makes no sense."
+    },
+    {
+     "text_md": "The command prints its error but exits 0; fix the command, not the test",
+     "correct": true,
+     "why_md": "`<Result okay>` with code 0 means a normal exit. The specification (non-zero on bad input) is clear, so the code is wrong."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q28",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "read-code",
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "A teammate pushes this command for the expense-tracker:\n\n```python\n@app.command()\ndef add(merchant: str = \"\", category: str = \"\", amount: float = 0.0) -> None:\n    if amount <= 0:\n        print(\"Error: amount must be positive\")\n        return\n    print(f\"added {merchant} ({category}) {amount:.2f}\")\n```\n\n```console\n$ uv run expenses add \"Bar Ramon\" dining 12.50\nUsage: expenses add [OPTIONS]\nTry 'expenses add --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Got unexpected extra argument(s) (Bar Ramon dining 12.50)                    │\n╰──────────────────────────────────────────────────────────────────────────────╯\n$ uv run expenses add --merchant \"Bar Ramon\" --category dining --amount 0\nError: amount must be positive\n$ echo $?\n0\n$ uv run expenses add --amount 12.50\nadded  () 12.50\n$ echo $?\n0\n```",
+   "explanation_md": "This is the teacher's \"read code and say what is wrong\" shape applied to session 5: the interface (slide 8, a default makes an option) and the exit behaviour (slide 9, a program that lies). The transcript is a real run of this code. A strong answer names a cause, shows the consequence from the transcript, and links each fix to its problem, in prose.",
+   "section_ref": "cli-program-s6",
+   "source_ref": "S5 slides 8–9; labs/01-scaffold.md §5",
+   "origin": "lab",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "What is wrong with the interface, that is, how values are given? Name two problems a user would hit.",
+     "marks": 2,
+     "model_answer_md": "All three parameters have defaults, so typer made them options. The natural call `add \"Bar Ramon\" dining 12.50` is refused as extra arguments, and a missing value silently becomes its default: `add --amount 12.50` is accepted with no merchant or category.",
+     "rubric": [
+      "Says the defaults turned `merchant`, `category` and `amount` into options",
+      "Explains the positional call is rejected (`Got unexpected extra argument(s)`)",
+      "Explains missing values silently fall back to empty defaults (`added  () 12.50`)"
+     ],
+     "weak_answers_md": "\"The command is hard to use\" or \"too many options\" names a feeling, not a cause. The cause is the defaults, and full marks need one consequence each: the refused positional call and the silently accepted empty merchant. Answers blaming the types (`float`) have the rule backwards."
+    },
+    {
+     "label": "2",
+     "prompt_md": "What is wrong with the exit behaviour, and who is misled by it?",
+     "marks": 2,
+     "model_answer_md": "On bad input it prints an error and returns, so the exit code is 0: a program that lies. `&&`, CI and a test on `exit_code` all read success. The message also goes to standard output instead of stderr.",
+     "rubric": [
+      "Says it prints an error but exits 0 (`echo $?` shows 0)",
+      "Names a downstream reader that is misled: `&&`, CI, a script or a test on `exit_code`",
+      "Notes the error goes to standard output via `print` rather than to stderr"
+     ],
+     "weak_answers_md": "Saying only \"it should use `typer.echo`\" misses the point: the function that prints does not set the exit code. Saying \"the user sees the error, so it is fine\" is exactly the misconception slide 9 targets. One mark for noticing exit 0, the second for naming who is misled."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Describe in words how you would fix both problems, and which problem each change solves.",
+     "marks": 2,
+     "model_answer_md": "Remove the defaults so the three values become required arguments; that fixes the refused call and the empty values. End the error path with the message on stderr and `typer.Exit` with code 1, so every tool sees the failure.",
+     "rubric": [
+      "Remove the defaults (or use `typer.Argument`) so what the command acts on becomes arguments, linked to the interface problem",
+      "End the error path with a non-zero exit (`typer.Exit(code=1)`), message to stderr, linked to the exit problem"
+     ],
+     "weak_answers_md": "Fixes without the link to a problem lose a mark each. \"Add validation\" is not a fix: the validation exists, it just exits 0. \"Make merchant required with a check inside the function\" keeps the wrong interface and adds code typer would give you for free."
+    }
+   ],
+   "lines": "6–8"
+  },
+  {
+   "id": "cli-program-q29",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "concept",
+    "judgement"
+   ],
+   "stem_md": "During the lab a teammate says: \"Exit codes do not matter. If the input is bad, the user can read the message on the screen.\" Your group's CI runs `uv sync --locked`, then ruff, mypy and pytest on every push, and the partial-submission rubric asks that bad input give \"a clear message and a non-zero exit code, not a traceback\".",
+   "explanation_md": "A judgement question built from slide 9 (\"every tool downstream reads that number\"), lab 01 §6 (the failure test asserts `exit_code == 1`), session 8's `CliRunner` slide and the partial-submission rubric. Full marks need named readers of the number and a concrete failure, not a general statement that exit codes are good practice.",
+   "section_ref": "cli-program-s6",
+   "source_ref": "S5 slide 9; labs/01-scaffold.md §6; S8 slide 21; partial-rubric",
+   "origin": "slides",
+   "verified_by": "source",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Name two things, other than a person reading the screen, that read a command's exit code, and what each does with it.",
+     "marks": 2,
+     "model_answer_md": "The shell: `&&` runs the next command only when the previous one exited 0, and `$?` holds the number for scripts. CI: a step that exits non-zero fails and turns the run red. Tests: `CliRunner` gives `result.exit_code`, so a test can assert it.",
+     "rubric": [
+      "The shell: `&&` runs the next command only after 0, or `$?` in a script",
+      "CI: a step that exits non-zero turns the check red",
+      "Tests: `CliRunner` exposes `exit_code` for an assertion"
+     ],
+     "weak_answers_md": "\"The computer\" or \"the system\" is too vague to score. Each mark needs a named reader and what it does with the number. Listing ruff and mypy as readers of your command's exit code confuses the tools CI runs with the readers of their results."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Explain the slide's sentence \"A program that prints an error and exits 0 is a program that lies\" with one concrete consequence.",
+     "marks": 2,
+     "model_answer_md": "Exit 0 tells the tools the work succeeded. If `add` prints \"amount must be positive\" but exits 0, a chain such as `expenses add ... && expenses report` carries on as if the expense was saved, and CI reports success when nothing was stored.",
+     "rubric": [
+      "States that 0 is read as success by tools that never see the text",
+      "Gives a concrete consequence: the next command in an `&&` chain runs, CI stays green, or a script carries on"
+     ],
+     "weak_answers_md": "Restating the sentence earns nothing on its own. Weak answers stay abstract (\"it gives wrong information\"); full marks need the mechanism (tools read the number, not the text) and one situation where that causes harm."
+    },
+    {
+     "label": "3",
+     "prompt_md": "How would you make sure, by machine, that your command keeps exiting non-zero on bad input?",
+     "marks": 1,
+     "model_answer_md": "A `CliRunner` test that invokes the command with an invalid value, such as an amount of 0, and asserts that the exit code is 1; pytest runs it in CI on every push.",
+     "rubric": [
+      "Describes a test that runs the command with bad input and asserts the non-zero exit code"
+     ],
+     "weak_answers_md": "\"Test it manually before each push\" is not by machine. \"Check that the message is printed\" tests the part the teammate already trusts; the assertion has to be on the exit code."
+    }
+   ],
+   "lines": "5–7"
+  },
+  {
+   "id": "cli-program-q30",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Your group's topic is the parking lot. Which pair of spellings does the lab ask for?",
+   "explanation_md": "\"Python identifiers cannot contain hyphens, which is why there are two.\" Real run: `uv run python -c \"import parking-lot\"` stops with `SyntaxError: invalid syntax`, while `import parking_lot` prints `import OK`. So the project `name` and the command use hyphens, and the folder under `src/`, the wheel `packages` line and every `import` use underscores. The `[project.scripts]` line uses both: `parking-lot = \"parking_lot.cli:app\"`.",
+   "section_ref": "cli-program-s7",
+   "source_ref": "S5 slide 12; labs/01-scaffold.md §2",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`parking-lot` for the project and the command; `parking_lot` for the `src/` folder and imports",
+     "correct": true,
+     "why_md": "Distribution name with hyphens, package name with underscores, as in the lab's table."
+    },
+    {
+     "text_md": "`parking_lot` for the project and the command; `parking-lot` for the `src/` folder and imports",
+     "correct": false,
+     "why_md": "Reversed. A folder called `parking-lot` cannot be imported: `import parking-lot` is a `SyntaxError`."
+    },
+    {
+     "text_md": "`parking-lot` everywhere, because uv converts the name for Python automatically",
+     "correct": false,
+     "why_md": "uv does not rewrite your imports or your folder. The package must be a valid Python identifier."
+    },
+    {
+     "text_md": "Either spelling anywhere, as long as the whole team uses the same one",
+     "correct": false,
+     "why_md": "Consistency is not enough: hyphens are invalid in a package name, whatever the team agrees."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q31",
+   "type": "sort",
+   "level": "exam",
+   "skills": [
+    "read-code",
+    "concept"
+   ],
+   "stem_md": "You rename the template from `app` to `parking-lot` / `parking_lot`. For each occurrence of `app`, decide what it becomes.",
+   "explanation_md": "The six places are the folder, three lines of `pyproject.toml` (`name`, `[project.scripts]`, wheel `packages`), `__main__.py` and `tests/test_cli.py`. Anything Python imports takes underscores; the project's name and the command take hyphens; the typer object keeps its name. In a real rename of the template, `grep -rnI \"app\" pyproject.toml src tests` afterwards showed only the object and its imports, plus any line you missed.",
+   "section_ref": "cli-program-s7",
+   "source_ref": "labs/01-scaffold.md §2–3; S5 slide 12",
+   "origin": "lab",
+   "verified_by": "run",
+   "categories": [
+    {
+     "id": "hyphen",
+     "label": "Becomes `parking-lot` (hyphens)"
+    },
+    {
+     "id": "underscore",
+     "label": "Becomes `parking_lot` (underscores)"
+    },
+    {
+     "id": "keep",
+     "label": "Stays `app`"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "The folder `src/app/`",
+     "category": "underscore",
+     "why_md": "The folder is the package, so it must be importable: `git mv src/app src/parking_lot`."
+    },
+    {
+     "text_md": "`name = \"app\"` under `[project]`",
+     "category": "hyphen",
+     "why_md": "The distribution name, the project's identity, uses hyphens."
+    },
+    {
+     "text_md": "The command on the left of `[project.scripts]`: `app = ...`",
+     "category": "hyphen",
+     "why_md": "The command you type uses the hyphenated name: `uv run parking-lot`."
+    },
+    {
+     "text_md": "The module part on the right of `[project.scripts]`: `\"app.cli:...\"`",
+     "category": "underscore",
+     "why_md": "It is an import path, so it uses the package name: `parking_lot.cli`."
+    },
+    {
+     "text_md": "The object after the colon in `\"app.cli:app\"`",
+     "category": "keep",
+     "why_md": "That is the typer object in `cli.py`, which the rename does not touch."
+    },
+    {
+     "text_md": "`packages = [\"src/app\"]` under `[tool.hatch.build.targets.wheel]`",
+     "category": "underscore",
+     "why_md": "It names the package folder to build, so it follows the folder: `src/parking_lot`."
+    },
+    {
+     "text_md": "`from app.cli import app` in `__main__.py` (the module part)",
+     "category": "underscore",
+     "why_md": "An import of the package: `from parking_lot.cli import app`. The one everyone forgets."
+    },
+    {
+     "text_md": "`from app.cli import app` in `tests/test_cli.py` (the module part)",
+     "category": "underscore",
+     "why_md": "The tests import the package too: `from parking_lot.cli import app`."
+    },
+    {
+     "text_md": "`app = typer.Typer(help=\"...\")` in `cli.py`",
+     "category": "keep",
+     "why_md": "The lab: the only `app` left should be the typer object itself."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q32",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Checkpoint 1 is three binary items, marked at your `v0.1` tag. Which situation costs your group one of them?",
+   "explanation_md": "CP1's items: 1. `uv sync && uv run <your-app> --help` works from a clean clone; 2. `src/` layout, package importable; 3. README: what it does, how to install, how to run. They are public, binary and checkable before you submit; session 4 put it as \"a Definition of Done you cannot check yourself is a wish\". A README left as the template fails item 3 however good the code is.",
+   "section_ref": "cli-program-s8",
+   "source_ref": "S5 slide 14; S4 slide 17; labs/01-scaffold.md §7 and §10",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "The project has only one command so far, and no second command is planned yet",
+     "correct": false,
+     "why_md": "The lab asks for exactly one real command at this stage. CP1 does not count commands."
+    },
+    {
+     "text_md": "`strict = true` for mypy is not yet set in `pyproject.toml`",
+     "correct": false,
+     "why_md": "Strict typing is session 7's step. It is not a CP1 item."
+    },
+    {
+     "text_md": "The README still shows the rename banner and no way to run the program",
+     "correct": true,
+     "why_md": "Item 3: the README says what it does, how to install and how to run."
+    },
+    {
+     "text_md": "There are fewer than eight tests in the repository at the `v0.1` tag",
+     "correct": false,
+     "why_md": "Eight tests are Checkpoint 2's first item (session 8) and part of the partial submission's Tests criterion. CP1 has no item about tests; the lab only asks for two that pass today."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q33",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Before tagging `v0.1`, you run the lab's clean-clone check on `main`:\n\n```console\n$ uv sync\n...\n$ uv run parking-lot --help\nTraceback (most recent call last):\n  File \".venv/bin/parking-lot\", line 4, in <module>\n    from parking_lot.cli import app\nModuleNotFoundError: No module named 'parking_lot'\n```\n\nOn your own laptop the same command works, and there:\n\n```console\n$ git status --short\n?? src/\n```\n\nWhat is going on?",
+   "explanation_md": "\"A clean clone has no `.venv`, no caches and nothing you forgot to commit. That is the whole point of the check.\" Here the folder was moved with plain `mv` instead of `git mv` and committed with `git commit -am`, which records the deletion of `src/app` but never adds the new folder, so `git status` shows the whole `src/` as untracked. The clone has no package: CP1 items 1 and 2 would both fail at the tag. The lab's `git add -A` before committing avoids this. Real run: same steps, same traceback, and `ls src` in the clone found nothing.",
+   "section_ref": "cli-program-s8",
+   "source_ref": "labs/01-scaffold.md §9–10; S5 slide 14",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The clean clone has no `.venv`, so it needs `uv lock` before `uv sync`",
+     "correct": false,
+     "why_md": "`uv sync` built the environment without complaint. The lockfile is not the problem; the package is."
+    },
+    {
+     "text_md": "`[project.scripts]` is wrong; its left side has to match the folder name",
+     "correct": false,
+     "why_md": "The wrapper exists and runs (the traceback starts in it), so the command was installed. The import inside it fails."
+    },
+    {
+     "text_md": "The clean clone runs a different Python version from the one on the laptop",
+     "correct": false,
+     "why_md": "Nothing in the message is about versions. It is your own package that cannot be found."
+    },
+    {
+     "text_md": "The package folder was never committed, so the clone has no `src/` at all",
+     "correct": true,
+     "why_md": "`??` means untracked. The folder exists only on your laptop, which is exactly what a clean clone catches; commit it, push and check again."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q34",
+   "type": "open",
+   "level": "hard",
+   "skills": [
+    "judgement",
+    "concept"
+   ],
+   "stem_md": "Friday 25 September, 13:00, near the end of the lab. A teammate has `uv run parking-lot --help` working on their laptop and wants to tag straight away. The lab's self-check for Checkpoint 1 is:\n\n```bash\ncd /tmp && rm -rf cp1 && git clone git@github.com:esade-swdev-2026/<your-repo>.git cp1\ncd cp1 && git checkout v0.1\nuv sync\nuv run <your-app> --help\nuv run python -c \"import <your_package>; print('import OK')\"\n```",
+   "explanation_md": "This question combines CP1 (slide 14), the lab's clean-clone check (§10), the four checks (§8) and the tag (§9). Every mistake in the model answer and the rubric was reproduced in a real run: the uncommitted package folder (`No module named 'parking_lot'` in the clone), the uncommitted lockfile (`uv sync --locked` refused it), and the forgotten `__main__.py` (red at mypy).",
+   "section_ref": "cli-program-s8",
+   "source_ref": "S5 slide 14; labs/01-scaffold.md §8–10",
+   "origin": "lab",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "What does this check prove that running the command on the teammate's laptop does not?",
+     "marks": 2,
+     "model_answer_md": "It proves the tag works from what is committed: a clean clone has no `.venv`, no caches and no uncommitted files, and the commands check CP1 items 1 and 2 the way the marker will.",
+     "rubric": [
+      "A clean clone contains only committed files: no `.venv`, no caches, nothing left only on the laptop",
+      "It reproduces how CP1 items 1 and 2 are marked: install and `--help`, package importable"
+     ],
+     "weak_answers_md": "\"It checks that it works\" says nothing about why the laptop is not enough. The key word is committed: the laptop has files and an environment that the repository does not. Mentioning \"works on my machine\" without saying what differs earns one mark."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Name two session 5 mistakes that pass on the laptop but fail from a clean clone or in CI.",
+     "marks": 2,
+     "model_answer_md": "The renamed package folder left uncommitted: the laptop has it, the clone fails with `No module named 'parking_lot'`. Or a `uv.lock` refreshed on the laptop but never committed, which CI's `uv sync --locked` refuses.",
+     "rubric": [
+      "An uncommitted file or folder, such as the renamed package",
+      "A stale `uv.lock` that was not committed, refused by `uv sync --locked`",
+      "`__main__.py` still importing `app.cli`, red at mypy in CI"
+     ],
+     "weak_answers_md": "A typo in the code is not an example: it fails on the laptop too. Each mark needs a mistake that the laptop hides, and what the clone or CI shows instead."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Why does the lab ask for the four checks locally before the push, and what does the tag mean for marking?",
+     "marks": 2,
+     "model_answer_md": "The four commands are what `check.yml` runs, so passing them locally predicts a green CI run. The tag names the one commit CP1 is marked at: no tag means nothing to mark.",
+     "rubric": [
+      "The four local checks are the same as CI's, so they predict a green run",
+      "The tag names the one commit CP1 is marked against; no tag means nothing to mark"
+     ],
+     "weak_answers_md": "\"To be safe\" is not a reason. Weak answers treat the tag as a label for the whole repository; it points at one commit, and that commit is what the marker clones."
+    }
+   ],
+   "lines": "6–8"
+  },
+  {
+   "id": "cli-program-q35",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Your first push after renaming goes red. The log of the step \"Install dependencies from the lockfile\" shows:\n\n```text\nUsing CPython 3.13.15\nCreating virtual environment at: .venv\nResolved 30 packages in 210ms\nerror: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.\n\nhint: To update the lockfile, run `uv lock`.\n```\n\nWhat should you do?",
+   "explanation_md": "The first of the three that bite. `uv.lock` records the project under its old name, `app`, and CI runs `uv sync --locked`, which \"refuses a lockfile that disagrees with `pyproject.toml`\". The lab calls skipping `uv lock` \"the single most likely reason your first push goes red\". The fix is local and committed: `uv lock` (the real run prints `Removed app v0.1.0` and `Added parking-lot v0.1.0`), then commit `uv.lock` and push.",
+   "section_ref": "cli-program-s9",
+   "source_ref": "S5 slide 13; S4 slide 24; labs/01-scaffold.md §4 and troubleshooting",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Remove `--locked` from the workflow so that CI resolves the versions itself",
+     "correct": false,
+     "why_md": "That silences the referee. `--locked` is how CI guarantees it installs exactly what you committed."
+    },
+    {
+     "text_md": "Run `uv lock` locally, check that `uv.lock` changed, commit it and push",
+     "correct": true,
+     "why_md": "The committed lockfile still describes the old project. The lab's troubleshooting row says exactly this."
+    },
+    {
+     "text_md": "Delete `.venv` on your laptop and run `uv sync` again",
+     "correct": false,
+     "why_md": "CI never sees your `.venv`. The problem is a file in the repository, not your environment."
+    },
+    {
+     "text_md": "Delete `uv.lock` from the repository, since CI can regenerate it",
+     "correct": false,
+     "why_md": "With `--locked`, a missing lockfile also fails (`Unable to find lockfile`), and you lose the pinned versions."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q36",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Your first push after renaming the template to `parking-lot` / `parking_lot` goes red. Lint and Formatting are green; the run stops at the Types step:\n\n```text\nsrc/parking_lot/__main__.py:1: error: Cannot find implementation or library stub for module named \"app.cli\"  [import-not-found]\nsrc/parking_lot/__main__.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports\nFound 1 error in 1 file (checked 4 source files)\n```\n\nOn your laptop, `uv run pytest` passes. Which fix is most appropriate?",
+   "explanation_md": "The second of the three that bite: `__main__.py` still imports `app.cli`, so pytest passes, mypy fails and CI is red. The tests import `parking_lot.cli`, so pytest never loads `__main__.py`; mypy checks every file under `src` and has to resolve each import. The error is a real crash: `uv run python -m parking_lot` stops with `ModuleNotFoundError: No module named 'app'`. Read the error and fix the cause, as session 7 asks. Ignoring the line, hiding the file from mypy or rerunning CI leaves the program broken.",
+   "section_ref": "cli-program-s9",
+   "source_ref": "S5 slide 13; labs/01-scaffold.md troubleshooting; S7 slide 9",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Change line 1 of `__main__.py` to import `app` from `parking_lot.cli`",
+     "correct": true,
+     "why_md": "The import still names the package you renamed. One changed line fixes mypy and the `python -m parking_lot` door at once."
+    },
+    {
+     "text_md": "Add `# type: ignore` to line 1 of `__main__.py` so the Types step passes",
+     "correct": false,
+     "why_md": "It hides a real crash: on the same code, `uv run python -m parking_lot` fails with `ModuleNotFoundError: No module named 'app'`."
+    },
+    {
+     "text_md": "Rerun the workflow: pytest passes locally, so the Types step must be wrong",
+     "correct": false,
+     "why_md": "mypy reports the same missing module on every run. pytest passes only because the tests never load `__main__.py`."
+    },
+    {
+     "text_md": "Stop mypy from checking `__main__.py`, since no test ever imports that file",
+     "correct": false,
+     "why_md": "That moves the referee instead of fixing the code: the broken import stays and the `-m` door still crashes."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q37",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "read-code"
+   ],
+   "stem_md": "Your group replaced `greet` and `bye` with one command and did not add the empty `@app.callback()` from the lab:\n\n```python\napp = typer.Typer(help=\"A parking lot: tickets and prices.\")\n\n\n@app.command()\ndef park(plate: str, hours: int = 1) -> None:\n    ...\n```\n\n```console\n$ uv run parking-lot park 1234ABC\nUsage: parking-lot [OPTIONS] {plate}\nTry 'parking-lot --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Got unexpected extra argument(s) (1234ABC)                                   │\n╰──────────────────────────────────────────────────────────────────────────────╯\n```\n\nWhat is the cause, and the fix?",
+   "explanation_md": "The usage line is the clue: `parking-lot [OPTIONS] {plate}`, with no `COMMAND`. typer has dropped the command's name, so the word `park` filled `plate` and `1234ABC` had no slot. The help shows the same thing:\n\n```text\n Usage: parking-lot [OPTIONS] {plate}\n\n╭─ Arguments ──────────────────────────────────────────────────────────────────╮\n│ *    plate      <str>  [required]                                            │\n╰──────────────────────────────────────────────────────────────────────────────╯\n╭─ Options ────────────────────────────────────────────────────────────────────╮\n│ --hours                     <int>  [default: 1]                              │\n│ --install-completion               Install completion for the current shell. │\n│ --show-completion                  Show completion for the current shell, to │\n│                                    copy it or customize the installation.    │\n│ --help                             Show this message and exit.               │\n╰──────────────────────────────────────────────────────────────────────────────╯\n```\n\nWith the lab's four-line empty callback added, the real usage becomes `Usage: parking-lot park [OPTIONS] {plate}` and `uv run parking-lot park 1234ABC` prints `Ticket for 1234ABC: 1 h`.",
+   "section_ref": "cli-program-s9",
+   "source_ref": "S5 slide 13; labs/01-scaffold.md §5 and troubleshooting",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`plate` needs a default, so that typer can tell it apart from the command's name",
+     "correct": false,
+     "why_md": "A default would make `plate` the option `--plate`. It would not give `park` its name back."
+    },
+    {
+     "text_md": "The lockfile still lists `greet` and `bye`; run `uv lock` and `uv sync`",
+     "correct": false,
+     "why_md": "The lockfile records packages and versions, not commands. Nothing about it changed."
+    },
+    {
+     "text_md": "One command, no callback: typer took `park` as the plate; add the empty callback",
+     "correct": true,
+     "why_md": "The usage line has no `COMMAND`. The empty callback tells typer more commands will come."
+    },
+    {
+     "text_md": "`hours` needs `typer.Option(...)`, because a plain default cannot make an option",
+     "correct": false,
+     "why_md": "A plain default already makes `--hours` an option, and the help lists it. What is missing is the command's name."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q38",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output"
+   ],
+   "stem_md": "Another group made the same mistake with the lab's `add(merchant: str, amount: float)` and no callback:\n\n```console\n$ uv run expenses add \"Bar Ramon\" 12.50\nUsage: expenses [OPTIONS] {merchant} {amount}\nTry 'expenses --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Invalid value for 'amount': 'Bar Ramon' is not a valid float.                │\n╰──────────────────────────────────────────────────────────────────────────────╯\n```\n\nThe lab's troubleshooting table says this mistake shows `Got unexpected extra argument(s)`. Why is the message different here, and what is the fix?",
+   "explanation_md": "Read the usage line, not just the box: `expenses [OPTIONS] {merchant} {amount}` has no `COMMAND`, so the command's name has been dropped. typer filled `merchant` with the word `add` and `amount` with `Bar Ramon`, and the `float` conversion failed before typer noticed that `12.50` was left over. Real run: without the callback, `uv run expenses \"Bar Ramon\" 12.50` works, which proves `add` is no longer a word you type. The lab's empty `@app.callback()` brings the name back.",
+   "section_ref": "cli-program-s9",
+   "source_ref": "S5 slide 13; labs/01-scaffold.md §5 and troubleshooting",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The amount must come before the merchant; swap the two parameters in `add`",
+     "correct": false,
+     "why_md": "Swapping changes nothing: the word `add` would still fill the first parameter."
+    },
+    {
+     "text_md": "The shell joined `Bar Ramon` and `12.50`; quote the amount separately as well",
+     "correct": false,
+     "why_md": "The shell passed three words: `add`, `Bar Ramon` and `12.50`. The quotes are fine."
+    },
+    {
+     "text_md": "`float` cannot hold money; make `amount` a `str` and convert it inside `add`",
+     "correct": false,
+     "why_md": "That throws away typer's type check, and the name `add` would still be swallowed."
+    },
+    {
+     "text_md": "`add` filled `merchant` and `Bar Ramon` failed as `amount`; add the callback",
+     "correct": true,
+     "why_md": "typer converts values before it looks for left-over ones. Same cause as the table's row, different message."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q39",
+   "type": "mcq",
+   "level": "beyond",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "A teammate adds colour to the `report` command. On their laptop `uv run pytest` prints `24 passed`. Their commit changed only `src/expense_tracker/cli.py`, which now starts with `from colorama import Fore`. They had run `uv pip install colorama` and committed no other file. CI's `uv sync --locked` step passes, then the tests step fails:\n\n```text\ntests/test_io.py:5: in <module>\n    from expense_tracker.cli import app\nsrc/expense_tracker/cli.py:6: in <module>\n    from colorama import Fore\nE   ModuleNotFoundError: No module named 'colorama'\n=========================== short test summary info ============================\nERROR tests/test_io.py\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n```\n\nWhat is the problem, and what is the fix?",
+   "explanation_md": "\"Works on my machine\" (session 3), seen from CI's side. `uv pip install` changes the local `.venv` and nothing else, so `pyproject.toml` and `uv.lock` still describe a project without `colorama`. CI builds a fresh environment from those two files. Its `uv sync --locked` passes because the lockfile matches the project file; both are equally ignorant of the package. The first import then fails, and pytest stops at collection. `uv add colorama` edits `pyproject.toml` and `uv.lock` together; commit both. Real run: the fresh copy failed with exactly this `ModuleNotFoundError` after a passing `uv sync --locked`.",
+   "section_ref": "cli-program-s9",
+   "source_ref": "S3 slide 3; S4 slide 20; labs/01-scaffold.md",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "CI built its environment from a stale cache, so rerun the job until `colorama` appears",
+     "correct": false,
+     "why_md": "A rerun repeats the same fresh checkout and the same missing dependency. Rerunning until green is the careless move the course warns about."
+    },
+    {
+     "text_md": "Delete `.venv` on the runner and run `uv sync` again, so uv installs it from scratch",
+     "correct": false,
+     "why_md": "CI already starts from a fresh checkout. A new environment built from the same `pyproject.toml` and `uv.lock` still has no `colorama`."
+    },
+    {
+     "text_md": "Add `# type: ignore` to line 6, because the failure comes from the type checker",
+     "correct": false,
+     "why_md": "The failure is a runtime `ModuleNotFoundError` during test collection, not a mypy message. An ignore comment changes nothing about what is installed."
+    },
+    {
+     "text_md": "It lives only in their `.venv`; declare it with `uv add colorama` and commit both files",
+     "correct": true,
+     "why_md": "`pyproject.toml` is the single source of truth. `uv pip install` touched only the laptop's environment, so the project file and `uv.lock` never listed it."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q40",
+   "type": "sort",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Your group's CI runs these steps in order and stops at the first one that fails: install from the lockfile (`uv sync --locked`), Lint (`ruff check .`), Formatting (`ruff format --check .`), Types (`mypy src tests`), Tests (`pytest`). For each situation, which step is the first to go red? Assume everything else in the repository is correct.",
+   "explanation_md": "CI is the referee, not the judge: it catches what its four tools and the lockfile step can see, in order, and nothing else. Each technical case was reproduced: the stale lockfile, the unformatted file, the forgotten `__main__.py` (ruff and pytest green, mypy red) and both test failures (exit code 2 without the callback, 0 for the lying `add`). The README and the licence pass every step, which is why CP1 and the rubric have human items too.",
+   "section_ref": "cli-program-s9",
+   "source_ref": "S5 slide 13; labs/01-scaffold.md §8 and troubleshooting; project-template check.yml",
+   "origin": "lab",
+   "verified_by": "run",
+   "categories": [
+    {
+     "id": "lock",
+     "label": "Install from the lockfile"
+    },
+    {
+     "id": "format",
+     "label": "Formatting"
+    },
+    {
+     "id": "types",
+     "label": "Types"
+    },
+    {
+     "id": "tests",
+     "label": "Tests"
+    },
+    {
+     "id": "none",
+     "label": "No step goes red"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "`pyproject.toml` renamed, but the `uv.lock` in the commit is from before the rename",
+     "category": "lock",
+     "why_md": "`uv sync --locked` refuses a lockfile that disagrees with `pyproject.toml`: `needs to be updated`."
+    },
+    {
+     "text_md": "`ruff format .` was run after committing, so the committed file still has spacing the formatter would change",
+     "category": "format",
+     "why_md": "The lab's troubleshooting row: red at Formatting, green locally. `ruff format --check` reports `1 file would be reformatted`."
+    },
+    {
+     "text_md": "`__main__.py` still contains `from app.cli import app`",
+     "category": "types",
+     "why_md": "ruff and pytest pass; mypy reports `Cannot find implementation or library stub for module named \"app.cli\"`."
+    },
+    {
+     "text_md": "One command, no `@app.callback()`, and the tests invoke `[\"park\", \"1234ABC\"]`",
+     "category": "tests",
+     "why_md": "The code is valid for ruff and mypy; typer drops the command's name, so the tests get exit code 2."
+    },
+    {
+     "text_md": "`add` prints its error and returns, and a test asserts `result.exit_code == 1`",
+     "category": "tests",
+     "why_md": "Nothing is wrong for the linters or mypy; the test sees `assert 0 == 1`."
+    },
+    {
+     "text_md": "The README still shows the template's rename banner and no example",
+     "category": "none",
+     "why_md": "No CI step reads the README. It costs CP1 item 3, which a person marks."
+    },
+    {
+     "text_md": "`LICENSE` still names the lecturer as the copyright holder",
+     "category": "none",
+     "why_md": "CI does not check the licence. It is still wrong: the work is yours."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q41",
+   "type": "open",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "After renaming the template to `parking-lot` / `parking_lot`, your teammate runs the four checks before pushing:\n\n```console\n$ uv run ruff check .\nAll checks passed!\n$ uv run ruff format --check .\n6 files already formatted\n$ uv run mypy src tests\nsrc/parking_lot/__main__.py:1: error: Cannot find implementation or library stub for module named \"app.cli\"  [import-not-found]\nsrc/parking_lot/__main__.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports\nFound 1 error in 1 file (checked 4 source files)\n$ uv run pytest\n...\ntests/test_cli.py ..                                                     [100%]\n\n============================== 2 passed in 0.03s ===============================\n```",
+   "explanation_md": "The sample paper's \"read tool output\" shape (sort, judge, decide on `# type: ignore`), applied to slide 13's second trap. The output is a real run on a renamed template with `__main__.py` left alone, and `uv run python -m parking_lot` on the same code really crashes with `ModuleNotFoundError: No module named 'app'`. Session 7's rule applies too: read the error and fix the cause; an ignore comment is not a fix.",
+   "section_ref": "cli-program-s9",
+   "source_ref": "S5 slide 13; labs/01-scaffold.md troubleshooting; sample paper Q9 shape",
+   "origin": "lab",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Which check fails, on which file and line, and what does the message mean?",
+     "marks": 1,
+     "model_answer_md": "mypy fails on line 1 of `src/parking_lot/__main__.py`: it cannot find the module `app.cli`, because the package is now `parking_lot` and that import was never renamed.",
+     "rubric": [
+      "mypy, `src/parking_lot/__main__.py` line 1: the imported module `app.cli` no longer exists after the rename"
+     ],
+     "weak_answers_md": "\"mypy found a type error\" is not enough: this is a missing module, not a type disagreement. The mark needs the file and the reason (the old package name in the import)."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Why do ruff and pytest pass on the same code?",
+     "marks": 2,
+     "model_answer_md": "ruff checks each file's style and simple mistakes without finding the modules it imports. pytest only runs what the tests reach, and the tests import `parking_lot.cli`, so `__main__.py` is never loaded. mypy reads every file under `src` and resolves each import.",
+     "rubric": [
+      "ruff does not resolve imports",
+      "pytest only loads what the tests import (`parking_lot.cli`), never `__main__.py`",
+      "mypy checks every file under `src` and resolves each import"
+     ],
+     "weak_answers_md": "\"pytest does not check types\" is true and not the reason: the problem is a missing module, which pytest would report if it ever imported the file. The point is which files each tool actually reads."
+    },
+    {
+     "label": "3",
+     "prompt_md": "The teammate proposes adding `# type: ignore` to that line to get CI green before the tag. Do you accept? Give your reasoning.",
+     "marks": 2,
+     "model_answer_md": "No. The error is a real crash: `uv run python -m parking_lot` fails with `ModuleNotFoundError: No module named 'app'`. The ignore would hide a broken door and keep a wrong name in the code. The proper fix is one change: import from `parking_lot.cli`.",
+     "rubric": [
+      "Rejects the ignore",
+      "Explains it is a real failure for anyone using `python -m`, not a false alarm",
+      "Gives the proper fix: update the import to the new package name"
+     ],
+     "weak_answers_md": "Accepting \"because CI must be green for the tag\" treats the referee as the obstacle. A \"no\" without a reason scores one mark at most; full marks need the real consequence (the `-m` door crashes) and the one-word fix."
+    }
+   ],
+   "lines": "5–8"
+  },
+  {
+   "id": "cli-program-q42",
+   "type": "open",
+   "level": "beyond",
+   "skills": [
+    "read-tool-output",
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "A group has one command and no callback. Its CLI and the lab's two tests:\n\n```python\napp = typer.Typer(help=\"A terminal expense tracker.\")\n\n\n@app.command()\ndef add(merchant: str, amount: float) -> None:\n    if amount <= 0:\n        typer.echo(\"amount must be positive\", err=True)\n        raise typer.Exit(code=1)\n    typer.echo(f\"Added {merchant}: {amount:.2f}\")\n```\n\n```text\n>       assert result.exit_code == 0\nE       assert 2 == 0\nE        +  where 2 = <Result SystemExit(2)>.exit_code\n\ntests/test_cli.py:10: AssertionError\n...\n>       assert result.exit_code == 1\nE       assert 2 == 1\nE        +  where 2 = <Result SystemExit(2)>.exit_code\n\ntests/test_cli.py:16: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_cli.py::test_add_reports_the_merchant - assert 2 == 0\nFAILED tests/test_cli.py::test_add_rejects_a_non_positive_amount - assert 2 == 1\n============================== 2 failed in 0.12s ===============================\n```\n\nThe tests call `runner.invoke(app, [\"add\", \"Bar Ramon\", \"12.50\"])` and `runner.invoke(app, [\"add\", \"Bar Ramon\", \"0\"])`.",
+   "explanation_md": "A small step beyond slide 13: the lab says to keep the callback and adds \"Delete it later if you ever want the one-command form.\" This question asks why that choice matters. The test output is a real run of the lab's two tests against this code. Exit code 2 is the clue that typer, not your function, rejected the input; session 8's `CliRunner` exposes it as `result.exit_code`.",
+   "section_ref": "cli-program-s9",
+   "source_ref": "S5 slide 13; labs/01-scaffold.md §5–6",
+   "origin": "lab",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Why do both tests fail, and why with exit code 2 rather than 0 or 1?",
+     "marks": 2,
+     "model_answer_md": "With one command and no callback, typer treats `add` as the whole program, so the word `add` is read as the merchant and the other values no longer fit. typer refuses the command line before `add` runs: exit 2 is typer's usage error, while 1 is what the command's own check returns.",
+     "rubric": [
+      "Identifies a single command with no `@app.callback()`, so typer drops the command's name",
+      "Explains that `add` is consumed as the first argument and typer rejects the input",
+      "Explains that 2 comes from typer refusing the command line, distinct from the command's own exit 1"
+     ],
+     "weak_answers_md": "\"The amount check is wrong\" misses that `add` never ran: both tests got the same 2, whatever the amount. Answers that see the missing callback but cannot say why the code is 2 earn one mark."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Describe the fix in words.",
+     "marks": 1,
+     "model_answer_md": "Add the lab's empty `@app.callback()` function above the command, so typer expects several commands and `add` keeps its name.",
+     "rubric": [
+      "Add an empty `@app.callback()` so the command keeps its name"
+     ],
+     "weak_answers_md": "\"Rewrite the tests without `add`\" makes the tests agree with the accident and breaks every README example. \"Add a second command\" works but adds a feature to fix a structural problem."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Without the callback, `uv run expenses \"Bar Ramon\" 12.50` works. Why does the lab still tell you to keep it?",
+     "marks": 2,
+     "model_answer_md": "The project will grow more commands (the demo has `report` and `add`), and the README, tests and users all call `<app> <command>`. Keeping the name from the start means a second command later changes nothing that already calls the first.",
+     "rubric": [
+      "More commands will come, so each needs its own name",
+      "Changing the interface later breaks README examples, users' habits and tests that call `<app> <command>`"
+     ],
+     "weak_answers_md": "\"Because the lab says so\" scores nothing. A good answer treats the command line as an interface other people depend on: changing it later breaks them, as the failing tests here show."
+    }
+   ],
+   "lines": "5–8"
+  },
+  {
+   "id": "cli-program-q43",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "read-tool-output",
+    "predict-output"
+   ],
+   "stem_md": "Slide 7 prints the usage line of the lab's `add(merchant: str, amount: float)` in capitals:\n\n```text\nUsage: expenses add [OPTIONS] MERCHANT AMOUNT\n```\n\nWhich call does typer accept?",
+   "explanation_md": "The usage line is generated from the signature: the command name, `[OPTIONS]` for everything with a default, then each argument in order. Slide 7 writes argument names in capitals; the typer pinned in the course's `uv.lock` writes `{merchant} {amount}`. Both say the same thing: two required values, typed by position, merchant first. A placeholder is never typed literally, and an argument has no `--name`. All four calls were run against the lab's `add`; typer refuses the three wrong ones with exit code 2 before `add` runs.",
+   "section_ref": "cli-program-s4",
+   "source_ref": "S5 slide 7; labs/01-scaffold.md §5",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`uv run expenses add --merchant \"Bar Ramon\" --amount 12.50`",
+     "correct": false,
+     "why_md": "Names after `[OPTIONS]` are arguments, typed by position; neither has a `--` form. Real run: `No such option: --merchant`, exit 2."
+    },
+    {
+     "text_md": "`uv run expenses add 12.50 \"Bar Ramon\"`",
+     "correct": false,
+     "why_md": "Arguments are filled in order, so `12.50` becomes the merchant and `Bar Ramon` fails the `float` conversion: `Invalid value for 'amount'`, exit 2."
+    },
+    {
+     "text_md": "`uv run expenses add \"Bar Ramon\" 12.50`",
+     "correct": true,
+     "why_md": "Two arguments in the order the usage line lists them; `[OPTIONS]` may be left out. Real run: `Added Bar Ramon: 12.50`, exit 0."
+    },
+    {
+     "text_md": "`uv run expenses add MERCHANT=\"Bar Ramon\" AMOUNT=12.50`",
+     "correct": false,
+     "why_md": "The capitals are placeholders that you replace, never keywords you type. typer takes `AMOUNT=12.50` as the amount and refuses it as not a valid float, exit 2."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q44",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "judgement",
+    "concept"
+   ],
+   "stem_md": "At 13:04 your group finishes the lab with these commands, and the Actions tab goes green:\n\n```bash\ngit add -A\ngit commit -m \"Scaffold the project\"\ngit push\ngit tag -a v0.1 -m \"Scaffolded project\"\n```\n\nThe next day the marker reports that the repository has no `v0.1`, so there is nothing to mark for Checkpoint 1. What went wrong?",
+   "explanation_md": "A tag is a permanent name for one commit, and it stays in the repository where you made it until you push it by name. That is why lab 01 §9 has a separate `git push origin v0.1` after the tag, and the partial-submission rubric writes `git tag -a v0.5 -m \"Partial submission\" && git push origin v0.5`. In a scratch repository, the remote listed no tags after `git push`, and `git push origin v0.1` then printed `* [new tag]         v0.1 -> v0.1`. CP1 is marked at the tag, so a missing tag means there is nothing to mark, however green the commit is.",
+   "section_ref": "cli-program-s8",
+   "source_ref": "labs/01-scaffold.md §9; S5 slides 2 and 12; partial-rubric",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The tag was made after the push, so it names a commit GitHub never received",
+     "correct": false,
+     "why_md": "The tag names the commit you had just pushed, so GitHub has that commit. What it lacks is the tag itself."
+    },
+    {
+     "text_md": "The tag stayed on the laptop: `git push` sent the commits but never the tag",
+     "correct": true,
+     "why_md": "A plain `git push` sends commits only. The lab's next line, `git push origin v0.1`, is the one that was skipped."
+    },
+    {
+     "text_md": "GitHub only shows a tag after CI has passed on the commit it points at",
+     "correct": false,
+     "why_md": "CI never creates, hides or publishes tags. The green run is about the commit; the tag simply never left the laptop."
+    },
+    {
+     "text_md": "`git add -A` did not stage the tag, so the commit was pushed without it",
+     "correct": false,
+     "why_md": "Tags are not files and are never staged. A tag is a name for a commit, and it travels with its own push."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q45",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "Lab 01 §5 asks for one command of your own with at least one argument, one option with a default, a non-zero exit when the input makes no sense, and type hints on every parameter. Four groups show their first command's signature and what it does with bad input. Which one meets every requirement?",
+   "explanation_md": "Slide 12 sums the requirement up as \"an argument, an option, a non-zero exit\", and lab 01 §5 adds type hints on every parameter. Read each signature with slide 8's rule: no default makes an argument, a default makes an option. Only `park` has one of each, types on both, and a failure path that exits non-zero; a real run with `--hours 0` printed `hours must be at least 1` and `echo $?` gave 1. The lab's `add` is a shape to translate into your own project, and it has no option at all.",
+   "section_ref": "cli-program-s8",
+   "source_ref": "labs/01-scaffold.md §5; S5 slides 8 and 12",
+   "origin": "lab",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`add(merchant: str, amount: float)`, which exits 1 when `amount` is not positive",
+     "correct": false,
+     "why_md": "Two arguments and no option: neither parameter has a default. It is also the lab's own example, and the lab says a copy with the nouns swapped is not done."
+    },
+    {
+     "text_md": "`grade(student: str, digits: int = 1)`, which prints an error and returns",
+     "correct": false,
+     "why_md": "Printing and returning exits 0, a program that lies. The lab asks for a non-zero exit when the input makes no sense."
+    },
+    {
+     "text_md": "`book(room: str = \"A1\", hours: int = 1)`, which exits 1 when `hours` is below 1",
+     "correct": false,
+     "why_md": "Both parameters have defaults, so both are options and the command has no argument. The room it acts on should have no default."
+    },
+    {
+     "text_md": "`park(plate: str, hours: int = 1)`, which exits 1 when `hours` is below 1",
+     "correct": true,
+     "why_md": "`plate` has no default, so it is the argument; `hours` has one, so it is the option `--hours`; bad input exits 1; both are typed."
+    }
+   ]
+  },
+  {
+   "id": "cli-program-q46",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "read-diff",
+    "compare",
+    "judgement"
+   ],
+   "stem_md": "Reading the history of your group's `cli.py`, you find this diff:\n\n```diff\n @app.command()\n def add(merchant: str, amount: float) -> None:\n     if amount <= 0:\n-        print(\"amount must be positive\")\n-        return\n+        typer.echo(\"amount must be positive\", err=True)\n+        raise typer.Exit(code=1)\n     typer.echo(f\"Added {merchant}: {amount:.2f}\")\n```\n\nTwo candidate commit messages:\n\n- A: `Tidy up add`\n- B: `Exit with code 1 when add gets a non-positive amount`",
+   "explanation_md": "The teacher's compare shape (sample Q8) applied to slide 9. Both versions were run. Before the change, `add \"Bar Ramon\" 0` printed the error and `echo $?` gave 0, so `&& echo \"expense saved\"` still ran. After it, the exit code was 1 and the chain stopped. A good message names the behaviour that changed, and a good test pins down the number the tools read, as the lab's second test does.",
+   "section_ref": "cli-program-s6",
+   "source_ref": "S5 slide 9; labs/01-scaffold.md §5–6; sample paper Q8 shape",
+   "origin": "lab",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "What does this change do, for the person at the terminal and for the tools that run the command?",
+     "marks": 2,
+     "model_answer_md": "The person sees the same message, now on standard error. The exit code changes from 0 to 1, so `&&` stops, a CI step or script sees a failure, and a test on `exit_code` can tell bad input from success.",
+     "rubric": [
+      "Says the message is unchanged for the user but now goes to stderr",
+      "Says the exit code on a non-positive amount goes from 0 to 1",
+      "Names a tool that now sees the failure: `&&`, CI, a script or a test on `exit_code`"
+     ],
+     "weak_answers_md": "'It uses `typer.echo` instead of `print`' describes the text of the diff, but not what changes. The change that matters is the number: before, the command printed an error and exited 0, a program that lies. Answers that say the user now sees an error miss that the user saw it before too."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Which message is better for someone reading the history six months later, and why?",
+     "marks": 2,
+     "model_answer_md": "B. It says what the program now does differently and when: exit 1 on a non-positive amount. A gives a later reader nothing to search for, and calls a behaviour change a tidy-up, which reads like a refactoring.",
+     "rubric": [
+      "Chooses B because it states the behaviour change and when it applies",
+      "Notes that A hides a behaviour change behind 'tidy', which suggests a refactoring that changes nothing"
+     ],
+     "weak_answers_md": "'B is longer' or 'B is more detailed' earns nothing on its own. Full marks need what a later reader gets from B (what changed, and when it applies) and what A gets wrong: fixing the exit code changes behaviour, so it is no tidy-up."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Describe in words one test you would add for this change.",
+     "marks": 1,
+     "model_answer_md": "A `CliRunner` test that invokes `add` with the merchant `Bar Ramon` and the amount `0` and asserts that the exit code is 1.",
+     "rubric": [
+      "Runs the command with a non-positive amount through `CliRunner` and asserts the exit code is 1, beyond checking the message"
+     ],
+     "weak_answers_md": "A test that only checks that the message appears in `result.output` passes on both versions, so it would never have caught the old behaviour. The assertion has to be on the exit code, the number every tool reads."
+    }
+   ],
+   "lines": "5–7"
+  },
+  {
+   "id": "cli-program-q47",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output",
+    "predict-output"
+   ],
+   "stem_md": "You inherit an `argparse` script and cannot see its code, only its help page:\n\n```console\n$ python report.py --help\nusage: report.py [-h] [--category CATEGORY] [--minimum MINIMUM] [--verbose]\n                 path\n\npositional arguments:\n  path\n\noptions:\n  -h, --help           show this help message and exit\n  --category CATEGORY\n  --minimum MINIMUM\n  --verbose\n```\n\nA colleague runs `python report.py --minimum 20 --verbose`. What do you expect?",
+   "explanation_md": "Read a `usage:` line the way slide 10 contrasts it with typer. Anything in square brackets is optional, and a bare name (`path`) is a required positional argument, which in typer would be a parameter with no default. `--category CATEGORY` and `--minimum MINIMUM` are options that take a value; `--verbose` is a switch without one. The command line has `--minimum 20` and `--verbose` but no path, so argparse prints the usage and `report.py: error: the following arguments are required: path`, then exits with 2, the code a library uses when it refuses the command line. Real run, same output.",
+   "section_ref": "cli-program-s5",
+   "source_ref": "S5 slides 8, 10",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "It runs with a minimum of 20, because everything except `-h` has a default",
+     "correct": false,
+     "why_md": "Square brackets mark the optional parts. `path` has none, so it is required, and no word in the command line fills it."
+    },
+    {
+     "text_md": "It takes `20` as the `path`, because positional arguments grab the first bare word",
+     "correct": false,
+     "why_md": "`--minimum MINIMUM` shows that the option takes a value, so `20` belongs to it. Nothing is left for `path`."
+    },
+    {
+     "text_md": "It refuses `--verbose`, because every option on this page needs a value after it",
+     "correct": false,
+     "why_md": "`--verbose` shows no value name, so it is a plain on/off switch. Only `--category` and `--minimum` take a value."
+    },
+    {
+     "text_md": "It stops with a usage error that says `path` is required, and exits with code 2",
+     "correct": true,
+     "why_md": "`path` has no brackets and appears under positional arguments, so it is required. argparse refuses the command line before the program's own code runs."
+    }
+   ]
+  }
+ ]
+}

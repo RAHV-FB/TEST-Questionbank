@@ -1,0 +1,1497 @@
+
+########## COMMIT 3e0834f  2026-02-09
+Add a script that totals expenses by category
+
+
+---
+ tracker.py | 49 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 49 insertions(+)
+
+diff --git a/tracker.py b/tracker.py
+new file mode 100644
+index 0000000..9c0e9dc
+--- /dev/null
++++ b/tracker.py
+@@ -0,0 +1,49 @@
++import sys
++import csv
++
++
++def calculate_totals(x):
++    d = {}
++    for e in x:
++        if e[2] not in d:
++            d[e[2]] = 0
++        d[e[2]] = d[e[2]] + e[3]
++    r = []
++    for k in d:
++        r.append((k, d[k]))
++    r.sort(key=lambda t: -t[1])
++    return r
++
++
++def run(path):
++    rows = []
++    try:
++        f = open(path)
++        reader = csv.reader(f)
++        next(reader)
++        for row in reader:
++            # skip rows that do not have all four fields
++            if len(row) == 4:
++                rows.append((row[0], row[1], row[2], float(row[3])))
++        f.close()
++    except:
++        print("could not read " + path)
++        sys.exit(1)
++
++    print("Expense report for " + path)
++    print("-" * 40)
++
++    totals = calculate_totals(rows)
++    grand = 0
++    for t in totals:
++        print(t[0].ljust(20) + ("%.2f" % t[1]).rjust(10))
++        grand = grand + t[1]
++    print("-" * 40)
++    print("TOTAL".ljust(20) + ("%.2f" % grand).rjust(10))
++
++
++if __name__ == "__main__":
++    path = "expenses.csv"
++    if len(sys.argv) > 1:
++        path = sys.argv[1]
++    run(path)
+
+########## COMMIT 6efdf9d  2026-02-12
+Filter by category and ignore small amounts
+
+
+---
+ tracker.py | 22 ++++++++++++++++++----
+ 1 file changed, 18 insertions(+), 4 deletions(-)
+
+diff --git a/tracker.py b/tracker.py
+index 9c0e9dc..4f20aac 100644
+--- a/tracker.py
++++ b/tracker.py
+@@ -2,9 +2,13 @@ import sys
+ import csv
+ 
+ 
+-def calculate_totals(x):
++def calculate_totals(x, y, z):
+     d = {}
+     for e in x:
++        if y != "" and e[2] != y:
++            continue
++        if e[3] < z:
++            continue
+         if e[2] not in d:
+             d[e[2]] = 0
+         d[e[2]] = d[e[2]] + e[3]
+@@ -15,7 +19,7 @@ def calculate_totals(x):
+     return r
+ 
+ 
+-def run(path):
++def run(path, cat, minimum):
+     rows = []
+     try:
+         f = open(path)
+@@ -31,9 +35,13 @@ def run(path):
+         sys.exit(1)
+ 
+     print("Expense report for " + path)
++    if cat != "":
++        print("category: " + cat)
++    if minimum > 0.0:
++        print("only amounts of " + ("%.2f" % minimum) + " or more")
+     print("-" * 40)
+ 
+-    totals = calculate_totals(rows)
++    totals = calculate_totals(rows, cat, minimum)
+     grand = 0
+     for t in totals:
+         print(t[0].ljust(20) + ("%.2f" % t[1]).rjust(10))
+@@ -46,4 +54,10 @@ if __name__ == "__main__":
+     path = "expenses.csv"
+     if len(sys.argv) > 1:
+         path = sys.argv[1]
+-    run(path)
++    cat = ""
++    if len(sys.argv) > 2:
++        cat = sys.argv[2]
++    minimum = 0.0
++    if len(sys.argv) > 3:
++        minimum = float(sys.argv[3])
++    run(path, cat, minimum)
+
+########## COMMIT c746d38  2026-02-17
+Print the largest expense
+
+
+---
+ tracker.py | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/tracker.py b/tracker.py
+index 4f20aac..1c14059 100644
+--- a/tracker.py
++++ b/tracker.py
+@@ -49,6 +49,17 @@ def run(path, cat, minimum):
+     print("-" * 40)
+     print("TOTAL".ljust(20) + ("%.2f" % grand).rjust(10))
+ 
++    m = 0.0
++    mr = None
++    for e in rows:
++        if e[3] > m:
++            m = e[3]
++            mr = e
++    if mr is not None:
++        print("")
++        print("Largest single expense:")
++        print(mr[1] + " (" + mr[2] + ") on " + mr[0] + " for " + ("%.2f" % mr[3]))
++
+ 
+ if __name__ == "__main__":
+     path = "expenses.csv"
+
+########## COMMIT a953d05  2026-02-21
+Turn the script into a uv package
+
+
+---
+ .gitignore                      |  6 ++++++
+ .python-version                 |  1 +
+ README.md                       |  0
+ pyproject.toml                  | 17 +++++++++++++++++
+ src/expense_tracker/__init__.py |  2 ++
+ 5 files changed, 26 insertions(+)
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..3ddf7e0
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,6 @@
++.venv/
++__pycache__/
++*.py[cod]
++.ruff_cache/
++.mypy_cache/
++.pytest_cache/
+diff --git a/.python-version b/.python-version
+new file mode 100644
+index 0000000..24ee5b1
+--- /dev/null
++++ b/.python-version
+@@ -0,0 +1 @@
++3.13
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..e69de29
+diff --git a/pyproject.toml b/pyproject.toml
+new file mode 100644
+index 0000000..003b1c9
+--- /dev/null
++++ b/pyproject.toml
+@@ -0,0 +1,17 @@
++[project]
++name = "expense-tracker"
++version = "0.1.0"
++description = "A terminal expense tracker, the demo project for Software Development for Business"
++readme = "README.md"
++authors = [
++    { name = "Alberto Camara", email = "camara@protonmail.com" }
++]
++requires-python = ">=3.13"
++dependencies = []
++
++[project.scripts]
++expense-tracker = "expense_tracker:main"
++
++[build-system]
++requires = ["hatchling"]
++build-backend = "hatchling.build"
+diff --git a/src/expense_tracker/__init__.py b/src/expense_tracker/__init__.py
+new file mode 100644
+index 0000000..a064689
+--- /dev/null
++++ b/src/expense_tracker/__init__.py
+@@ -0,0 +1,2 @@
++def main() -> None:
++    print("Hello from expense-tracker!")
+
+########## COMMIT 2ecad20  2026-02-24
+Move the report into the package behind a typer CLI
+
+
+---
+ pyproject.toml                              |  6 ++++--
+ src/expense_tracker/__init__.py             |  2 --
+ src/expense_tracker/cli.py                  | 19 +++++++++++++++++++
+ tracker.py => src/expense_tracker/report.py | 13 -------------
+ 4 files changed, 23 insertions(+), 17 deletions(-)
+
+diff --git a/pyproject.toml b/pyproject.toml
+index 003b1c9..894c639 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -7,10 +7,12 @@ authors = [
+     { name = "Alberto Camara", email = "camara@protonmail.com" }
+ ]
+ requires-python = ">=3.13"
+-dependencies = []
++dependencies = [
++    "typer>=0.12",
++]
+ 
+ [project.scripts]
+-expense-tracker = "expense_tracker:main"
++expenses = "expense_tracker.cli:app"
+ 
+ [build-system]
+ requires = ["hatchling"]
+diff --git a/src/expense_tracker/__init__.py b/src/expense_tracker/__init__.py
+index a064689..e69de29 100644
+--- a/src/expense_tracker/__init__.py
++++ b/src/expense_tracker/__init__.py
+@@ -1,2 +0,0 @@
+-def main() -> None:
+-    print("Hello from expense-tracker!")
+diff --git a/src/expense_tracker/cli.py b/src/expense_tracker/cli.py
+new file mode 100644
+index 0000000..bb3449a
+--- /dev/null
++++ b/src/expense_tracker/cli.py
+@@ -0,0 +1,19 @@
++import typer
++
++from expense_tracker.report import run
++
++app = typer.Typer(help="A terminal expense tracker.")
++
++
++@app.callback()
++def main() -> None:
++    pass
++
++
++@app.command()
++def report(
++    path: str = typer.Argument("expenses.csv", help="CSV file to read."),
++    category: str = typer.Option("", help="Only this category."),
++    minimum: float = typer.Option(0.0, "--minimum", "--min", help="Ignore amounts below this."),
++) -> None:
++    run(path, category, minimum)
+diff --git a/tracker.py b/src/expense_tracker/report.py
+similarity index 84%
+rename from tracker.py
+rename to src/expense_tracker/report.py
+index 1c14059..afa3d22 100644
+--- a/tracker.py
++++ b/src/expense_tracker/report.py
+@@ -59,16 +59,3 @@ def run(path, cat, minimum):
+         print("")
+         print("Largest single expense:")
+         print(mr[1] + " (" + mr[2] + ") on " + mr[0] + " for " + ("%.2f" % mr[3]))
+-
+-
+-if __name__ == "__main__":
+-    path = "expenses.csv"
+-    if len(sys.argv) > 1:
+-        path = sys.argv[1]
+-    cat = ""
+-    if len(sys.argv) > 2:
+-        cat = sys.argv[2]
+-    minimum = 0.0
+-    if len(sys.argv) > 3:
+-        minimum = float(sys.argv[3])
+-    run(path, cat, minimum)
+
+########## COMMIT bc9ef3d  2026-03-02
+Add an add command that writes to data/
+
+
+---
+ .gitignore                 |  1 +
+ src/expense_tracker/cli.py | 25 +++++++++++++++++++++++++
+ 2 files changed, 26 insertions(+)
+
+diff --git a/.gitignore b/.gitignore
+index 3ddf7e0..8c91599 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -4,3 +4,4 @@ __pycache__/
+ .ruff_cache/
+ .mypy_cache/
+ .pytest_cache/
++data/
+diff --git a/src/expense_tracker/cli.py b/src/expense_tracker/cli.py
+index bb3449a..017e6b0 100644
+--- a/src/expense_tracker/cli.py
++++ b/src/expense_tracker/cli.py
+@@ -1,3 +1,7 @@
++import csv
++import datetime
++import os
++
+ import typer
+ 
+ from expense_tracker.report import run
+@@ -17,3 +21,24 @@ def report(
+     minimum: float = typer.Option(0.0, "--minimum", "--min", help="Ignore amounts below this."),
+ ) -> None:
+     run(path, category, minimum)
++
++
++@app.command()
++def add(
++    merchant: str,
++    category: str,
++    amount: float,
++    date: str = typer.Option("", help="YYYY-MM-DD, defaults to today."),
++) -> None:
++    if date == "":
++        date = datetime.date.today().isoformat()
++    if not os.path.exists("data"):
++        os.makedirs("data")
++    exists = os.path.exists("data/expenses.csv")
++    f = open("data/expenses.csv", "a", newline="")
++    writer = csv.writer(f)
++    if not exists:
++        writer.writerow(["date", "merchant", "category", "amount"])
++    writer.writerow([date, merchant, category, "%.2f" % amount])
++    f.close()
++    print("added " + merchant + " (" + category + ") " + ("%.2f" % amount) + " to data/expenses.csv")
+
+########## COMMIT 89afbe1  2026-03-05
+Add a README and the MIT licence
+
+
+---
+ LICENSE        | 21 +++++++++++++++++++++
+ README.md      | 44 ++++++++++++++++++++++++++++++++++++++++++++
+ pyproject.toml |  2 ++
+ 3 files changed, 67 insertions(+)
+
+diff --git a/LICENSE b/LICENSE
+new file mode 100644
+index 0000000..d2d0bfd
+--- /dev/null
++++ b/LICENSE
+@@ -0,0 +1,21 @@
++MIT License
++
++Copyright (c) 2026 Alberto Cámara
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all
++copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
+diff --git a/README.md b/README.md
+index e69de29..97d3397 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,44 @@
++# expense-tracker
++
++A terminal expense tracker: it reads a CSV of expenses and reports what you spent, by
++category. It is the demo project for **Software Development for Business** (ESADE), built
++commit by commit across the course — so its history matters as much as its code.
++
++## Install
++
++Needs [uv](https://docs.astral.sh/uv/) and Python 3.13.
++
++```bash
++git clone git@github.com:esade-swdev-2026/expense-tracker.git
++cd expense-tracker
++uv sync
++```
++
++## Use
++
++Report on the sample data, everything or one category:
++
++```bash
++uv run expenses report
++uv run expenses report --category dining --min 20
++```
++
++Add an expense:
++
++```bash
++uv run expenses add "Bar Nuria" dining 12.40
++uv run expenses add Renfe transport 21.00 --date 2026-03-01
++```
++
++`expenses --help` lists the commands; `expenses report --help` its options.
++
++## The two CSV files
++
++- `expenses.csv` at the root is **sample data and is never modified**. It is what `report`
++  reads by default, and what the terminal sessions of the course work on.
++- `add` writes to `data/expenses.csv`, which is not in version control. Report on it by
++  passing the path: `uv run expenses report data/expenses.csv`.
++
++## Licence
++
++MIT. See [LICENSE](LICENSE).
+diff --git a/pyproject.toml b/pyproject.toml
+index 894c639..13f102b 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -6,6 +6,8 @@ readme = "README.md"
+ authors = [
+     { name = "Alberto Camara", email = "camara@protonmail.com" }
+ ]
++license = "MIT"
++license-files = ["LICENSE"]
+ requires-python = ">=3.13"
+ dependencies = [
+     "typer>=0.12",
+
+########## COMMIT 5e9466d  2026-03-09
+Replace magic numbers with named constants
+
+
+---
+ src/expense_tracker/report.py | 39 ++++++++++++++++++++++++---------------
+ 1 file changed, 24 insertions(+), 15 deletions(-)
+
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index afa3d22..d629cad 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -1,17 +1,27 @@
+ import sys
+ import csv
+ 
++DATE = 0
++MERCHANT = 1
++CATEGORY = 2
++AMOUNT = 3
++FIELDS_PER_ROW = 4
++
++NAME_WIDTH = 20
++AMOUNT_WIDTH = 10
++RULE_WIDTH = 40
++
+ 
+ def calculate_totals(x, y, z):
+     d = {}
+     for e in x:
+-        if y != "" and e[2] != y:
++        if y != "" and e[CATEGORY] != y:
+             continue
+-        if e[3] < z:
++        if e[AMOUNT] < z:
+             continue
+-        if e[2] not in d:
+-            d[e[2]] = 0
+-        d[e[2]] = d[e[2]] + e[3]
++        if e[CATEGORY] not in d:
++            d[e[CATEGORY]] = 0
++        d[e[CATEGORY]] = d[e[CATEGORY]] + e[AMOUNT]
+     r = []
+     for k in d:
+         r.append((k, d[k]))
+@@ -26,9 +36,8 @@ def run(path, cat, minimum):
+         reader = csv.reader(f)
+         next(reader)
+         for row in reader:
+-            # skip rows that do not have all four fields
+-            if len(row) == 4:
+-                rows.append((row[0], row[1], row[2], float(row[3])))
++            if len(row) == FIELDS_PER_ROW:
++                rows.append((row[DATE], row[MERCHANT], row[CATEGORY], float(row[AMOUNT])))
+         f.close()
+     except:
+         print("could not read " + path)
+@@ -39,23 +48,23 @@ def run(path, cat, minimum):
+         print("category: " + cat)
+     if minimum > 0.0:
+         print("only amounts of " + ("%.2f" % minimum) + " or more")
+-    print("-" * 40)
++    print("-" * RULE_WIDTH)
+ 
+     totals = calculate_totals(rows, cat, minimum)
+     grand = 0
+     for t in totals:
+-        print(t[0].ljust(20) + ("%.2f" % t[1]).rjust(10))
++        print(t[0].ljust(NAME_WIDTH) + ("%.2f" % t[1]).rjust(AMOUNT_WIDTH))
+         grand = grand + t[1]
+-    print("-" * 40)
+-    print("TOTAL".ljust(20) + ("%.2f" % grand).rjust(10))
++    print("-" * RULE_WIDTH)
++    print("TOTAL".ljust(NAME_WIDTH) + ("%.2f" % grand).rjust(AMOUNT_WIDTH))
+ 
+     m = 0.0
+     mr = None
+     for e in rows:
+-        if e[3] > m:
+-            m = e[3]
++        if e[AMOUNT] > m:
++            m = e[AMOUNT]
+             mr = e
+     if mr is not None:
+         print("")
+         print("Largest single expense:")
+-        print(mr[1] + " (" + mr[2] + ") on " + mr[0] + " for " + ("%.2f" % mr[3]))
++        print(mr[MERCHANT] + " (" + mr[CATEGORY] + ") on " + mr[DATE] + " for " + ("%.2f" % mr[AMOUNT]))
+
+########## COMMIT f3bb801  2026-03-11
+Rename calculate_totals to total_by_category
+
+
+---
+ src/expense_tracker/report.py | 72 ++++++++++++++++++++++++-------------------
+ 1 file changed, 40 insertions(+), 32 deletions(-)
+
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index d629cad..6115e2c 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -12,59 +12,67 @@ AMOUNT_WIDTH = 10
+ RULE_WIDTH = 40
+ 
+ 
+-def calculate_totals(x, y, z):
+-    d = {}
+-    for e in x:
+-        if y != "" and e[CATEGORY] != y:
++def total_by_category(expenses, category, minimum):
++    totals = {}
++    for expense in expenses:
++        if category != "" and expense[CATEGORY] != category:
+             continue
+-        if e[AMOUNT] < z:
++        if expense[AMOUNT] < minimum:
+             continue
+-        if e[CATEGORY] not in d:
+-            d[e[CATEGORY]] = 0
+-        d[e[CATEGORY]] = d[e[CATEGORY]] + e[AMOUNT]
+-    r = []
+-    for k in d:
+-        r.append((k, d[k]))
+-    r.sort(key=lambda t: -t[1])
+-    return r
++        if expense[CATEGORY] not in totals:
++            totals[expense[CATEGORY]] = 0
++        totals[expense[CATEGORY]] = totals[expense[CATEGORY]] + expense[AMOUNT]
++    ordered = []
++    for name in totals:
++        ordered.append((name, totals[name]))
++    ordered.sort(key=lambda pair: -pair[1])
++    return ordered
+ 
+ 
+-def run(path, cat, minimum):
+-    rows = []
++def run(path, category, minimum):
++    expenses = []
+     try:
+         f = open(path)
+         reader = csv.reader(f)
+         next(reader)
+         for row in reader:
+             if len(row) == FIELDS_PER_ROW:
+-                rows.append((row[DATE], row[MERCHANT], row[CATEGORY], float(row[AMOUNT])))
++                expenses.append((row[DATE], row[MERCHANT], row[CATEGORY], float(row[AMOUNT])))
+         f.close()
+     except:
+         print("could not read " + path)
+         sys.exit(1)
+ 
+     print("Expense report for " + path)
+-    if cat != "":
+-        print("category: " + cat)
++    if category != "":
++        print("category: " + category)
+     if minimum > 0.0:
+         print("only amounts of " + ("%.2f" % minimum) + " or more")
+     print("-" * RULE_WIDTH)
+ 
+-    totals = calculate_totals(rows, cat, minimum)
+-    grand = 0
+-    for t in totals:
+-        print(t[0].ljust(NAME_WIDTH) + ("%.2f" % t[1]).rjust(AMOUNT_WIDTH))
+-        grand = grand + t[1]
++    totals = total_by_category(expenses, category, minimum)
++    grand_total = 0
++    for name, amount in totals:
++        print(name.ljust(NAME_WIDTH) + ("%.2f" % amount).rjust(AMOUNT_WIDTH))
++        grand_total = grand_total + amount
+     print("-" * RULE_WIDTH)
+-    print("TOTAL".ljust(NAME_WIDTH) + ("%.2f" % grand).rjust(AMOUNT_WIDTH))
++    print("TOTAL".ljust(NAME_WIDTH) + ("%.2f" % grand_total).rjust(AMOUNT_WIDTH))
+ 
+-    m = 0.0
+-    mr = None
+-    for e in rows:
+-        if e[AMOUNT] > m:
+-            m = e[AMOUNT]
+-            mr = e
+-    if mr is not None:
++    largest_amount = 0.0
++    largest = None
++    for expense in expenses:
++        if expense[AMOUNT] > largest_amount:
++            largest_amount = expense[AMOUNT]
++            largest = expense
++    if largest is not None:
+         print("")
+         print("Largest single expense:")
+-        print(mr[MERCHANT] + " (" + mr[CATEGORY] + ") on " + mr[DATE] + " for " + ("%.2f" % mr[AMOUNT]))
++        print(
++            largest[MERCHANT]
++            + " ("
++            + largest[CATEGORY]
++            + ") on "
++            + largest[DATE]
++            + " for "
++            + ("%.2f" % largest[AMOUNT])
++        )
+
+########## COMMIT 9d6c607  2026-03-16
+Separate reading and printing from the calculation
+
+
+---
+ src/expense_tracker/report.py | 73 +++++++++++++++++++++++++------------------
+ 1 file changed, 43 insertions(+), 30 deletions(-)
+
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index 6115e2c..df84a96 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -12,6 +12,17 @@ AMOUNT_WIDTH = 10
+ RULE_WIDTH = 40
+ 
+ 
++def read_expenses(path):
++    expenses = []
++    with open(path) as handle:
++        reader = csv.reader(handle)
++        next(reader)
++        for row in reader:
++            if len(row) == FIELDS_PER_ROW:
++                expenses.append((row[DATE], row[MERCHANT], row[CATEGORY], float(row[AMOUNT])))
++    return expenses
++
++
+ def total_by_category(expenses, category, minimum):
+     totals = {}
+     for expense in expenses:
+@@ -29,45 +40,33 @@ def total_by_category(expenses, category, minimum):
+     return ordered
+ 
+ 
+-def run(path, category, minimum):
+-    expenses = []
+-    try:
+-        f = open(path)
+-        reader = csv.reader(f)
+-        next(reader)
+-        for row in reader:
+-            if len(row) == FIELDS_PER_ROW:
+-                expenses.append((row[DATE], row[MERCHANT], row[CATEGORY], float(row[AMOUNT])))
+-        f.close()
+-    except:
+-        print("could not read " + path)
+-        sys.exit(1)
++def largest_expense(expenses):
++    largest = None
++    for expense in expenses:
++        if largest is None or expense[AMOUNT] > largest[AMOUNT]:
++            largest = expense
++    return largest
+ 
+-    print("Expense report for " + path)
++
++def format_report(path, category, minimum, totals, largest):
++    lines = ["Expense report for " + path]
+     if category != "":
+-        print("category: " + category)
++        lines.append("category: " + category)
+     if minimum > 0.0:
+-        print("only amounts of " + ("%.2f" % minimum) + " or more")
+-    print("-" * RULE_WIDTH)
++        lines.append("only amounts of " + ("%.2f" % minimum) + " or more")
++    lines.append("-" * RULE_WIDTH)
+ 
+-    totals = total_by_category(expenses, category, minimum)
+     grand_total = 0
+     for name, amount in totals:
+-        print(name.ljust(NAME_WIDTH) + ("%.2f" % amount).rjust(AMOUNT_WIDTH))
++        lines.append(name.ljust(NAME_WIDTH) + ("%.2f" % amount).rjust(AMOUNT_WIDTH))
+         grand_total = grand_total + amount
+-    print("-" * RULE_WIDTH)
+-    print("TOTAL".ljust(NAME_WIDTH) + ("%.2f" % grand_total).rjust(AMOUNT_WIDTH))
++    lines.append("-" * RULE_WIDTH)
++    lines.append("TOTAL".ljust(NAME_WIDTH) + ("%.2f" % grand_total).rjust(AMOUNT_WIDTH))
+ 
+-    largest_amount = 0.0
+-    largest = None
+-    for expense in expenses:
+-        if expense[AMOUNT] > largest_amount:
+-            largest_amount = expense[AMOUNT]
+-            largest = expense
+     if largest is not None:
+-        print("")
+-        print("Largest single expense:")
+-        print(
++        lines.append("")
++        lines.append("Largest single expense:")
++        lines.append(
+             largest[MERCHANT]
+             + " ("
+             + largest[CATEGORY]
+@@ -76,3 +75,17 @@ def run(path, category, minimum):
+             + " for "
+             + ("%.2f" % largest[AMOUNT])
+         )
++    return lines
++
++
++def run(path, category, minimum):
++    try:
++        expenses = read_expenses(path)
++    except:
++        print("could not read " + path)
++        sys.exit(1)
++
++    totals = total_by_category(expenses, category, minimum)
++    largest = largest_expense(expenses)
++    for line in format_report(path, category, minimum, totals, largest):
++        print(line)
+
+########## COMMIT 017f926  2026-03-19
+Give an expense a type instead of a tuple
+
+
+---
+ src/expense_tracker/report.py | 38 +++++++++++++++++++++++++++-----------
+ 1 file changed, 27 insertions(+), 11 deletions(-)
+
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index df84a96..cf673f2 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -1,5 +1,6 @@
+ import sys
+ import csv
++from dataclasses import dataclass
+ 
+ DATE = 0
+ MERCHANT = 1
+@@ -12,6 +13,14 @@ AMOUNT_WIDTH = 10
+ RULE_WIDTH = 40
+ 
+ 
++@dataclass(frozen=True)
++class Expense:
++    date: str
++    merchant: str
++    category: str
++    amount: float
++
++
+ def read_expenses(path):
+     expenses = []
+     with open(path) as handle:
+@@ -19,20 +28,27 @@ def read_expenses(path):
+         next(reader)
+         for row in reader:
+             if len(row) == FIELDS_PER_ROW:
+-                expenses.append((row[DATE], row[MERCHANT], row[CATEGORY], float(row[AMOUNT])))
++                expenses.append(
++                    Expense(
++                        date=row[DATE],
++                        merchant=row[MERCHANT],
++                        category=row[CATEGORY],
++                        amount=float(row[AMOUNT]),
++                    )
++                )
+     return expenses
+ 
+ 
+ def total_by_category(expenses, category, minimum):
+     totals = {}
+     for expense in expenses:
+-        if category != "" and expense[CATEGORY] != category:
++        if category != "" and expense.category != category:
+             continue
+-        if expense[AMOUNT] < minimum:
++        if expense.amount < minimum:
+             continue
+-        if expense[CATEGORY] not in totals:
+-            totals[expense[CATEGORY]] = 0
+-        totals[expense[CATEGORY]] = totals[expense[CATEGORY]] + expense[AMOUNT]
++        if expense.category not in totals:
++            totals[expense.category] = 0
++        totals[expense.category] = totals[expense.category] + expense.amount
+     ordered = []
+     for name in totals:
+         ordered.append((name, totals[name]))
+@@ -43,7 +59,7 @@ def total_by_category(expenses, category, minimum):
+ def largest_expense(expenses):
+     largest = None
+     for expense in expenses:
+-        if largest is None or expense[AMOUNT] > largest[AMOUNT]:
++        if largest is None or expense.amount > largest.amount:
+             largest = expense
+     return largest
+ 
+@@ -67,13 +83,13 @@ def format_report(path, category, minimum, totals, largest):
+         lines.append("")
+         lines.append("Largest single expense:")
+         lines.append(
+-            largest[MERCHANT]
++            largest.merchant
+             + " ("
+-            + largest[CATEGORY]
++            + largest.category
+             + ") on "
+-            + largest[DATE]
++            + largest.date
+             + " for "
+-            + ("%.2f" % largest[AMOUNT])
++            + ("%.2f" % largest.amount)
+         )
+     return lines
+ 
+
+########## COMMIT 04d699f  2026-03-23
+Add type hints and make the code ruff clean
+
+
+---
+ pyproject.toml                | 11 +++++++++
+ src/expense_tracker/cli.py    | 22 ++++++++---------
+ src/expense_tracker/report.py | 56 +++++++++++++++++++++----------------------
+ 3 files changed, 49 insertions(+), 40 deletions(-)
+
+diff --git a/pyproject.toml b/pyproject.toml
+index 13f102b..540b84b 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -19,3 +19,14 @@ expenses = "expense_tracker.cli:app"
+ [build-system]
+ requires = ["hatchling"]
+ build-backend = "hatchling.build"
++
++[dependency-groups]
++dev = [
++    "ruff>=0.6",
++]
++
++[tool.ruff]
++line-length = 100
++
++[tool.ruff.lint]
++select = ["E", "F", "I", "UP", "B", "SIM"]
+diff --git a/src/expense_tracker/cli.py b/src/expense_tracker/cli.py
+index 017e6b0..bd9fe0d 100644
+--- a/src/expense_tracker/cli.py
++++ b/src/expense_tracker/cli.py
+@@ -1,11 +1,13 @@
+ import csv
+ import datetime
+-import os
++from pathlib import Path
+ 
+ import typer
+ 
+ from expense_tracker.report import run
+ 
++DATA_FILE = Path("data") / "expenses.csv"
++
+ app = typer.Typer(help="A terminal expense tracker.")
+ 
+ 
+@@ -32,13 +34,11 @@ def add(
+ ) -> None:
+     if date == "":
+         date = datetime.date.today().isoformat()
+-    if not os.path.exists("data"):
+-        os.makedirs("data")
+-    exists = os.path.exists("data/expenses.csv")
+-    f = open("data/expenses.csv", "a", newline="")
+-    writer = csv.writer(f)
+-    if not exists:
+-        writer.writerow(["date", "merchant", "category", "amount"])
+-    writer.writerow([date, merchant, category, "%.2f" % amount])
+-    f.close()
+-    print("added " + merchant + " (" + category + ") " + ("%.2f" % amount) + " to data/expenses.csv")
++    DATA_FILE.parent.mkdir(exist_ok=True)
++    is_new = not DATA_FILE.exists()
++    with DATA_FILE.open("a", newline="") as handle:
++        writer = csv.writer(handle)
++        if is_new:
++            writer.writerow(["date", "merchant", "category", "amount"])
++        writer.writerow([date, merchant, category, f"{amount:.2f}"])
++    print(f"added {merchant} ({category}) {amount:.2f} to {DATA_FILE}")
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index cf673f2..94ea535 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -1,5 +1,5 @@
+-import sys
+ import csv
++import sys
+ from dataclasses import dataclass
+ 
+ DATE = 0
+@@ -21,8 +21,8 @@ class Expense:
+     amount: float
+ 
+ 
+-def read_expenses(path):
+-    expenses = []
++def read_expenses(path: str) -> list[Expense]:
++    expenses: list[Expense] = []
+     with open(path) as handle:
+         reader = csv.reader(handle)
+         next(reader)
+@@ -39,24 +39,22 @@ def read_expenses(path):
+     return expenses
+ 
+ 
+-def total_by_category(expenses, category, minimum):
+-    totals = {}
++def total_by_category(
++    expenses: list[Expense], category: str, minimum: float
++) -> list[tuple[str, float]]:
++    totals: dict[str, float] = {}
+     for expense in expenses:
+         if category != "" and expense.category != category:
+             continue
+         if expense.amount < minimum:
+             continue
+-        if expense.category not in totals:
+-            totals[expense.category] = 0
+-        totals[expense.category] = totals[expense.category] + expense.amount
+-    ordered = []
+-    for name in totals:
+-        ordered.append((name, totals[name]))
++        totals[expense.category] = totals.get(expense.category, 0.0) + expense.amount
++    ordered = list(totals.items())
+     ordered.sort(key=lambda pair: -pair[1])
+     return ordered
+ 
+ 
+-def largest_expense(expenses):
++def largest_expense(expenses: list[Expense]) -> Expense | None:
+     largest = None
+     for expense in expenses:
+         if largest is None or expense.amount > largest.amount:
+@@ -64,41 +62,41 @@ def largest_expense(expenses):
+     return largest
+ 
+ 
+-def format_report(path, category, minimum, totals, largest):
+-    lines = ["Expense report for " + path]
++def format_report(
++    path: str,
++    category: str,
++    minimum: float,
++    totals: list[tuple[str, float]],
++    largest: Expense | None,
++) -> list[str]:
++    lines = [f"Expense report for {path}"]
+     if category != "":
+-        lines.append("category: " + category)
++        lines.append(f"category: {category}")
+     if minimum > 0.0:
+-        lines.append("only amounts of " + ("%.2f" % minimum) + " or more")
++        lines.append(f"only amounts of {minimum:.2f} or more")
+     lines.append("-" * RULE_WIDTH)
+ 
+-    grand_total = 0
++    grand_total = 0.0
+     for name, amount in totals:
+-        lines.append(name.ljust(NAME_WIDTH) + ("%.2f" % amount).rjust(AMOUNT_WIDTH))
++        lines.append(name.ljust(NAME_WIDTH) + f"{amount:.2f}".rjust(AMOUNT_WIDTH))
+         grand_total = grand_total + amount
+     lines.append("-" * RULE_WIDTH)
+-    lines.append("TOTAL".ljust(NAME_WIDTH) + ("%.2f" % grand_total).rjust(AMOUNT_WIDTH))
++    lines.append("TOTAL".ljust(NAME_WIDTH) + f"{grand_total:.2f}".rjust(AMOUNT_WIDTH))
+ 
+     if largest is not None:
+         lines.append("")
+         lines.append("Largest single expense:")
+         lines.append(
+-            largest.merchant
+-            + " ("
+-            + largest.category
+-            + ") on "
+-            + largest.date
+-            + " for "
+-            + ("%.2f" % largest.amount)
++            f"{largest.merchant} ({largest.category}) on {largest.date} for {largest.amount:.2f}"
+         )
+     return lines
+ 
+ 
+-def run(path, category, minimum):
++def run(path: str, category: str, minimum: float) -> None:
+     try:
+         expenses = read_expenses(path)
+-    except:
+-        print("could not read " + path)
++    except (OSError, ValueError):
++        print(f"could not read {path}")
+         sys.exit(1)
+ 
+     totals = total_by_category(expenses, category, minimum)
+
+########## COMMIT 15836e1  2026-03-26
+Move printing and exiting out of the report module
+
+
+---
+ src/expense_tracker/cli.py    | 18 ++++++++++++++++--
+ src/expense_tracker/report.py | 14 --------------
+ 2 files changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/src/expense_tracker/cli.py b/src/expense_tracker/cli.py
+index bd9fe0d..5f5b307 100644
+--- a/src/expense_tracker/cli.py
++++ b/src/expense_tracker/cli.py
+@@ -4,7 +4,12 @@ from pathlib import Path
+ 
+ import typer
+ 
+-from expense_tracker.report import run
++from expense_tracker.report import (
++    format_report,
++    largest_expense,
++    read_expenses,
++    total_by_category,
++)
+ 
+ DATA_FILE = Path("data") / "expenses.csv"
+ 
+@@ -22,7 +27,16 @@ def report(
+     category: str = typer.Option("", help="Only this category."),
+     minimum: float = typer.Option(0.0, "--minimum", "--min", help="Ignore amounts below this."),
+ ) -> None:
+-    run(path, category, minimum)
++    try:
++        expenses = read_expenses(path)
++    except (OSError, ValueError):
++        typer.echo(f"could not read {path}", err=True)
++        raise typer.Exit(1) from None
++
++    totals = total_by_category(expenses, category, minimum)
++    largest = largest_expense(expenses)
++    for line in format_report(path, category, minimum, totals, largest):
++        typer.echo(line)
+ 
+ 
+ @app.command()
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index 94ea535..a96299b 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -1,5 +1,4 @@
+ import csv
+-import sys
+ from dataclasses import dataclass
+ 
+ DATE = 0
+@@ -90,16 +89,3 @@ def format_report(
+             f"{largest.merchant} ({largest.category}) on {largest.date} for {largest.amount:.2f}"
+         )
+     return lines
+-
+-
+-def run(path: str, category: str, minimum: float) -> None:
+-    try:
+-        expenses = read_expenses(path)
+-    except (OSError, ValueError):
+-        print(f"could not read {path}")
+-        sys.exit(1)
+-
+-    totals = total_by_category(expenses, category, minimum)
+-    largest = largest_expense(expenses)
+-    for line in format_report(path, category, minimum, totals, largest):
+-        print(line)
+
+########## COMMIT 88b83c3  2026-03-30
+Add pytest and turn on strict type checking
+
+
+---
+ pyproject.toml | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/pyproject.toml b/pyproject.toml
+index 540b84b..15ad5eb 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -22,6 +22,8 @@ build-backend = "hatchling.build"
+ 
+ [dependency-groups]
+ dev = [
++    "mypy>=1.11",
++    "pytest>=8",
+     "ruff>=0.6",
+ ]
+ 
+@@ -30,3 +32,10 @@ line-length = 100
+ 
+ [tool.ruff.lint]
+ select = ["E", "F", "I", "UP", "B", "SIM"]
++
++[tool.mypy]
++python_version = "3.13"
++strict = true
++
++[tool.pytest.ini_options]
++testpaths = ["tests"]
+
+########## COMMIT d38d9e6  2026-04-02
+Test the pure core
+
+
+---
+ tests/test_report.py | 113 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 113 insertions(+)
+
+diff --git a/tests/test_report.py b/tests/test_report.py
+new file mode 100644
+index 0000000..1ed5f78
+--- /dev/null
++++ b/tests/test_report.py
+@@ -0,0 +1,113 @@
++import pytest
++
++from expense_tracker.report import (
++    Expense,
++    format_report,
++    largest_expense,
++    total_by_category,
++)
++
++
++@pytest.fixture
++def expenses() -> list[Expense]:
++    return [
++        Expense("2025-07-01", "Bar Ramon", "dining", 10.0),
++        Expense("2025-07-02", "Zara", "clothing", 40.0),
++        Expense("2025-07-03", "Bar Ramon", "dining", 5.0),
++        Expense("2025-07-04", "Cabify", "transport", 15.0),
++    ]
++
++
++def test_totals_are_grouped_by_category_and_largest_first(expenses: list[Expense]) -> None:
++    result = total_by_category(expenses, category="", minimum=0.0)
++
++    assert result == [("clothing", 40.0), ("dining", 15.0), ("transport", 15.0)]
++
++
++def test_equal_totals_keep_the_order_they_first_appeared_in(expenses: list[Expense]) -> None:
++    result = total_by_category(expenses, category="", minimum=0.0)
++
++    assert [name for name, _ in result][1:] == ["dining", "transport"]
++
++
++@pytest.mark.parametrize(
++    ("category", "expected"),
++    [
++        ("dining", [("dining", 15.0)]),
++        ("transport", [("transport", 15.0)]),
++        ("nobody-used-this", []),
++    ],
++)
++def test_category_filter(
++    expenses: list[Expense], category: str, expected: list[tuple[str, float]]
++) -> None:
++    assert total_by_category(expenses, category=category, minimum=0.0) == expected
++
++
++@pytest.mark.parametrize(
++    ("minimum", "expected"),
++    [
++        (0.0, [("dining", 15.0)]),
++        (5.0, [("dining", 15.0)]),
++        (10.0, [("dining", 10.0)]),
++        (10.01, []),
++    ],
++)
++def test_minimum_keeps_amounts_equal_to_it(
++    minimum: float, expected: list[tuple[str, float]]
++) -> None:
++    dining = [
++        Expense("2025-07-01", "Bar Ramon", "dining", 10.0),
++        Expense("2025-07-03", "Bar Ramon", "dining", 5.0),
++    ]
++
++    assert total_by_category(dining, category="", minimum=minimum) == expected
++
++
++def test_no_expenses_means_no_totals() -> None:
++    assert total_by_category([], category="", minimum=0.0) == []
++
++
++def test_a_refund_reduces_its_category_total() -> None:
++    expenses = [
++        Expense("2025-07-01", "Zara", "clothing", 40.0),
++        Expense("2025-07-09", "Zara", "clothing", -15.0),
++    ]
++
++    assert total_by_category(expenses, category="", minimum=-100.0) == [("clothing", 25.0)]
++
++
++def test_largest_expense_of_nothing_is_none() -> None:
++    assert largest_expense([]) is None
++
++
++def test_largest_expense_is_the_biggest_amount(expenses: list[Expense]) -> None:
++    assert largest_expense(expenses) == Expense("2025-07-02", "Zara", "clothing", 40.0)
++
++
++def test_largest_expense_tie_goes_to_the_first(expenses: list[Expense]) -> None:
++    tied = [*expenses, Expense("2025-07-05", "Mango", "clothing", 40.0)]
++
++    assert largest_expense(tied) == Expense("2025-07-02", "Zara", "clothing", 40.0)
++
++
++def test_report_of_nothing_still_has_a_zero_total() -> None:
++    lines = format_report("empty.csv", "", 0.0, [], None)
++
++    assert lines[-1].split() == ["TOTAL", "0.00"]
++    assert "Largest single expense:" not in lines
++
++
++def test_report_header_mentions_the_filters_in_use() -> None:
++    lines = format_report("expenses.csv", "dining", 20.0, [], None)
++
++    assert "category: dining" in lines
++    assert "only amounts of 20.00 or more" in lines
++
++
++def test_report_total_is_the_sum_of_the_categories(expenses: list[Expense]) -> None:
++    totals = total_by_category(expenses, category="", minimum=0.0)
++
++    lines = format_report("expenses.csv", "", 0.0, totals, largest_expense(expenses))
++
++    assert [line for line in lines if line.startswith("TOTAL")][0].split()[-1] == "70.00"
+
+########## COMMIT f3d9870  2026-04-06
+Test reading a file and the missing-file exit code
+
+
+---
+ tests/test_io.py | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+
+diff --git a/tests/test_io.py b/tests/test_io.py
+new file mode 100644
+index 0000000..84f0bc4
+--- /dev/null
++++ b/tests/test_io.py
+@@ -0,0 +1,29 @@
++from pathlib import Path
++
++from typer.testing import CliRunner
++
++from expense_tracker.cli import app
++from expense_tracker.report import read_expenses
++
++runner = CliRunner()
++
++
++def test_rows_that_are_not_four_fields_are_skipped(tmp_path: Path) -> None:
++    csv_file = tmp_path / "expenses.csv"
++    csv_file.write_text(
++        "date,merchant,category,amount\n"
++        "2025-07-01,Bar Ramon,dining,10.00\n"
++        "broken\n"
++        "2025-07-02,Zara,clothing,40.00\n"
++    )
++
++    merchants = [expense.merchant for expense in read_expenses(str(csv_file))]
++
++    assert merchants == ["Bar Ramon", "Zara"]
++
++
++def test_report_on_a_missing_file_exits_with_one_and_explains_on_stderr() -> None:
++    result = runner.invoke(app, ["report", "nosuch.csv"])
++
++    assert result.exit_code == 1
++    assert "could not read nosuch.csv" in result.stderr
+
+########## COMMIT 0e05065  2026-04-08
+Run ruff, mypy and pytest on every push
+
+
+---
+ .github/workflows/check.yml | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+diff --git a/.github/workflows/check.yml b/.github/workflows/check.yml
+new file mode 100644
+index 0000000..eb2e436
+--- /dev/null
++++ b/.github/workflows/check.yml
+@@ -0,0 +1,37 @@
++name: check
++
++on:
++  push:
++  pull_request:
++
++concurrency:
++  group: ${{ github.workflow }}-${{ github.ref }}
++  cancel-in-progress: true
++
++jobs:
++  check:
++    runs-on: ubuntu-latest
++
++    steps:
++      - name: Check out the code
++        uses: actions/checkout@v7
++
++      - name: Install uv (and Python 3.13)
++        uses: astral-sh/setup-uv@v7
++        with:
++          python-version: "3.13"
++
++      - name: Install dependencies from the lockfile
++        run: uv sync --locked
++
++      - name: Lint
++        run: uv run ruff check .
++
++      - name: Formatting
++        run: uv run ruff format --check .
++
++      - name: Types
++        run: uv run mypy src tests
++
++      - name: Tests
++        run: uv run pytest
+
+########## COMMIT e1b96de  2026-04-13
+Add failing tests for remove_duplicates
+
+
+---
+ src/expense_tracker/report.py |  4 ++++
+ tests/test_duplicates.py      | 26 ++++++++++++++++++++++++++
+ 2 files changed, 30 insertions(+)
+
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index a96299b..598b132 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -89,3 +89,7 @@ def format_report(
+             f"{largest.merchant} ({largest.category}) on {largest.date} for {largest.amount:.2f}"
+         )
+     return lines
++
++
++def remove_duplicates(expenses: list[Expense]) -> list[Expense]:
++    return expenses
+diff --git a/tests/test_duplicates.py b/tests/test_duplicates.py
+new file mode 100644
+index 0000000..c6693d4
+--- /dev/null
++++ b/tests/test_duplicates.py
+@@ -0,0 +1,26 @@
++from expense_tracker.report import Expense, remove_duplicates
++
++BAR = Expense("2025-07-01", "Bar Ramon", "dining", 10.0)
++ZARA = Expense("2025-07-02", "Zara", "clothing", 40.0)
++
++
++def test_no_expenses_means_no_duplicates() -> None:
++    assert remove_duplicates([]) == []
++
++
++def test_expenses_without_duplicates_are_unchanged() -> None:
++    assert remove_duplicates([BAR, ZARA]) == [BAR, ZARA]
++
++
++def test_an_exact_duplicate_is_removed_and_the_first_one_kept() -> None:
++    assert remove_duplicates([BAR, ZARA, BAR]) == [BAR, ZARA]
++
++
++def test_same_merchant_on_another_day_is_not_a_duplicate() -> None:
++    next_day = Expense("2025-07-02", "Bar Ramon", "dining", 10.0)
++
++    assert remove_duplicates([BAR, next_day]) == [BAR, next_day]
++
++
++def test_many_copies_of_one_expense_collapse_to_one() -> None:
++    assert remove_duplicates([BAR, BAR, BAR]) == [BAR]
+
+########## COMMIT 1e421bc  2026-04-13
+Remove duplicates with a seen-set
+
+
+---
+ src/expense_tracker/report.py | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index 598b132..0d059d3 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -92,4 +92,10 @@ def format_report(
+ 
+ 
+ def remove_duplicates(expenses: list[Expense]) -> list[Expense]:
+-    return expenses
++    seen: set[Expense] = set()
++    unique: list[Expense] = []
++    for expense in expenses:
++        if expense not in seen:
++            seen.add(expense)
++            unique.append(expense)
++    return unique
+
+########## COMMIT d3df52b  2026-04-15
+Use dict.fromkeys to drop duplicates in order
+
+
+---
+ src/expense_tracker/report.py | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index 0d059d3..58aaec4 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -92,10 +92,4 @@ def format_report(
+ 
+ 
+ def remove_duplicates(expenses: list[Expense]) -> list[Expense]:
+-    seen: set[Expense] = set()
+-    unique: list[Expense] = []
+-    for expense in expenses:
+-        if expense not in seen:
+-            seen.add(expense)
+-            unique.append(expense)
+-    return unique
++    return list(dict.fromkeys(expenses))

@@ -1,0 +1,237 @@
+
+===== [slides-session-7.pdf] page 1 =====
+Refactoring, Type Checking, and
+Failing Well
+Clean code, part 2
+Session 7. October 6th 2026
+Alberto Cámara
+
+===== [slides-session-7.pdf] page 2 =====
+Today
+Name the refactoring moves you already watched last Tuesday
+Run mypy and then mypy --strict , and read what it says
+Keep a functional core and push the I/O to the edge
+Decide what to catch, what to raise, what to log → failing well.
+Then: refactor exercise in pairs, and switch strict mode on in the repo projects.
+Alberto Cámara | Software Development for Business | Session 7
+2
+
+===== [slides-session-7.pdf] page 3 =====
+From last week
+We took the expense-tracker project to tag v0.2 in five incremental changes:
+1. Constants
+2. Better names
+3. Computation apart from output
+4. Using a type to encode complex data
+5. hints and ruff
+Let's give each of the above a name.
+Alberto Cámara | Software Development for Business | Session 7
+3
+
+===== [slides-session-7.pdf] page 4 =====
+Refactoring moves
+
+===== [slides-session-7.pdf] page 5 =====
+Refactoring: change the structure, keep the behaviour
+If the output changes, it was not a refactoring. The moves are small on purpose.
+Move
+You saw it as
+Extract constant
+magic numbers → STANDARD_VAT_RATE
+Rename (replace comment with a name)
+calculate_totals → total_by_category
+Separate I/O from logic
+run() split into read, compute, format
+Introduce a parameter object / type
+tuple → Expense
+Extract function
+largest_expense out of run()
+Decompose conditional
+a nested if → guard clauses
+Alberto Cámara | Software Development for Business | Session 7
+5
+
+===== [slides-session-7.pdf] page 6 =====
+Before / after: decompose conditional
+if e[2] == category:
+    if e[3] >= minimum:
+        totals[e[2]] += e[3]
+def is_wanted(expense: Expense, category: str, minimum: float) -> bool:
+    matches_category = category == "" or expense.category == category
+    return matches_category and expense.amount >= minimum
+A condition with a name is a condition you can test.
+Alberto Cámara | Software Development for Business | Session 7
+6
+
+===== [slides-session-7.pdf] page 7 =====
+mypy
+
+===== [slides-session-7.pdf] page 8 =====
+What a type checker catches that a linter cannot
+def largest_expense(expenses: list[Expense]) -> Expense | None: ...
+largest = largest_expense(expenses)
+print(largest.amount)
+error: Item "None" of "Expense | None" has no attribute "amount"
+Empty list → None → crash at 2 a.m.
+The checker finds it before anyone runs the program.
+Alberto Cámara | Software Development for Business | Session 7
+8
+
+===== [slides-session-7.pdf] page 9 =====
+Reading an error without panic
+src/app/report.py:12: error:
+  Function is missing a return type annotation  [no-untyped-def]
+1. File and line: where
+2. Message: what is wrong, in plain words
+3. [code] : what to search for
+Read the first error. Fix it. Run again. Later errors are often the same one repeating.
+Alberto Cámara | Software Development for Business | Session 7
+9
+
+===== [slides-session-7.pdf] page 10 =====
+Now --strict
+uv run --with mypy mypy --strict src
+Live, on the demo at v0.1 (untyped): 4 errors, all one kind — mypy does not look
+inside a function with no signature. Add the signatures and a second kind appears.
+Kind
+Meaning
+Fix
+Missing annotation
+"what type is this?"
+write the hint
+Types disagree
+" int here, float there"
+make them agree ( 0.0 )
+None not handled
+"this can be missing"
+check it, or change the type
+We work the kinds, not every line. Then v0.2 : clean.
+Alberto Cámara | Software Development for Business | Session 7
+10
+
+===== [slides-session-7.pdf] page 11 =====
+Your repo turns strict on today
+pyproject.toml :
+[tool.mypy]
+python_version = "3.13"
+strict = true
+replaces check_untyped_defs = true . CI already runs mypy src tests — from now on it
+enforces strict, tests included.
+Every def test_…() needs -> None . Friday's tests start that way.
+Alberto Cámara | Software Development for Business | Session 7
+11
+
+===== [slides-session-7.pdf] page 12 =====
+Functional core, imperative shell
+
+===== [slides-session-7.pdf] page 13 =====
+Where does the I/O live?
+        ┌─────────────────────────────┐
+        │  shell: cli.py              │   reads files, prints, exits
+        │  ┌───────────────────────┐  │
+        │  │  core: pure functions │  │   data in → data out
+        │  └───────────────────────┘  │
+        └─────────────────────────────┘
+Core: takes values, returns values. No open , no print , no sys.exit .
+Shell: the only place that touches the world.
+Alberto Cámara | Software Development for Business | Session 7
+13
+
+===== [slides-session-7.pdf] page 14 =====
+On the demo
+expenses = read_expenses(path)                       # shell: touches a file
+totals = total_by_category(expenses, category, minimum)   # core: pure
+lines = format_report(path, category, minimum, totals, largest)  # core: pure
+for line in lines:
+    print(line)                                      # shell: prints
+total_by_category does not know that a CSV exists. Give it a list and it works.
+Alberto Cámara | Software Development for Business | Session 7
+14
+
+===== [slides-session-7.pdf] page 15 =====
+Why we care
+Testable: Friday, you pass a list and check the answer. No file needed
+Reusable: the same core can serve a CLI today and a web page later
+Replaceable: session 17's database only changes the shell
+Also CP2, item 3: the code your tests call has no print and no file I/O.
+Alberto Cámara | Software Development for Business | Session 7
+15
+
+===== [slides-session-7.pdf] page 16 =====
+Failing well
+
+===== [slides-session-7.pdf] page 17 =====
+Exceptions or return codes?
+Exception
+Return code / value
+The caller can't carry on
+ raise
+A normal "no result"
+ return None / empty
+Crossing to the shell
+translate to an exit code
+Do not return -1 and hope somebody checks.
+Alberto Cámara | Software Development for Business | Session 7
+17
+
+===== [slides-session-7.pdf] page 18 =====
+Catch only what you can handle
+try:
+    ...
+except:                       # ← v0.1
+    print("could not read " + path)
+    sys.exit(1)
+A bare except hides every bug: a typo, a missing import, Ctrl-C . All become "could not
+read".
+except (OSError, ValueError):     # ← v0.2: only the two we expect
+Alberto Cámara | Software Development for Business | Session 7
+18
+
+===== [slides-session-7.pdf] page 19 =====
+Fail loudly, at the boundary
+Core: raises on bad input, never prints an error
+Shell: catches it, prints to stderr, exits non-zero
+try:
+    expenses = read_expenses(path)
+except (OSError, ValueError) as error:
+    typer.echo(f"could not read {path}: {error}", err=True)
+    raise typer.Exit(code=1)
+Session 5's exit code, with the reason attached.
+v0.2 still prints and exits inside report.py . Moving this to the edge is v0.3 .
+Alberto Cámara | Software Development for Business | Session 7
+19
+
+===== [slides-session-7.pdf] page 20 =====
+print is not logging
+import logging
+logger = logging.getLogger(__name__)
+logger.warning("skipped malformed row %d in %s", line_number, path)
+Has a level: debug · info · warning · error
+Can be silenced, filtered, sent to a file: without editing the code
+print is for the program's output; logging is for its diary
+Configure once, in the shell: logging.basicConfig(level=logging.INFO) .
+Alberto Cámara | Software Development for Business | Session 7
+20
+
+===== [slides-session-7.pdf] page 21 =====
+The lab
+
+===== [slides-session-7.pdf] page 22 =====
+Two parts, 45 minutes
+Part 1: 30 min, in pairs. labs/07-refactor.md
+Initial invoice code: calc(c, i, d) and x(l) . Rename, split, de-duplicate,
+restructure, type it, mypy --strict clean. Edge cases named, not tested yet: that is
+Friday.
+Part 2: 15 min, your group repo.
+1. Set strict = true ; run uv run mypy src tests ; fix what it reports
+2. Mark where your project's I/O lives: files, print , sys.exit
+3. Push. CI must stay green.
+Alberto Cámara | Software Development for Business | Session 7
+22
+
+===== [slides-session-7.pdf] page 23 =====
+Next class
+Practice 2. You will write tests for your core, and learn to write the test before the code.
+Checkpoint 2 is marked at the v0.2 tag.
+Alberto Cámara | Software Development for Business | Session 7
+23

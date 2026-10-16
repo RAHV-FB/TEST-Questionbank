@@ -1,0 +1,1260 @@
+{
+ "papers": [
+  {
+   "id": "paper-a",
+   "title": "Paper A",
+   "kind": "realistic",
+   "minutes": 60,
+   "intro_md": "This paper is built to look like the teacher's: twelve multiple-choice questions, then three short open questions, at the difficulty of his nine samples. Sit it in 60 minutes with a pen, no notes and no devices. Give each multiple-choice question about 90 seconds and each open question about 8 minutes, and answer the open questions in 5–8 lines of prose, because you never write code. Marks: 1 for each multiple-choice question and 5 for each open question, 27 in all. Mark yourself with the model answers, and follow the Revise link on every question you miss.",
+   "questions": [
+    {
+     "id": "paper-a-q01",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "concept",
+      "judgement"
+     ],
+     "stem_md": "The parking-lot group's `fee` charges 2.50 EUR for every hour started, and all its tests pass:\n\n```python\ndef fee(minutes: int) -> float:\n    hours = minutes // 60 + 1\n    return hours * 2.5\n```\n\nWhich change to the parking fees module is a refactoring?",
+     "options": [
+      {
+       "text_md": "Add `FREE_MINUTES = 15` to the module, so that the first quarter of an hour costs nothing, and update the tests",
+       "correct": false,
+       "why_md": "The first 15 minutes are now free: `fee(10)` goes from 2.50 to 0.0 in a real run. That is new behaviour, so it is a feature."
+      },
+      {
+       "text_md": "Move the bare `2.5` into a constant `HOURLY_RATE = 2.5` and write `hours * HOURLY_RATE`, leaving every test unchanged",
+       "correct": true,
+       "why_md": "Right: the structure changes (a name instead of a bare number) and every price stays the same. We ran `fee` on 0, 10, 59, 60, 90 and 120 minutes before and after: identical results."
+      },
+      {
+       "text_md": "Fix the off-by-one at exactly 60 minutes by writing `(minutes + 59) // 60`, so that one full hour costs 2.50 EUR, not 5.00",
+       "correct": false,
+       "why_md": "`fee(60)` goes from 5.0 to 2.5 and `fee(0)` from 2.5 to 0.0 in a real run. A bug fix changes the output on purpose and belongs in its own commit."
+      },
+      {
+       "text_md": "Change the return type to `str` and return text such as `5.00 EUR`, so that the shell can print the fee without formatting",
+       "correct": false,
+       "why_md": "The return type changes, and every caller that adds or compares fees breaks. A refactoring keeps what the program does for everyone who uses it."
+      }
+     ],
+     "explanation_md": "The test from session 7: change the structure, keep the behaviour, and \"if the output changes, it was not a refactoring\". Naming the rate is exactly that: the numbers `fee` returns are the same, so nothing a user, a test or CI sees has moved. The other three each change an output or a type, on purpose or not. The off-by-one at 60 minutes may well be a bug, and fixing it is worth doing, but as a separate change with its own test, because the fix alters `fee(60)`. Mixing a refactoring with a fix in one commit makes the history hard to read, and the tests cannot tell you which of the two broke something.",
+     "module_ref": "refactor-types",
+     "section_ref": "refactor-types-s1",
+     "source_ref": "S7 slides 5 and 6; sample Q2 shape",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q02",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "concept",
+      "judgement"
+     ],
+     "stem_md": "A vending-machine group plans like Waterfall: the specification is signed in week 1 and may change only through a formal change request. The project is due in week 8. In week 6 the owner tries the first working machine and asks for card payment, which the specification does not mention. What does this show?",
+     "options": [
+      {
+       "text_md": "The analysis phase was done badly: a more careful specification would have listed card payment in week 1.",
+       "correct": false,
+       "why_md": "Session 2 says the opposite. Customers understand what they want only when they see a working version, and that is normal, not a failure of analysis."
+      },
+      {
+       "text_md": "The owner is at fault, because a signed specification is a contract and later requests should be refused.",
+       "correct": false,
+       "why_md": "Refusing may be Waterfall's rule, but it does not say what the situation shows. The group would deliver the signed machine and the owner would not want it."
+      },
+      {
+       "text_md": "The owner first saw working software near the end, so a wrong assumption surfaced late, at a high cost.",
+       "correct": true,
+       "why_md": "Right: this is the second weakness on slide 7, feedback that arrives too late. The gate between phases is an approved document, so the customer sees a machine only at the end."
+      },
+      {
+       "text_md": "Waterfall cannot work for any project, so the group should have used Agile from the first week.",
+       "correct": false,
+       "why_md": "Too strong. Waterfall suits projects with known, stable requirements, a fixed price or a regulator. 'Waterfall is always wrong' is as weak as 'Agile is always right'."
+      }
+     ],
+     "explanation_md": "Waterfall fixes the requirements early and approves a document at every gate, and the customer is involved mostly at the start and the end. When the owner finally sees working software in week 6 of 8, the missing requirement appears when most of the work is done, and a formal change request has to go back through the gates. This is feedback that arrives too late (slide 7). It is not a failure of the analysis: requirements changing once people see a first version is normal for software. Agile answers with short cycles in which the owner sees something usable every few weeks, so card payment would surface in the first iterations.",
+     "module_ref": "sdlc-agile",
+     "section_ref": "sdlc-agile-s6",
+     "source_ref": "S2 slides 5 to 8",
+     "origin": "slides",
+     "verified_by": "reasoning"
+    },
+    {
+     "id": "paper-a-q03",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "You clone the group repository, make a commit and run `git push`. Git asks for a username and password. You check the remote:\n\n```console\n$ git remote -v\norigin\thttps://github.com/esade-swdev-2026/gym-booking.git (fetch)\norigin\thttps://github.com/esade-swdev-2026/gym-booking.git (push)\n```\n\nWhat should you do next?",
+     "options": [
+      {
+       "text_md": "Switch the remote to SSH with `git remote set-url`, then run `ssh -T git@github.com`.",
+       "correct": true,
+       "why_md": "Right. An `https://` remote makes git ask for a username and password. The course authenticates with an SSH key, so the remote has to start with `git@github.com:`."
+      },
+      {
+       "text_md": "Type your GitHub account password at the prompt and carry on with the push as usual.",
+       "correct": false,
+       "why_md": "The course authenticates with an SSH key, not a password. The prompt appears only because the remote is an `https://` URL, so typing the password leaves the cause in place."
+      },
+      {
+       "text_md": "Run `ssh-keygen` again and upload the new public key to your GitHub account settings.",
+       "correct": false,
+       "why_md": "The key is not what the transcript shows. An `https://` remote never uses an SSH key, so a new key changes nothing until the remote URL changes."
+      },
+      {
+       "text_md": "Delete the clone and clone it again from the Windows side, using Git for Windows this time.",
+       "correct": false,
+       "why_md": "That is the line-endings entry of the troubleshooting table, a different problem. A new `https://` clone would ask for the same password again."
+      }
+     ],
+     "explanation_md": "A `git push` that asks for a username and password is the signature of an `https://` remote, and `git remote -v` shows it. Lab 00's troubleshooting table gives the fix: switch the remote to the SSH form with `git remote set-url origin git@github.com:...`, then run `ssh -T git@github.com` until GitHub greets you by name. Session 3 says you authenticate to GitHub with an SSH key, so a password prompt means git is not using the key at all. A second key or a second clone does not change the URL.",
+     "module_ref": "project-anatomy",
+     "section_ref": "project-anatomy-s5",
+     "source_ref": "S3 slide 5; labs/00-setup.md troubleshooting 3",
+     "origin": "lab",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q04",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "It is Thursday, 11:00, and the Sprint Review is at 12:00. The habit-tracker group's item \"As a user, I can see my average minutes per day, so that I know if I am keeping up\" works for every week that has entries. CI is red at the Tests step of the last push (output trimmed):\n\n```text\n    def weekly_average(minutes_by_day: dict[str, int]) -> float:\n>       return sum(minutes_by_day.values()) / len(minutes_by_day)\nE       ZeroDivisionError: division by zero\n\nsrc/habits/weekly.py:2: ZeroDivisionError\n=========================== short test summary info ============================\nFAILED tests/test_weekly.py::test_a_week_with_nothing_logged_averages_zero - ...\n1 failed, 3 passed in 0.01s\n```\n\nThe group's Definition of Done includes the green CI check. What should the team do?",
+     "options": [
+      {
+       "text_md": "Show it as done at the Review: the empty week is rare, and every real user has already logged something.",
+       "correct": false,
+       "why_md": "'Done except for ...' is not admissible. The green CI check is a line of the Definition of Done that the group does not waive for one item, and a brand-new user starts with an empty week."
+      },
+      {
+       "text_md": "Delete the empty-week test and push, so that CI is green again well before the Review starts at noon.",
+       "correct": false,
+       "why_md": "Deleting the test removes the referee and keeps the bug: CI turns green and a new user still meets a `ZeroDivisionError`. The test is right; it found a real edge case."
+      },
+      {
+       "text_md": "Show it as 'done except for the empty week', and put that single case on the backlog for the next Sprint.",
+       "correct": false,
+       "why_md": "This moves a missed standard into the backlog. The Definition of Done is applied to every item before it counts, not collected afterwards as a separate task."
+      },
+      {
+       "text_md": "Call it not done: make `weekly_average` return 0.0 for an empty week, push, and show it when CI is green.",
+       "correct": true,
+       "why_md": "Right. An item that misses the Definition of Done is not done and does not ship. The repair is a guard clause of two lines, and the hour before the Review is enough for it."
+      }
+     ],
+     "explanation_md": "The course's Definition of Done is a green CI check, the same one for every group. A red Tests step means the increment is not done, however well the item works on a normal week. The failing test is not noise: a new user has an empty week, `len(...)` is zero and the first run would crash. Deleting the test hides the problem and keeps the crash, and \"done except for ...\" is not admissible (session 4, slide 10). The repair is small: a guard clause that returns 0.0 for an empty week, a push, and a wait for green before the item is shown at the Review.",
+     "module_ref": "scrum",
+     "section_ref": "scrum-s6",
+     "source_ref": "S4 slides 10, 16 and 17; S8 slide 11",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q05",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "The habit tracker's `log` command, and two runs of it:\n\n```python\n@app.command()\ndef log(habit: str, minutes: int = 30) -> None:\n    if minutes <= 0:\n        typer.echo(\"minutes must be positive\", err=True)\n        raise typer.Exit(code=1)\n    typer.echo(f\"Logged {habit}: {minutes} min\")\n```\n\n```console\n$ uv run habits log\nUsage: habits log [OPTIONS] {habit}\nTry 'habits log --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Missing argument 'habit'.                                                    │\n╰──────────────────────────────────────────────────────────────────────────────╯\n$ echo $?\n2\n$ uv run habits log Run --minutes 0\nminutes must be positive\n$ echo $?\n1\n```\n\nWhat can you conclude?",
+     "options": [
+      {
+       "text_md": "Both messages come from the `if` in `log`, which picks code 2 for a missing value and code 1 for a wrong one.",
+       "correct": false,
+       "why_md": "The function never ran for the first command, and it has no `if` for a missing `habit`. typer built that check from the signature, where `habit` has no default."
+      },
+      {
+       "text_md": "Exit code 2 means the program crashed with a Python error, and exit code 1 means a normal, expected failure.",
+       "correct": false,
+       "why_md": "Both are ordinary failures. A program that stops on an uncaught Python exception also exits 1, and the number only says 'not success', never why."
+      },
+      {
+       "text_md": "typer refused the first command before `log` ran; the second got into `log`, whose own check exited with 1.",
+       "correct": true,
+       "why_md": "Right. `habit` has no default, so typer makes it a required argument and refuses the command line itself. `--minutes 0` is a valid `int`, so it reaches the function, and `raise typer.Exit(code=1)` ends it."
+      },
+      {
+       "text_md": "The first command should also exit with 1, because an exit code of 2 shows that typer is badly set up.",
+       "correct": false,
+       "why_md": "Any non-zero code means failure, and the shell, `&&` and CI read only that. typer uses 2 for a command line it refuses, and nothing is misconfigured."
+      }
+     ],
+     "explanation_md": "Session 5 says the type hints are the specification. From `log(habit: str, minutes: int = 30)` typer builds the usage line, makes `habit` a required argument and `--minutes` an option, and checks the command line before your function runs. A missing `habit` is refused there, with typer's own message and its exit code 2. The value `0` is a perfectly good `int`, so it reaches `log`, where the group's own check prints to stderr and ends with `raise typer.Exit(code=1)`. Both runs end non-zero, which is what the shell, `&&` and CI read: 0 means success and anything else means failure.",
+     "module_ref": "cli-program",
+     "section_ref": "cli-program-s6",
+     "source_ref": "S5 slides 7 to 9",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q06",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-code",
+      "judgement"
+     ],
+     "stem_md": "In the parking-lot group a ticket is a tuple `(plate, entry_minute, exit_minute)`, and `minutes_parked` reads it by position:\n\n```python\ndef minutes_parked(ticket):\n    return ticket[2] - ticket[1]\n```\n\nA teammate adds the parking level to every ticket as its second item, a number, giving `(\"1234ABC\", 3, 540, 600)`, and does not touch `minutes_parked`. Called with the new ticket it returns 537 for a car that stayed 60 minutes, and no tool reports anything. Which clean-code problem does this describe best?",
+     "options": [
+      {
+       "text_md": "A tuple stands in for a type: the function reads fields by position, so a new item shifts them without a warning.",
+       "correct": true,
+       "why_md": "Right: `ticket[2]` is now the entry minute and `ticket[1]` the level, so it returns 537 where 60 is expected. Nothing fails, so nobody is warned."
+      },
+      {
+       "text_md": "The function does several jobs at once: it reads the ticket and does the arithmetic, so it is hard to test and to change.",
+       "correct": false,
+       "why_md": "It does one job: it subtracts two minutes. The failure comes from how the ticket is represented, not from how much the function does."
+      },
+      {
+       "text_md": "The function name `minutes_parked` is too vague to say what it returns, so callers have to read the code.",
+       "correct": false,
+       "why_md": "The name says exactly what comes back, minutes parked. A better name would not stop the silent shift when a field is inserted."
+      },
+      {
+       "text_md": "The function repeats the same subtraction in several places, so a change to the ticket has to be made more than once.",
+       "correct": false,
+       "why_md": "There is one subtraction in one place. Duplication is a real problem, but not one this function has."
+      }
+     ],
+     "explanation_md": "Reading `ticket[2] - ticket[1]` needs a table in someone's head: which position is which field. When a field is inserted, every index after it shifts, and the function keeps running. Here it returns 540 - 3 = 537 minutes with no error, which is the worst kind of failure because it is silent. This is session 6's \"a tuple is a missing type\". With a `@dataclass(frozen=True)` the code reads `ticket.exit_minute - ticket.entry_minute`: the names do not move when a field is added, and a misspelt field is an error rather than a wrong answer. Real run: the old ticket gives 60, the new one 537.",
+     "module_ref": "clean-code",
+     "section_ref": "clean-code-s7",
+     "source_ref": "S6 slides 21 to 24",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q07",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-code",
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "The habit-tracker group's `average` command reads a file with one number of minutes per line. CI is green, and so is `mypy --strict`. Then a user's file has a stray word in it:\n\n```python\ndef parse_minutes(text: str) -> int:\n    return int(text)\n\n\ndef weekly_average(minutes: list[int]) -> float:\n    if not minutes:\n        return 0.0\n    return sum(minutes) / len(minutes)\n```\n\n```python\n@app.command()\ndef average(path: str) -> None:\n    lines = Path(path).read_text().split()\n    minutes = [parse_minutes(line) for line in lines]\n    typer.echo(f\"Average: {weekly_average(minutes):.1f} min\")\n```\n\n```console\n$ uv run mypy --strict src\nSuccess: no issues found in 3 source files\n$ cat week.txt\n30\n45\nrest\n60\n$ uv run habits average week.txt\n(traceback frames trimmed)\nValueError: invalid literal for int() with base 10: 'rest'\n$ echo $?\n1\n```\n\nWhat does this show, and what is the right next step?",
+     "options": [
+      {
+       "text_md": "`--strict` missed this line, so the group needs a stricter type checker in CI before the next release.",
+       "correct": false,
+       "why_md": "No type checker can read the file. mypy compares the types written in the code, and `parse_minutes(text: str) -> int` is a correct signature."
+      },
+      {
+       "text_md": "The user's file is at fault, so no change is needed: a program may assume that its input is well formed.",
+       "correct": false,
+       "why_md": "Bad input is the normal case at the edge of a program. The course asks the shell to expect it and to fail loudly with a message, not with a raw traceback."
+      },
+      {
+       "text_md": "`parse_minutes` should catch the `ValueError` and return `-1`, so that the average can still be printed.",
+       "correct": false,
+       "why_md": "Slide 17 says not to return `-1` and hope somebody checks. A `-1` would flow into the average and give a wrong number with no error at all."
+      },
+      {
+       "text_md": "mypy checks types, not file contents: the shell should catch `ValueError`, use stderr and exit non-zero.",
+       "correct": true,
+       "why_md": "Right. A bad value in a file only shows up at run time, at the boundary. The shell is the layer that catches the expected exceptions and turns them into a message and an exit code."
+      }
+     ],
+     "explanation_md": "mypy compares the types written in the code. Every hint here is correct, and mypy cannot know that a file will one day contain the word `rest`. Session 7 draws the line: the checker finds what can be known before the program runs, such as the `None` that is not handled, and the shell deals with what only appears at run time. A bad line in a file is an expected failure at the boundary, so the shell catches `ValueError`, prints a message such as `week.txt has a line that is not a number` to stderr and raises `typer.Exit(code=1)`. A raw traceback gives the user nothing to act on, and returning `-1` would put a fake number into the average.",
+     "module_ref": "core-shell-failing",
+     "section_ref": "core-shell-failing-s7",
+     "source_ref": "S7 slides 8, 17 and 19",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q08",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "The gym-booking group keeps `classes.csv` in the project root, and this test reads it. Marc runs `uv run pytest` from the project root and it passes. Ines runs the same command from inside `tests/`:\n\n```python\ndef test_yoga_has_four_bookings() -> None:\n    bookings = read_bookings(\"classes.csv\")\n    assert len(bookings[\"yoga\"]) == 4\n```\n\n```console\n$ pwd\n/home/ines/code/gym-booking/tests\n$ uv run pytest -q\nF                                                                        [100%]\n...\nE       FileNotFoundError: [Errno 2] No such file or directory: 'classes.csv'\n\n../src/gym_booking/bookings.py:6: FileNotFoundError\n=========================== short test summary info ============================\nFAILED test_bookings.py::test_yoga_has_four_bookings - FileNotFoundError: [Er...\n1 failed in 0.01s\n```\n\nWhich change follows session 8's advice and removes the problem for good?",
+     "options": [
+      {
+       "text_md": "Open the file by its absolute path, `/home/ines/code/gym-booking/classes.csv`, so that every folder works.",
+       "correct": false,
+       "why_md": "That path exists on Ines's laptop only. It fixes the folder problem here and breaks the test on Marc's laptop and in CI, where the clone lives somewhere else."
+      },
+      {
+       "text_md": "Give the test its own data: a plain list for a pure function, or a tiny file written into `tmp_path`.",
+       "correct": true,
+       "why_md": "Right. A test that carries its own data does not care which folder it runs from or which files lie around. Session 8 calls the failure 'tests that need your laptop', and this is the same family."
+      },
+      {
+       "text_md": "Add a line to the README saying that `pytest` must always be started from the project root.",
+       "correct": false,
+       "why_md": "A note does not change the test. It still fails for anyone who forgets, and it still needs a file in one particular place."
+      },
+      {
+       "text_md": "Copy `classes.csv` into `tests/` as well, so that both folders hold a copy of the file.",
+       "correct": false,
+       "why_md": "Two copies drift apart, and the test still depends on a file nobody checks and on the folder where pytest starts. The dependency is hidden, not removed."
+      }
+     ],
+     "explanation_md": "The test opens `classes.csv` by a relative path, and a relative path starts from the folder you are standing in (session 9). From the project root the file is there; from `tests/` it is not, which is why the traceback names the bare file. It is the same family as session 8's third 'one that bites', tests that need your laptop: the test needs a file in a particular place. The cure is to give the test its own data, either a plain list passed to a pure function or a small file written into `tmp_path`, which pytest creates fresh and deletes afterwards. An absolute path, a README note and a second copy all keep the dependency and only move the failure somewhere else.",
+     "module_ref": "testing-tdd",
+     "section_ref": "testing-tdd-s9",
+     "source_ref": "S8 slides 23 and 28; S9 slides 10 and 11",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q09",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "The parking-lot group adds a surcharge to its hourly rates. Strict mypy is part of CI:\n\n```python\nRATES = {\"car\": 2.50, \"van\": 4.00}\n\n\ndef find_rate(vehicle: str) -> float | None:\n    return RATES.get(vehicle)\n\n\ndef price_with_surcharge(vehicle: str) -> float:\n    return find_rate(vehicle) + 1.00\n```\n\n```console\n$ uv run mypy --strict src\nsrc/parking/rates.py:9: error: Unsupported operand types for + (\"None\" and \"float\")  [operator]\nsrc/parking/rates.py:9: note: Left operand is of type \"float | None\"\nFound 1 error in 1 file (checked 1 source file)\n```\n\nWhich fix is most appropriate?",
+     "options": [
+      {
+       "text_md": "Add `# type: ignore[operator]` to the line, because every vehicle the program sees is in `RATES`, so `None` cannot happen",
+       "correct": false,
+       "why_md": "Nothing in the code or in a test says so: `price_with_surcharge(\"boat\")` would raise a `TypeError`. A comment is a claim, not a check."
+      },
+      {
+       "text_md": "Check for `None` before adding, and decide what an unknown vehicle should do, for example raise `ValueError`",
+       "correct": true,
+       "why_md": "Right: `find_rate` can return `None`, so the caller must decide what that means. A clear error beats a crash with a confusing message."
+      },
+      {
+       "text_md": "Change the return type of `price_with_surcharge` to `float | None`, so that mypy accepts the line",
+       "correct": false,
+       "why_md": "We ran it: mypy reports the same error. The addition on `None` is the problem, not the declared type of the result."
+      },
+      {
+       "text_md": "Make `find_rate` return `RATES.get(vehicle, 0)`, so that an unknown vehicle costs nothing and the line is quiet",
+       "correct": false,
+       "why_md": "mypy is quiet, but a boat is now priced at 1.00 EUR with no warning (we ran it). A made-up default hides the missing case instead of deciding it."
+      }
+     ],
+     "explanation_md": "Session 7's three kinds: this is None not handled. `find_rate` is honest about its result, `float | None`, and the caller adds a number to it without looking. mypy reports it under `operator` and the note `Left operand is of type \"float | None\"` says what is missing. The fix is to deal with the `None` where it arrives: check it, and choose what an unknown vehicle means (here an error). Silencing it with `# type: ignore`, changing the result type, or inventing a default would each make the line quiet and leave the case undecided. Real run on all four versions.",
+     "module_ref": "refactor-types",
+     "section_ref": "refactor-types-s9",
+     "source_ref": "S7 slides 8 to 10; labs/07-refactor.md troubleshooting",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q10",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output"
+     ],
+     "stem_md": "Ines lists her project folder:\n\n```console\n$ ls -l\n-rw-r--r-- 1 ines ines  412 Oct 12 09:14 README.md\n-rwxr-x--- 1 ines ines  186 Oct 12 09:14 check.sh\ndrwxr-xr-x 2 ines ines 4096 Oct 12 09:14 data\n-rw------- 1 ines ines  399 Oct 12 09:14 deploy_key\n```\n\nMarc has an account on the same computer. He is not `ines` and not in her group. Which of these can he do?",
+     "options": [
+      {
+       "text_md": "Read `README.md`.",
+       "correct": true,
+       "why_md": "Right: the last three characters, the permissions for everyone else, are `r--`, so anyone with an account can read it but not change it."
+      },
+      {
+       "text_md": "Run `./check.sh`.",
+       "correct": false,
+       "why_md": "For everyone else `check.sh` has `---`: no read and no execute. Only the owner and the group have `x`."
+      },
+      {
+       "text_md": "Read `deploy_key`.",
+       "correct": false,
+       "why_md": "`-rw-------` is mode 600: only the owner can read or write it. That is exactly why it fits a private key."
+      },
+      {
+       "text_md": "Create a new file inside `data`.",
+       "correct": false,
+       "why_md": "For everyone else `data` has `r-x`: he can list the folder and enter it, but creating a file needs `w`, which only Ines has."
+      }
+     ],
+     "explanation_md": "Read each line in four parts: the type, then three triplets for the owner, the group and everyone else. Marc is in the last triplet for every file. `README.md` ends in `r--`, so he can read it. `check.sh` ends in `---`, so he can neither read nor run it. `deploy_key` ends in `---`, the 600 pattern that keeps a private key private. `data` is a folder, and `r-x` lets him look and enter but not create or delete anything, because that needs `w`.",
+     "module_ref": "terminal-files",
+     "section_ref": "terminal-files-s7",
+     "source_ref": "S9 slide 17",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q11",
+     "type": "mcq",
+     "level": "hard",
+     "skills": [
+      "predict-output",
+      "read-code"
+     ],
+     "stem_md": "The library group keeps its loans in `loans.csv`:\n\n```text\nmember,book,days_late\nana,Dune,0\nmarc,Emma,3\njoan,Ulysses,0\nmarc,Dune,0\nana,Persuasion,2\nlia,Emma,0\nmarc,Ulysses,5\njoan,Persuasion,0\nana,Ulysses,0\nmarc,Persuasion,1\njoan,Emma,4\nlia,Dune,0\n```\n\nWhat does this command print? (`cut -d, -f1` keeps the first column, `uniq -c` puts the count in front of each line, `sort -rn` sorts by number, largest first, and `head -n 1` keeps the first line. Ignore the spaces.)\n\n```bash\ncut -d, -f1 loans.csv | sort | uniq -c | sort -rn | head -n 1\n```",
+     "options": [
+      {
+       "text_md": "`marc`",
+       "correct": false,
+       "why_md": "The names are right but `uniq -c` adds a count in front of each one, and `head -n 1` keeps the whole first line, count included."
+      },
+      {
+       "text_md": "`3 ana`",
+       "correct": false,
+       "why_md": "That is the first line after `uniq -c`, in alphabetical order. The second `sort -rn` then puts the largest count first, so `3 ana` is not first."
+      },
+      {
+       "text_md": "`1 member`",
+       "correct": false,
+       "why_md": "The header word is a line like any other and counts once. It would come first only with an ascending sort, `sort -n`. `-rn` puts the largest count first."
+      },
+      {
+       "text_md": "`4 marc`",
+       "correct": true,
+       "why_md": "Right: `cut` takes the name column, `sort` puts equal names together, `uniq -c` counts each group, `sort -rn` puts the largest count first and `head -n 1` keeps that line."
+      }
+     ],
+     "explanation_md": "Read it stage by stage. `cut -d, -f1` keeps the first column, header word included. `sort` puts identical names next to each other, which `uniq` needs. `uniq -c` collapses each run into one line with its count: 3 ana, 3 joan, 2 lia, 4 marc, 1 member. `sort -rn` sorts numerically, largest first, so 4 marc comes to the top, and `head -n 1` keeps only that line. The header counts once and sorts to the bottom, so it does no harm here.",
+     "module_ref": "pipes-bash",
+     "section_ref": "pipes-bash-s5",
+     "source_ref": "S10 slides 6–7; S9 slide 6 and take-aways",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q12",
+     "type": "mcq",
+     "level": "beyond",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "The gym-booking group's `scripts/check.sh` is run by CI. A teammate trimmed pytest's output with `tail` to keep the log short. One test fails, and CI is green:\n\n```bash\n#!/usr/bin/env bash\nset -e\nuv run ruff check .\nuv run mypy src tests\nuv run pytest -q | tail -n 2\n```\n\n```console\n$ ./scripts/check.sh\nAll checks passed!\nSuccess: no issues found in 3 source files\nFAILED tests/test_rules.py::test_exactly_two_hours_before_refunds_in_full - a...\n1 failed, 2 passed in 0.01s\n$ echo $?\n0\n```\n\nWhy did the script exit with 0? (`set -e` makes a script stop at the first command that exits non-zero.)",
+     "options": [
+      {
+       "text_md": "`set -e` stops the script only at `uv run mypy`, so any failure of `ruff` or `pytest` is ignored.",
+       "correct": false,
+       "why_md": "`set -e` stops the script at any command that exits non-zero. The trouble is that the failing `pytest` is not a command on its own line here."
+      },
+      {
+       "text_md": "`pytest | tail` is a pipeline, and its exit status is that of the last command, so `tail`'s 0 hid it.",
+       "correct": true,
+       "why_md": "Right: without `pipefail`, the status of the pipeline is the status of `tail`, which succeeded. `set -e` therefore sees a success and the script carries on."
+      },
+      {
+       "text_md": "`pytest -q` is quiet mode, which reports failures on the screen but always exits with the code 0.",
+       "correct": false,
+       "why_md": "Quiet mode only shortens the output. Run alone, `pytest` exits non-zero when a test fails, which is how CI normally goes red."
+      },
+      {
+       "text_md": "`uv run` swallows the exit code of the tool it starts, so a failing test can never turn the CI step red.",
+       "correct": false,
+       "why_md": "`uv run` passes the exit code of the program through. If it did not, no CI step in the course could ever fail."
+      }
+     ],
+     "explanation_md": "An exit code can be lost inside a pipeline. By default a pipeline's exit status is that of its last command, here `tail`, which happily printed two lines and exited 0. `set -e` looks at that single status, so the script goes on and ends with 0, and CI trusts the number. The same happens with `grep ... | wc -l`. The fix is `set -o pipefail`, which makes the pipeline fail if any stage fails, as in `set -euo pipefail`; or do not pipe pytest at all. The screen shows the failure, but only the exit code counts.",
+     "module_ref": "pipes-bash",
+     "section_ref": "pipes-bash-s7",
+     "source_ref": "S10 slide 16 (pipefail); S5 slide 9; S9 take-aways",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q13",
+     "type": "open",
+     "level": "exam",
+     "skills": [
+      "read-code",
+      "judgement"
+     ],
+     "stem_md": "**Read code and say what is wrong.** A teammate's function for the group's flashcard trainer. `cards.csv` sits next to the program, with one card per line: the question and its box (1, 2 or 3).\n\n```text\ncapital of Peru,1\nser vs estar,2\nstem of 'tener',3\ntwo plus two,2\n```\n\n```python\ndef due_cards(day):\n    f = open(\"cards.csv\")\n    out = []\n    for line in f:\n        p = line.strip().split(\",\")\n        # box 1 every day, box 2 every third day, box 3 every seventh day\n        if int(p[1]) == 1 or (int(p[1]) == 2 and day % 3 == 0) or (int(p[1]) == 3 and day % 7 == 0):\n            out.append(p[0])\n    return out\n```\n\nTwo calls in a Python session:\n\n```console\n>>> due_cards(6)\n['capital of Peru', 'ser vs estar', 'two plus two']\n>>> due_cards(7)\n['capital of Peru', \"stem of 'tener'\"]\n```",
+     "parts": [
+      {
+       "label": "1",
+       "prompt_md": "In one sentence, what does this function do?",
+       "marks": 1,
+       "model_answer_md": "It reads `cards.csv` and returns the questions that are due on a given day: box 1 every day, box 2 every third day and box 3 every seventh day.",
+       "rubric": [
+        "Says it reads the cards file and returns the questions that are due on that day",
+        "Says the rule: the box decides how often a card is due (box 1 daily, box 2 every third day, box 3 every seventh day)"
+       ],
+       "weak_answers_md": "'It returns cards' or 'it filters the list' leaves out the file and the day. 'It returns the cards in box 1' describes one branch of the condition. Saying it prints the cards is wrong: it returns a list, and the console shows the value of each call."
+      },
+      {
+       "label": "2",
+       "prompt_md": "Name two problems a teammate would face when reading, testing or changing it.",
+       "marks": 2,
+       "model_answer_md": "It opens a fixed file inside the function, so a test needs that file in the right folder instead of a plain list. The schedule is one long condition of unexplained numbers, written with `p[1]` and cryptic names, so changing it means decoding the line first.",
+       "rubric": [
+        "Opens `cards.csv` inside the function (reading mixed with the decision), so a test needs the file in the right folder and the function cannot be reused with other data",
+        "One long condition with unexplained numbers (1, 2, 3, 7), so the rule is hard to read and to change and is explained only by a comment",
+        "The position `p[1]` and the names `f`, `p`, `out` make a reader guess what each one means",
+        "Accept one of these only when tied to a consequence: the comment says what the code does instead of the code saying it; the file is never closed (ruff flags it); there are no type hints (`mypy --strict` flags the function)"
+       ],
+       "weak_answers_md": "'It is long' or 'it is hard to read' with no cause scores nothing. 'It needs more comments' is the wrong lesson: the one comment here exists because the numbers have no names. 'The file name is hard-coded' earns a mark only with its consequence: a test then needs that file in that folder."
+      },
+      {
+       "label": "3",
+       "prompt_md": "Describe in words how you would change it, and which of your two problems each change solves.",
+       "marks": 2,
+       "model_answer_md": "Read the file in the shell and pass the cards in, so the function is testable with a plain list. Name the condition (`is_due`) and the intervals as constants, and give the card a dataclass, so `p[1]` becomes `card.box`.",
+       "rubric": [
+        "Moves the file reading out to the shell and passes the data in (core and shell), and says this makes the function testable with a list",
+        "Names the condition (a function such as `is_due`) and/or the numbers (constants), and says this makes the rule readable and easy to change",
+        "Gives the card a named type or names for its fields, tied to the guesswork about positions"
+       ],
+       "weak_answers_md": "'Refactor it into smaller functions' without saying which jobs or why is too vague. Replacing the comment with a longer comment removes no problem. Changing the file name or the folder does not help testing: the function would still open a file."
+      }
+     ],
+     "lines": "5–8",
+     "explanation_md": "This is the shape of sample question 7 on a function with a different mix of problems from the samples: the data comes from a file opened inside the function, and the rule is a long condition of numbers that only a comment explains. A full-marks answer names two problems with their cost for a teammate (cannot test without the file, cannot read or change the schedule, cannot tell what `p[1]` is) and pairs each change with the problem it solves: read in the shell and pass the data in, name the condition and the numbers, give the card a type. Run with the course's tools, `ruff` flags the unclosed file and `mypy --strict` the missing annotation.",
+     "module_ref": "refactor-types",
+     "section_ref": "refactor-types-s3",
+     "source_ref": "S6 slide 16; S7 slides 5, 6 and 13",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q14",
+     "type": "open",
+     "level": "exam",
+     "skills": [
+      "read-diff",
+      "compare",
+      "judgement"
+     ],
+     "stem_md": "**Compare.** A teammate shows you this diff from the parking-lot group's history:\n\n```diff\n--- a/fees.py\n+++ b/fees.py\n@@ -1,2 +1,8 @@\n+FREE_MINUTES = 15\n+HOURLY_RATE = 2.5\n+\n+\n def fee(minutes):\n-    return 2.5 * (minutes // 60 + 1)\n+    if minutes <= FREE_MINUTES:\n+        return 0.0\n+    return HOURLY_RATE * (minutes // 60 + 1)\n```\n\nTwo candidate commit messages:\n\n- A: `Add FREE_MINUTES and HOURLY_RATE to fees.py`\n- B: `Charge nothing for stays of up to 15 minutes`",
+     "parts": [
+      {
+       "label": "1",
+       "prompt_md": "What does this change do?",
+       "marks": 2,
+       "model_answer_md": "It names the two numbers as constants, which changes nothing, and adds a rule: a stay of 15 minutes or less now costs 0.0 instead of 2.5. Longer stays are charged as before.",
+       "rubric": [
+        "Says the numbers 15 and 2.5 become named constants",
+        "Says the behaviour changes: stays up to 15 minutes become free (they used to cost 2.5)",
+        "Says longer stays are charged as before"
+       ],
+       "weak_answers_md": "Describing only the constants misses the behaviour change, which is the part that matters. Saying the function 'now has an if' restates the diff without saying what a driver sees. Saying everything is cheaper is wrong: only stays of 15 minutes or less change."
+      },
+      {
+       "label": "2",
+       "prompt_md": "Which message is better, and why? Answer from the point of view of someone reading the history six months later.",
+       "marks": 2,
+       "model_answer_md": "B. It says what the program now does for a driver, so someone searching later for why short stays became free finds it. A mentions only the constants and hides the new rule; two separate commits would be best.",
+       "rubric": [
+        "Chooses B",
+        "Gives the reason: B states the behaviour change for the user, while A describes only the constants and would mislead a reader looking for the pricing change; or notes that the diff mixes a refactoring with a behaviour change and should be two commits"
+       ],
+       "weak_answers_md": "Choosing A because it is 'more technical' or 'matches the diff' misses the reader. A message that repeats what the diff already shows adds nothing six months later. 'B is shorter' is not a reason. A right choice with no reason earns one mark."
+      },
+      {
+       "label": "3",
+       "prompt_md": "Name one test you would add for this change, in words.",
+       "marks": 1,
+       "model_answer_md": "A stay of exactly 15 minutes costs nothing, and 16 minutes costs 2.5: the boundary of the new rule.",
+       "rubric": [
+        "Names the boundary (exactly 15 minutes, or 15 against 16) and states the expected fee",
+        "Or names another clear case with its expected result, such as 0 minutes costing 0.0"
+       ],
+       "weak_answers_md": "'Test the fee function' names no input and no expected result. A test with a typical stay, such as 90 minutes, does not exercise the new rule. Remember that the edge case is the point: 'do not test what feels likely, test what could break'."
+      }
+     ],
+     "lines": "5–8",
+     "explanation_md": "This is sample question 8 on a new diff. The commit does two things: it extracts constants, a refactoring, and it adds a rule, a behaviour change. A message that names only the constants hides the part a reader needs. Running the old and the new `fee` shows that 10 and 15 minutes change from 2.5 to 0.0, while 16, 59, 60, 75 and 120 minutes give the same fee as before. The natural test sits on that edge.",
+     "module_ref": "history",
+     "section_ref": "history-s8",
+     "source_ref": "S6 slide 16; S7 slide 5; commit-message practice from the history",
+     "origin": "history",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q15",
+     "type": "open",
+     "level": "hard",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "**Read tool output.** CI is red at the Types step of the library group's repository. You run `uv run mypy --strict src` on the branch:\n\n```text\nsrc/library/fines.py:15: error: Unsupported left operand type for - (\"None\")  [operator]\nsrc/library/fines.py:15: note: Left operand is of type \"date | None\"\nsrc/library/fines.py:26: error: Incompatible return value type (got \"float\", expected \"int\")  [return-value]\nsrc/library/fines.py:29: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]\nsrc/library/fines.py:33: error: Function is missing a return type annotation  [no-untyped-def]\nFound 4 errors in 1 file (checked 2 source files)\n```\n\nLine 15 is in `days_late(loan)`, which subtracts the due date from `loan.returned`. A loan's `returned` stays empty until the member brings the book back. Line 26 is in `total_fines`, which adds up fines such as 0.60 and 1.20.",
+     "parts": [
+      {
+       "label": "1",
+       "prompt_md": "Sort the four errors into the kinds we discussed in session 7.",
+       "marks": 2,
+       "model_answer_md": "Line 15 is None not handled (`returned` can be `None`). Line 26 is types disagree (an `int` promised, a `float` returned). Lines 29 and 33 are missing annotation.",
+       "rubric": [
+        "Line 15 sorted as None not handled and line 26 as types disagree",
+        "Lines 29 and 33 both sorted as missing annotation"
+       ],
+       "weak_answers_md": "Copying the codes (`operator`, `return-value`) without naming the kinds does not answer the question. Calling line 15 'types disagree' because the message says 'unsupported operand type' misses the clue in the note: `date | None` means a value can be missing. Putting all four under 'types are wrong' loses both marks."
+      },
+      {
+       "label": "2",
+       "prompt_md": "Which error points to a bug that can crash the program for a real user, and when?",
+       "marks": 1,
+       "model_answer_md": "Line 15. An unreturned book has `returned` equal to `None`, and subtracting from `None` raises a `TypeError`, so asking for its fine stops the program. The other errors crash nothing by themselves.",
+       "rubric": [
+        "Picks line 15 (the None one)",
+        "Explains the mechanism: an unreturned book has `returned = None` and the subtraction raises `TypeError` at run time"
+       ],
+       "weak_answers_md": "Choosing line 26 because the numbers 'disagree' or line 29 or 33 because 'missing' sounds serious: neither crashes. Picking line 15 with no mechanism earns half; say when the value is `None` and what happens next."
+      },
+      {
+       "label": "3",
+       "prompt_md": "A teammate says: \"CI only has to go green. Fix the two missing hints properly and put `# type: ignore` on lines 15 and 26.\" Do you accept? Give your reasoning.",
+       "marks": 2,
+       "model_answer_md": "No. The two ignores sit on the errors that matter. Line 15 hides the crash for an unreturned book and line 26 hides a return type that does not match, so CI turns green while the program still raises a `TypeError` for the first unreturned book. I would handle the `None` and declare the return type as `float`.",
+       "rubric": [
+        "Says no, because the ignore on line 15 hides the real crash (an unreturned book has `returned` equal to `None`), so CI goes green while the program still fails for a user",
+        "Says what to do instead (handle the `None` by checking it or changing the type, and make the return type agree with `float`), or that CI is the shared referee and a forced green defeats it"
+       ],
+       "weak_answers_md": "'Yes, the hints are fixed and CI is green' judges by the tick, which is the trap. 'No, ignores are bad practice' is a verdict without the reason. The marker wants the reason: the ignores sit on the two errors that describe real behaviour, so the first unreturned book still raises a `TypeError`, and the `float` that comes back still disagrees with the `int` that was promised."
+      }
+     ],
+     "lines": "5–8",
+     "explanation_md": "This is sample question 9 with a noisier log. The three kinds are the same: missing annotation, types disagree and None not handled. The twist is that the None error does not say `union-attr`: it says `operator`, and only the note `date | None` shows what is missing, so you have to read the message rather than recognise a code. Only that error crashes a real user, and an ignore on lines 15 and 26 would turn CI green while the crash stays: the same shortcut as `# type: ignore` in sample question 9, applied to the errors that matter.",
+     "module_ref": "refactor-types",
+     "section_ref": "refactor-types-s9",
+     "source_ref": "S7 slides 8 to 11",
+     "origin": "slides",
+     "verified_by": "run"
+    }
+   ]
+  },
+  {
+   "id": "paper-b",
+   "title": "Paper B",
+   "kind": "realistic",
+   "minutes": 60,
+   "intro_md": "Paper B has the same shape as Paper A, twelve multiple-choice questions then three short open questions, but it leans harder on the terminal, on tests and on reading history, and its open questions use different artefacts: a function with nested ifs, a commit that starts a test cycle and a strict-mypy log. Sit it in 60 minutes with a pen and no notes. Answer the open questions in 5–8 lines of prose. Marks: 1 for each multiple-choice question and 5, 6 and 6 for the open questions, 29 in all. Mark yourself with the model answers afterwards.",
+   "questions": [
+    {
+     "id": "paper-b-q01",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "concept",
+      "judgement"
+     ],
+     "stem_md": "A function called `summary(path)` in the gradebook group opens `marks.csv`, drops every row with a missing mark, adds up the marks per student and prints the table. Which clean-code problem does this describe best?",
+     "options": [
+      {
+       "text_md": "A magic number: the widths and limits in the table are written as bare numbers and need names in one place",
+       "correct": false,
+       "why_md": "The description mentions no numbers at all. Magic numbers are a real problem (session 6) but not what this describes."
+      },
+      {
+       "text_md": "Duplicated logic: the code that totals one student is copied for every other student in the table, line by line",
+       "correct": false,
+       "why_md": "Nothing in the description is repeated: the marks are added up per student by one piece of code."
+      },
+      {
+       "text_md": "It does several jobs at once: it reads, filters, totals and prints, so it is hard to test and to change",
+       "correct": true,
+       "why_md": "Right: four jobs. To test the totals you need a real file and a way to capture the printed table, and changing the layout means touching the calculation."
+      },
+      {
+       "text_md": "The signature has too many type hints, which makes the function hard to read at a glance for a new teammate",
+       "correct": false,
+       "why_md": "Type hints are contracts that mypy and teammates read; there is no such thing as too many. The description says nothing about hints."
+      }
+     ],
+     "explanation_md": "Session 6's test: can you describe the function without the word \"and\"? This one opens a file and drops rows and adds up the marks and prints the table: the Single Responsibility Principle broken four times. What a teammate feels is that the totals cannot be tested without a file on disk and captured output, and that any change to one job risks the others. The course's fix is the demo's own path: reading (`read_expenses`), computing (`total_by_category`) and printing (`format_report`) each get their own function, and only the shell prints.",
+     "module_ref": "clean-code",
+     "section_ref": "clean-code-s5",
+     "source_ref": "S6 slides 18 and 20; sample Q5 shape",
+     "origin": "slides",
+     "verified_by": "source"
+    },
+    {
+     "id": "paper-b-q02",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "concept",
+      "judgement"
+     ],
+     "stem_md": "The Agile Manifesto ends its four values with this sentence: \"While there is value in the items on the right, we value the items on the left more.\" After its first demo, the student-club website group makes four decisions. Which one misreads the Manifesto?",
+     "options": [
+      {
+       "text_md": "The team stops writing any plan, because the Manifesto says that responding to change replaces following a plan.",
+       "correct": true,
+       "why_md": "Right: this turns 'values more' into 'replaces'. The Manifesto ranks a plan below responding to change; it does not abolish it, and every Agile cycle still starts with Plan."
+      },
+      {
+       "text_md": "The team signs a contract with the client and still shows a working version every two weeks to hear what should change.",
+       "correct": false,
+       "why_md": "A correct reading. The contract still has value, and customer collaboration is ranked above negotiating it."
+      },
+      {
+       "text_md": "The team keeps a one-page README and a short plan for the next sprint, and ranks both below a working demo.",
+       "correct": false,
+       "why_md": "A correct reading. Documentation and plans are the right-hand items: kept, and ranked lower than working software and change."
+      },
+      {
+       "text_md": "The team uses a board with a limit on work in progress, and changes its columns when the people doing the work ask.",
+       "correct": false,
+       "why_md": "A correct reading. A board is a tool, valued less than the individuals who use it, and not thrown away."
+      }
+     ],
+     "explanation_md": "The last sentence of the Manifesto is the one people skip. It ranks the two sides of each pair; it does not delete the right-hand side. The group that stops planning has read \"over\" as \"instead of\", which is one of the two classic misreadings, together with \"no documentation\". The other three decisions keep the right-hand item and rank it lower: a contract next to regular demos, a short README and plan below working software, and a board that the people who use it may change. Session 2 adds that every Agile cycle still starts with Plan, on a small slice, so a team that never plans is not running a cycle at all.",
+     "module_ref": "sdlc-agile",
+     "section_ref": "sdlc-agile-s7",
+     "source_ref": "S2 slides 10 and 11",
+     "origin": "slides",
+     "verified_by": "source"
+    },
+    {
+     "id": "paper-b-q03",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "Ana follows the setup lab: she makes her own branch, adds her report, commits, and types `git push`.\n\n```console\n$ git switch -c setup/ana\nSwitched to a new branch 'setup/ana'\n$ git add setup-reports/\n$ git commit -m \"add setup report\"\n[setup/ana 9acfe08] add setup report\n 1 file changed, 1 insertion(+)\n create mode 100644 setup-reports/ana.md\n$ git push\nfatal: The current branch setup/ana has no upstream branch.\nTo push the current branch and set the remote as upstream, use\n\n    git push --set-upstream origin setup/ana\n\nTo have this happen automatically for branches without a tracking\nupstream, see 'push.autoSetupRemote' in 'git help config'.\n```\n\nWhat should Ana do?",
+     "options": [
+      {
+       "text_md": "Delete the branch and push from `main`, because `main` already knows where to push.",
+       "correct": false,
+       "why_md": "`main` is exactly where the lab says not to push: four students pushing in the same twenty minutes collide, and the second push is rejected. The branch is right; it just does not know its remote yet."
+      },
+      {
+       "text_md": "Run `git push --force`, so that git stops asking where the branch should go.",
+       "correct": false,
+       "why_md": "Nothing has been rejected, so there is nothing to force. Force overwrites what is on the remote, and it does not give git a destination."
+      },
+      {
+       "text_md": "Run the command git printed, `git push --set-upstream origin setup/ana`, and push again.",
+       "correct": true,
+       "why_md": "Right. A branch made with `switch -c` exists only on her laptop. The first push has to say where it goes, and `-u` (short for `--set-upstream`) remembers it. Git printed the exact command."
+      },
+      {
+       "text_md": "Clone the repository again and redo the report, because a branch with no upstream is broken.",
+       "correct": false,
+       "why_md": "The branch is fine. 'No upstream' only means that it has never been pushed. A new clone and a new `switch -c` would end in the same message."
+      }
+     ],
+     "explanation_md": "`git switch -c` creates the branch on Ana's laptop only. A plain `git push` asks git where the branch should go, and git has no answer yet, hence 'no upstream branch'. The message prints the fix, and it is the command the setup lab gives: `git push -u origin setup/<your-github-username>`, where `-u` is short for `--set-upstream`. After that first push, a plain `git push` works on this branch. Pushing to `main` instead is what the lab avoids, `--force` answers a rejection and nothing was rejected, and a fresh clone fixes nothing, because the branch was never broken. Read the message before trying anything else: git printed the exact command it needs.",
+     "module_ref": "project-anatomy",
+     "section_ref": "project-anatomy-s4",
+     "source_ref": "S3 slides 10, 11 and 13; labs/00-setup.md (branch and push)",
+     "origin": "lab",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-b-q04",
+     "type": "mcq",
+     "level": "core",
+     "skills": [
+      "concept",
+      "judgement"
+     ],
+     "stem_md": "The gym-booking group orders its Product Backlog. Which item is written the way the course asks: an outcome a user gets, small enough to finish in a sitting, where you can tell when it is done?",
+     "options": [
+      {
+       "text_md": "Create the `bookings` table and write the code that reads and writes its rows in the database",
+       "correct": false,
+       "why_md": "A task, not an outcome. Nobody can tell when it is done, and a user gets nothing from it on its own."
+      },
+      {
+       "text_md": "As a member, I can cancel a booking up to two hours before class, so that I do not pay for it",
+       "correct": true,
+       "why_md": "Right: it names who, what they can do and the benefit, it is small, and you can check it by running the program."
+      },
+      {
+       "text_md": "Clean up the booking code so that it becomes fast, tidy and easy to read for everyone on the team",
+       "correct": false,
+       "why_md": "Not checkable: 'fast' and 'easy' have no yes or no answer. Quality belongs in the Definition of Done, as things you can check."
+      },
+      {
+       "text_md": "Write unit tests for the booking functions and for the cancellation functions of the app",
+       "correct": false,
+       "why_md": "Every item is tested, so this is a standard, not a backlog entry. 'Write tests' belongs in the Definition of Done."
+      }
+     ],
+     "explanation_md": "The backlog brief defines an item as an outcome a user gets, not a task you perform, small enough to finish in a sitting, where you can tell when it is done. Its shape is \"As a ..., I can ..., so that ...\", and the \"so that\" names the benefit, which stops the team building something nobody needs. The cancel item has all of that. The table is a task, \"fast and easy to read\" cannot be checked, and \"write tests\" is part of what done means for every item, so it sits in the Definition of Done.",
+     "module_ref": "scrum",
+     "section_ref": "scrum-s5",
+     "source_ref": "S4 slides 29 and 30; backlog brief",
+     "origin": "slides",
+     "verified_by": "source"
+    },
+    {
+     "id": "paper-b-q05",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "On a new laptop you clone the group repository and try to install it:\n\n```console\n$ cd ~/code\n$ git clone git@github.com:esade-swdev-2026/gym-booking.git\n$ uv sync\nerror: No `pyproject.toml` found in current directory or any parent directory\n```\n\nWhat should you do next?",
+     "options": [
+      {
+       "text_md": "Run `uv init` to create the missing `pyproject.toml` in the current folder, then run `uv sync`.",
+       "correct": false,
+       "why_md": "`uv init` would start a new, empty project in the wrong folder. The group's project already has its `pyproject.toml`, in the folder you did not enter."
+      },
+      {
+       "text_md": "Run `uv lock` first to create the lockfile, and `uv sync` will then find the project.",
+       "correct": false,
+       "why_md": "A lockfile is built from `pyproject.toml`, so `uv lock` needs the project file just as `uv sync` does and stops with the same error in this folder."
+      },
+      {
+       "text_md": "Run `git pull` to fetch the `pyproject.toml` that the clone seems to be missing.",
+       "correct": false,
+       "why_md": "The clone is complete: `git clone` already brought every file, into the new `gym-booking` folder. `~/code` itself is not the repository, so `git pull` would fail there too."
+      },
+      {
+       "text_md": "Run `pwd` and `ls`, see that you are above the clone, then `cd gym-booking` and run `uv sync`.",
+       "correct": true,
+       "why_md": "Right. The clone created a folder, and `pyproject.toml` lives inside it. Most 'not found' errors are the wrong current directory, so run `pwd` first."
+      }
+     ],
+     "explanation_md": "uv looks for `pyproject.toml` in the folder you stand in and then in its parents. After `git clone` you are still in `~/code`, one level above the new `gym-booking` folder, so uv finds nothing. Session 9 gives the habit: most \"file not found\" errors are the wrong current directory, so run `pwd` before you suspect anything else. Then `cd gym-booking` and repeat the command. Creating a new project, building a lockfile first or pulling again treats a navigation slip as a tool problem.",
+     "module_ref": "terminal-files",
+     "section_ref": "terminal-files-s4",
+     "source_ref": "S4 slides 20 to 23; S9 slides 10 and 11",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-b-q06",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-code",
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "The gradebook group's `add` command takes a student and a mark. A teammate tries a mark with a decimal:\n\n```python\n@app.command()\ndef add(student: str, mark: int) -> None:\n    typer.echo(f\"Added {student}: {mark}\")\n```\n\n```console\n$ uv run gradebook add Ana 7.5\nUsage: gradebook add [OPTIONS] {student} {mark}\nTry 'gradebook add --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────╮\n│ Invalid value for 'mark': '7.5' is not a valid int.                          │\n╰──────────────────────────────────────────────────────────────────────────────╯\n$ echo $?\n2\n```\n\nThe teacher marks in half points, so `7.5` must work. Which change follows session 5?",
+     "options": [
+      {
+       "text_md": "Wrap the body of `add` in `try` and `except ValueError`, so that the function deals with the decimal itself.",
+       "correct": false,
+       "why_md": "`add` never runs. typer converts and checks the arguments from the type hints first, and refuses the command line before the function starts."
+      },
+      {
+       "text_md": "Change the hint to `mark: float`; typer then accepts decimals, and `--help` shows the new type.",
+       "correct": true,
+       "why_md": "Right. The type hints are the specification: typer reads `int` as 'whole numbers only', so the fix is to change the spec. The check and the help follow the hint."
+      },
+      {
+       "text_md": "Change the hint to `mark: str`, so that any text arrives, and convert it inside `add`.",
+       "correct": false,
+       "why_md": "This gives up the check that the hint provides for free: the help would say text, and a word such as `seven` would now reach the function, which has to reject it itself."
+      },
+      {
+       "text_md": "Leave the hint and ask the users to round every mark to a whole number before they type it.",
+       "correct": false,
+       "why_md": "That moves the limit of the program onto its users. A mark with a half point is a real value, and the specification in the code should say so."
+      }
+     ],
+     "explanation_md": "Session 5: the type hints are the specification. From `mark: int` typer builds the usage line, converts the text and checks it. It refuses `7.5` before `add` runs, which is why the transcript shows typer's own error box and exit code 2, not a message written by the group. The fix is to change the spec: with `mark: float` the same command accepts `7.5` and `8`, and `--help` lists the argument as `<float>`. Catching the error inside `add` cannot work, because the function is never reached, and `str` throws away the check that the hint gives for free.",
+     "module_ref": "cli-program",
+     "section_ref": "cli-program-s4",
+     "source_ref": "S5 slides 7 and 8",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-b-q07",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-code",
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "The group's `separator` function and two calls to it. The program runs, and then mypy is run on it:\n\n```python\ndef separator(char: str, width: int) -> str:\n    return char * width\n\n\nprint(separator(10, \"-\"))\nprint(separator(\"-\", 10))\n```\n\n```console\n$ uv run python separator.py\n----------\n----------\n$ uv run mypy --strict separator.py\nseparator.py:5: error: Argument 1 to \"separator\" has incompatible type \"int\"; expected \"str\"  [arg-type]\nseparator.py:5: error: Argument 2 to \"separator\" has incompatible type \"str\"; expected \"int\"  [arg-type]\nFound 2 errors in 1 file (checked 1 source file)\n```\n\nA teammate says: \"The report prints correctly, so the two mypy errors are noise.\" What is the right reading?",
+     "options": [
+      {
+       "text_md": "Python checks the hints when the code runs and found nothing wrong, so mypy must be mistaken here.",
+       "correct": false,
+       "why_md": "Python ignores type hints at run time. It ran line 5 only because `10 * \"-\"` is also a valid expression."
+      },
+      {
+       "text_md": "Plain `mypy` would accept the swapped call; the two errors come only from the extra checks that `--strict` adds.",
+       "correct": false,
+       "why_md": "`separator` is fully annotated, so even plain mypy checks the call against its signature. `--strict` adds checks for untyped code, which is not the issue here."
+      },
+      {
+       "text_md": "mypy is right: the call breaks the contract `char: str, width: int` and runs only because `10 * \"-\"` is valid.",
+       "correct": true,
+       "why_md": "Right. The hints are a contract that the next reader and mypy rely on. This call happens to work, and the next swapped call with different values may not."
+      },
+      {
+       "text_md": "The hints are only advice for readers, so if the output is correct the call can stay as it is.",
+       "correct": false,
+       "why_md": "The hints are read by mypy, and CI runs mypy on every push. A call that breaks the contract turns the referee red whether or not it prints the right text."
+      }
+     ],
+     "explanation_md": "Session 6 calls type hints contracts: they say what goes in and what comes out, and they are read by the next person and by mypy. Python itself never checks them while the program runs, so the swapped call executes. It even prints the right line, because multiplying an integer by a string is also valid. mypy compares the call with the signature before the program runs and reports both arguments. A wrong call that happens to work is still wrong, and CI will stay red until it is fixed.",
+     "module_ref": "clean-code",
+     "section_ref": "clean-code-s8",
+     "source_ref": "S6 slide 26; S7 slide 10",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-b-q08",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "compare",
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "A teammate commits \"Extract `is_peak` and flatten the nested ifs in `class_price`\" and calls it a refactoring. `uv run pytest` is green. To check, they print the prices for the hours 15 to 20 with the old and the new code into `before.txt` and `after.txt`:\n\n```console\n$ diff before.txt after.txt\n4c4\n< 18 member 12.0 guest 15.0\n---\n> 18 member 8.0 guest 10.0\n```\n\nWhat can you conclude?",
+     "options": [
+      {
+       "text_md": "It is not a refactoring: the output changed at 18:00, so the commit changed behaviour; find the cause.",
+       "correct": true,
+       "why_md": "Right: 'if the output changes, it was not a refactoring'. The diff shows a booking at 18:00 now priced as off-peak."
+      },
+      {
+       "text_md": "It is still a refactoring, because the other five hours are identical and one line is a rounding detail.",
+       "correct": false,
+       "why_md": "The difference is 12.0 against 8.0, a price a member pays, not rounding. One changed line is enough to disqualify the commit."
+      },
+      {
+       "text_md": "It is a refactoring, because the structure is cleaner and the existing tests still pass.",
+       "correct": false,
+       "why_md": "Green tests only say that no test looks at 18:00. The diff covers that hour, and it shows a changed price."
+      },
+      {
+       "text_md": "The old code was wrong at 18:00, so the new output is a fix and the commit can keep its name.",
+       "correct": false,
+       "why_md": "Nothing in the transcript says which price is right, and a fix is still not a refactoring. A fix changes the output on purpose and belongs in its own commit."
+      }
+     ],
+     "explanation_md": "Session 7's test for a refactoring is simple: change the structure, keep the behaviour, and if the output changes it was not a refactoring. Comparing the output before and after on the same input is the check. One line differs: at 18:00 the new code charges the off-peak price, so a condition was probably altered while the code was tidied, for example a `>=` that became a `>`. Green tests only mean that no test looks at 18:00, which is itself a missing edge case. The commit should be fixed, and any intended price change should go in a separate commit with its own message.",
+     "module_ref": "refactor-types",
+     "section_ref": "refactor-types-s1",
+     "source_ref": "S7 slide 5; S8 slide 11",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-b-q09",
+     "type": "mcq",
+     "level": "hard",
+     "skills": [
+      "read-code",
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "The gym-booking backlog item reads: \"As a member, I can cancel a class at least 2 hours before it starts and get my money back in full; closer than that I get half back, so that late cancellations still cost the gym something.\" A teammate's function and the group's tests, with CI red (output trimmed):\n\n```python\ndef refund(hours_before: float, price: float) -> float:\n    if hours_before > 2:\n        return price\n    return price / 2\n```\n\n```python\n@pytest.mark.parametrize(\n    (\"hours_before\", \"expected\"),\n    [(24, 10.0), (2, 10.0), (1, 5.0), (0, 10.0)],\n)\ndef test_refund(hours_before: float, expected: float) -> None:\n    assert refund(hours_before, 10.0) == expected\n```\n\n```text\nE       assert 5.0 == 10.0\nE        +  where 5.0 = refund(2, 10.0)\n...\nE       assert 5.0 == 10.0\nE        +  where 5.0 = refund(0, 10.0)\n=========================== short test summary info ============================\nFAILED tests/test_refunds.py::test_refund[2-10.0] - assert 5.0 == 10.0\nFAILED tests/test_refunds.py::test_refund[0-10.0] - assert 5.0 == 10.0\n2 failed, 2 passed in 0.01s\n```\n\nWhich change is right?",
+     "options": [
+      {
+       "text_md": "Change both expected values to `5.0`, so that the tests describe what `refund` really does.",
+       "correct": false,
+       "why_md": "That lets the code decide what is correct. The backlog item says the full price comes back at exactly 2 hours, so the `2` case is a bug that this change would hide."
+      },
+      {
+       "text_md": "Change only the code, to `hours_before >= 2`: the two failures are one bug reported twice.",
+       "correct": false,
+       "why_md": "The identical message hides two different causes. The `2` case then passes, but `0` still fails, because a cancellation at the start of the class gets half back."
+      },
+      {
+       "text_md": "Change the code to `hours_before >= 2` and skip the `0` case with `pytest.mark.skip`, since nobody can explain it.",
+       "correct": false,
+       "why_md": "The `0` case can be explained: the rule gives half back. Skipping it keeps a wrong expected value in the file and makes CI green without the test looking at that case."
+      },
+      {
+       "text_md": "Change the code to `hours_before >= 2` and the `0` case to expect `5.0`; the rule decides each one.",
+       "correct": true,
+       "why_md": "Right. A failing test only says that code and test disagree. The backlog item says which side is wrong, and here it is the code for the `2` case and the test for the `0` case."
+      }
+     ],
+     "explanation_md": "A failing test says only that the code and the test disagree, and here two tests disagree with the same message. Sample question 4's lesson is to check each one against what is supposed to happen, and the backlog item states it: at least 2 hours before gives the full price, closer than that gives half. The `2` case matches the rule, so the code is wrong: `>` should be `>=`, the boundary slip that edge cases exist to find. The `0` case expects the full price at the start of the class, which the rule does not give, so the test is wrong. The same assertion line, one code bug and one test bug.",
+     "module_ref": "testing-tdd",
+     "section_ref": "testing-tdd-s2",
+     "source_ref": "S8 slides 11 and 31; sample question 4",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-b-q10",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "The gym-booking group stores a running total in a JSON file such as `{\"total\": 12.5}`. Strict mypy runs in CI:\n\n```python\nimport json\n\n\ndef load_total(path: str) -> float:\n    with open(path) as file:\n        data = json.load(file)\n    return data[\"total\"]\n```\n\n```console\n$ uv run mypy --strict src\nsrc/gym/totals.py:7: error: Returning Any from function declared to return \"float\"  [no-any-return]\nFound 1 error in 1 file (checked 1 source file)\n```\n\nWhat is the right fix?",
+     "options": [
+      {
+       "text_md": "Add `# type: ignore[no-any-return]`, because the total in the file is always a number",
+       "correct": false,
+       "why_md": "That is a claim nobody checks: a file with `\"12.50\"` in it would return a string from a function that promises a `float`."
+      },
+      {
+       "text_md": "Convert the value with `float(data[\"total\"])`, so that a real `float` leaves the function",
+       "correct": true,
+       "why_md": "Right: `json.load` gives `Any`, so mypy cannot vouch for the type. Converting it at the boundary makes the promise true (we ran it: `\"12.50\"` becomes `12.5`)."
+      },
+      {
+       "text_md": "Change the declared return type to `Any`, so that the function and mypy agree about what comes out",
+       "correct": false,
+       "why_md": "mypy goes quiet because the promise is gone. Every caller now gets an unchecked value, which is what the hint was there to prevent."
+      },
+      {
+       "text_md": "Delete the `-> float` annotation, so that mypy has nothing to compare the returned value with",
+       "correct": false,
+       "why_md": "Under `--strict` a missing return type is itself an error, `no-untyped-def` (we ran it), and the contract is lost."
+      }
+     ],
+     "explanation_md": "`Returning Any` is the types-disagree kind, caused by a value mypy cannot see into: `json.load` returns `Any`. The function promises a `float`, and nothing has checked that the file holds one. The fix is to make the promise true where the unknown value enters the program, which `float(...)` does, and it also turns a numeric string into a number. An ignore comment or a wider type would silence the message and leave the promise unchecked. Real run on all four versions with mypy 2.4.0.",
+     "module_ref": "refactor-types",
+     "section_ref": "refactor-types-s9",
+     "source_ref": "S7 slides 8 to 10; labs/07-refactor.md troubleshooting",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-b-q11",
+     "type": "mcq",
+     "level": "core",
+     "skills": [
+      "concept",
+      "judgement"
+     ],
+     "stem_md": "Two files on Ines's laptop: `scripts/check.sh` in her project, which she runs with `./scripts/check.sh`, and `~/.ssh/id_ed25519`, her private SSH key. Which pair of `chmod` modes fits the two files?",
+     "options": [
+      {
+       "text_md": "`check.sh` 644 and `id_ed25519` 600",
+       "correct": false,
+       "why_md": "600 is right for the key, but 644 has no `x` for anyone. A script that must be run by its own name needs the execute bit."
+      },
+      {
+       "text_md": "`check.sh` 755 and `id_ed25519` 777",
+       "correct": false,
+       "why_md": "755 fits the script, but 777 gives everyone read, write and execute on a private key. 777 is almost never the answer."
+      },
+      {
+       "text_md": "`check.sh` 755 and `id_ed25519` 600",
+       "correct": true,
+       "why_md": "Right: 755 is `rwxr-xr-x`, a script anyone can run and only the owner can change; 600 is `rw-------`, readable and writable by the owner only."
+      },
+      {
+       "text_md": "`check.sh` 600 and `id_ed25519` 755",
+       "correct": false,
+       "why_md": "The modes are swapped. 600 has no `x`, so the script cannot be run by name, and 755 lets everyone read the private key."
+      }
+     ],
+     "explanation_md": "Permissions are r = 4, w = 2, x = 1, added per group of three: owner, group, everyone else. A script that is run by its own name needs `x`, so 755 (`rwxr-xr-x`): everyone can run it, only the owner can change it. A private key must be readable by its owner alone, so 600 (`rw-------`). 644 is the ordinary file, 777 is almost never the answer, and `chmod 777` makes an error go away and the problem worse. Session 9's slide gives these four numbers with their typical uses.",
+     "module_ref": "terminal-files",
+     "section_ref": "terminal-files-s9",
+     "source_ref": "S9 slide 21",
+     "origin": "slides",
+     "verified_by": "source"
+    },
+    {
+     "id": "paper-b-q12",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "predict-output",
+      "judgement"
+     ],
+     "stem_md": "The gym keeps its bookings in `bookings.csv`, one booking per line, with the class first and the member second (there is no header line):\n\n```text\nyoga,ana\nyoga,marc\nspin,lia\nspin,joan\nyoga,ana\npilates,marc\nspin,ana\nspin,lia\nyoga,joan\n```\n\nThe manager asks how many different members have booked at least one class. Which command prints that number? (`cut -d, -f2` keeps the second column. `uniq` merges equal lines that sit next to each other.)",
+     "options": [
+      {
+       "text_md": "`cut -d, -f2 bookings.csv | sort | uniq | wc -l`",
+       "correct": true,
+       "why_md": "Right: `cut` takes the member column, `sort` puts equal names side by side, `uniq` leaves one line per name and `wc -l` counts them: ana, joan, lia and marc, so 4."
+      },
+      {
+       "text_md": "`cut -d, -f2 bookings.csv | uniq | wc -l`",
+       "correct": false,
+       "why_md": "Without `sort`, `uniq` merges only neighbours, and no name here sits next to an equal name. It removes nothing and prints 9, the number of bookings."
+      },
+      {
+       "text_md": "`cut -d, -f2 bookings.csv | sort | wc -l`",
+       "correct": false,
+       "why_md": "`sort` orders the names but removes no repeat, so `wc -l` counts every booking and prints 9."
+      },
+      {
+       "text_md": "`sort bookings.csv | uniq | cut -d, -f2 | sort | wc -l`",
+       "correct": false,
+       "why_md": "This removes repeated bookings (same class and same member), not repeated members. ana, joan and marc each still appear more than once after the `cut`, so it prints 7."
+      }
+     ],
+     "explanation_md": "Read the right command stage by stage. `cut -d, -f2 bookings.csv` prints the member of each booking, nine names. `sort` puts equal names next to each other, which `uniq` needs, because it merges only neighbours. `uniq` leaves one line per name: ana, joan, lia and marc. `wc -l` counts those lines and prints 4. Each other command misses a step. `uniq` without `sort` merges nothing and prints 9. `sort` and `wc -l` without `uniq` count the bookings, also 9. `sort bookings.csv | uniq` compares whole lines, class and member together, so a member who booked two different classes survives twice, and it prints 7.",
+     "module_ref": "pipes-bash",
+     "section_ref": "pipes-bash-s4",
+     "source_ref": "S10 slides 4 and 6 (sort, uniq, wc); S9 slide 6",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-b-q13",
+     "type": "open",
+     "level": "exam",
+     "skills": [
+      "read-code",
+      "judgement"
+     ],
+     "stem_md": "**Read code and say what is wrong.** The vending-machine group wrote this function. `machine` maps a slot name to a list `[price, stock]`.\n\n```python\ndef buy(machine, slot, coins):\n    # check the slot\n    if slot in machine:\n        item = machine[slot]\n        if item[1] > 0:\n            if coins >= item[0]:\n                item[1] = item[1] - 1\n                return coins - item[0]\n            else:\n                return -1\n        else:\n            return -2\n    else:\n        return -3\n```\n\nWith `machine = {\"A1\": [1.50, 3], \"A2\": [2.00, 0], \"B1\": [0.80, 5]}`:\n\n```console\n>>> buy(machine, \"A1\", 2.00)\n0.5\n>>> buy(machine, \"A1\", 1.00)\n-1\n>>> buy(machine, \"A2\", 2.00)\n-2\n>>> buy(machine, \"C9\", 2.00)\n-3\n>>> machine[\"A1\"]\n[1.5, 2]\n```",
+     "parts": [
+      {
+       "label": "1",
+       "prompt_md": "In one sentence, what does `buy` do?",
+       "marks": 1,
+       "model_answer_md": "It sells one item from a slot: it returns the change and lowers the stock by one, or returns `-1` (too few coins), `-2` (sold out) or `-3` (no such slot).",
+       "rubric": [
+        "Says it sells an item from a slot and returns the change, lowering the stock",
+        "Says that `-1`, `-2` and `-3` signal the failures (not enough coins, sold out, no such slot)"
+       ],
+       "weak_answers_md": "'It buys something' or 'it checks the machine' is too vague to score. Saying it returns the price instead of the change is wrong (`coins - price`). Leaving out the stock change misses a side effect that the second call in the transcript shows."
+      },
+      {
+       "label": "2",
+       "prompt_md": "Name two problems a teammate would face when reading, testing or changing it.",
+       "marks": 2,
+       "model_answer_md": "The three nested `if`s bury the sale deep in the function, far from the failures they test for. The results `-1`, `-2` and `-3` look like numbers, so a caller who forgets to check treats them as change.",
+       "rubric": [
+        "Nested `if`s (a pyramid) bury the main path",
+        "Return codes `-1`, `-2`, `-3` are unnamed, look like data, and a caller must remember to check them",
+        "Positions `item[0]` and `item[1]` instead of names for price and stock",
+        "The comment `# check the slot` only restates the code"
+       ],
+       "weak_answers_md": "'The function is too long' is not true of this one: it is short and still hard to read. 'There are not enough comments' is the wrong lesson. 'It has three returns' without saying why that hurts earns nothing. Each answer needs the consequence for a teammate."
+      },
+      {
+       "label": "3",
+       "prompt_md": "Describe in words how you would change it, and which of your two problems each change solves.",
+       "marks": 2,
+       "model_answer_md": "Guard clauses for the unknown slot, the empty slot and too few coins leave the sale as the main path and remove the pyramid. Raising an error for each case instead of returning codes means a failure cannot be mistaken for change. A small dataclass (`price`, `stock`) turns `item[0]` into `item.price`.",
+       "rubric": [
+        "Guard clauses for the three failure cases, with the sale as the main path, solving the pyramid",
+        "Raises errors (or returns a named result) instead of `-1`, `-2` and `-3`, solving the codes that look like data",
+        "Gives the list a name or type (dataclass) so positions become `price` and `stock`, solving the guesswork"
+       ],
+       "weak_answers_md": "'Clean it up' names no change. Changes with no link to the problem they solve lose a mark. Replacing the numbers with constants such as `NO_COINS = -1` names the codes but keeps the habit of returning them and hoping somebody checks. Splitting the function in two does not remove the pyramid or the codes."
+      }
+     ],
+     "lines": "5–8",
+     "explanation_md": "This is the shape of sample question 7 with a different set of problems from a function that mixes everything. The function is short, which is the point: the nested ifs, the return codes and the positions each cost a teammate time. A full-marks answer names two problems with a consequence and pairs each change with the problem it solves, so the guard clauses go with the pyramid, the exceptions with the codes and the named type with the positions. Session 6's guard clauses and session 7's \"do not return -1 and hope somebody checks\" are the two ideas behind it.",
+     "module_ref": "clean-code",
+     "section_ref": "clean-code-s6",
+     "source_ref": "S6 slides 19, 22 and 23; S7 slide 17",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-b-q14",
+     "type": "open",
+     "level": "exam",
+     "skills": [
+      "read-diff",
+      "compare",
+      "judgement"
+     ],
+     "stem_md": "**Compare.** The library group commits the first step of a new feature:\n\n```diff\ndiff --git a/src/library/fines.py b/src/library/fines.py\nnew file mode 100644\nindex 0000000..534162c\n--- /dev/null\n+++ b/src/library/fines.py\n@@ -0,0 +1,5 @@\n+from datetime import date\n+\n+\n+def overdue_fine(due: date, returned: date) -> float:\n+    return 0.0\ndiff --git a/tests/test_fines.py b/tests/test_fines.py\nnew file mode 100644\nindex 0000000..106fb2e\n--- /dev/null\n+++ b/tests/test_fines.py\n@@ -0,0 +1,13 @@\n+from datetime import date\n+\n+import pytest\n+\n+from library.fines import overdue_fine\n+\n+\n+def test_a_book_returned_on_the_due_date_costs_nothing() -> None:\n+    assert overdue_fine(date(2026, 10, 1), date(2026, 10, 1)) == 0.0\n+\n+\n+def test_three_days_late_costs_sixty_cents() -> None:\n+    assert overdue_fine(date(2026, 10, 1), date(2026, 10, 4)) == pytest.approx(0.60)\n```\n\nTwo candidate commit messages:\n\n- A: `Add tests`\n- B: `Add failing tests for overdue_fine, with a stub that returns 0.0`",
+     "parts": [
+      {
+       "label": "1",
+       "prompt_md": "What does this commit add, and what will `uv run pytest` report for these two tests? Is that result a problem?",
+       "marks": 2,
+       "model_answer_md": "It adds a stub returning 0.0 and two tests. The due-date test passes by luck of the stub and the three-days-late test fails: 1 failed, 1 passed. That is the intended red step: the tests say what done means before the code exists.",
+       "rubric": [
+        "Says it adds a stub returning 0.0 plus two tests",
+        "Predicts that one test fails (three days late) and one passes (due date, because the stub returns 0.0)",
+        "Says the red result is intended (the red step of red, green, refactor): the tests define done and prove they can fail"
+       ],
+       "weak_answers_md": "Saying 'both tests fail' misses that the stub returns 0.0, which happens to be the right answer for the due date. Saying 'both pass' ignores that 0.0 is not 0.60. Calling the red result a mistake misses session 8's point: red is information, not a problem."
+      },
+      {
+       "label": "2",
+       "prompt_md": "Which message is better, and why? Answer from the point of view of someone reading the history six months later.",
+       "marks": 2,
+       "model_answer_md": "B. It tells the reader the failure is intended and why, so a red commit with a stub in it is not mistaken for an error. A says only that tests were added.",
+       "rubric": [
+        "Chooses B",
+        "Gives the reason: B says the tests are meant to fail and why (stub, red step) while A is too vague for a reader six months later"
+       ],
+       "weak_answers_md": "Choosing A because it is short, or B only because it is longer, is not a reason. A message that could describe any commit adds nothing to the history. The good message names the function and the intent, as the real history does with `Add failing tests for remove_duplicates`."
+      },
+      {
+       "label": "3",
+       "prompt_md": "Name one more test you would add for `overdue_fine`, in words.",
+       "marks": 2,
+       "model_answer_md": "A book returned before its due date must cost 0.0, not a negative amount. The two tests cover only the due date and a late return.",
+       "rubric": [
+        "Names a case the two tests do not cover (returned before the due date, a very late return, a return across a month end)",
+        "States the expected result (0.0 for an early return, or the number of days times 0.20 for a late one)"
+       ],
+       "weak_answers_md": "'Test more dates' names no case and no expected result. Repeating a late return with different days adds little. The marker wants an edge chosen on purpose: early return, empty or odd input, a boundary. State what the function should give."
+      }
+     ],
+     "lines": "5–8",
+     "explanation_md": "This is sample question 8 with a history commit of the TDD kind. The diff adds a stub and tests, with no real code. Running it gives one pass and one fail: `.F`, then `1 failed, 1 passed`. Session 8 says that red is information, and that a stub which returns a plausible value lets the failure say something. The real history has exactly this commit shape, `Add failing tests for remove_duplicates`. The message that says so is the one a reader can use; the missing test is an early return, which a signed difference in days would make negative.",
+     "module_ref": "testing-tdd",
+     "section_ref": "testing-tdd-s5",
+     "source_ref": "S8 slides 5 and 13 to 15; expense-tracker e1b96de",
+     "origin": "history",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-b-q15",
+     "type": "open",
+     "level": "hard",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "**Read tool output.** The gradebook group's CI is red at the Types step (`strict = true` is set in `pyproject.toml`). The file and the log:\n\n```python\ndef class_average(marks):\n    total = 0\n    for mark in marks.values():\n        total += mark\n    return total / len(marks)\n\n\ndef best_mark(marks: dict[str, float]) -> float:\n    best = 0\n    for mark in marks.values():\n        if mark > best:\n            best = mark\n    return best\n\n\ndef mark_of(marks: dict[str, float], student: str) -> float:\n    mark = marks.get(student)\n    return round(mark, 1)\n```\n\n```console\n$ uv run mypy src\nsrc/gradebook/marks.py:1: error: Function is missing a type annotation  [no-untyped-def]\nsrc/gradebook/marks.py:12: error: Incompatible types in assignment (expression has type \"float\", variable has type \"int\")  [assignment]\nsrc/gradebook/marks.py:18: error: Argument 1 to \"round\" has incompatible type \"float | None\"; expected \"_SupportsRound2[float]\"  [arg-type]\nFound 3 errors in 1 file (checked 1 source file)\n```\n\n`best_mark` finds the best mark of the class, and `mark_of` returns one student's mark rounded to one decimal.",
+     "parts": [
+      {
+       "label": "1",
+       "prompt_md": "Sort the three errors into the kinds we discussed in session 7.",
+       "marks": 2,
+       "model_answer_md": "Line 1 is a missing annotation. Line 12 is types disagree: `best` starts as the `int` 0 and then holds a float. Line 18 is None not handled: `marks.get(student)` can return `None`, and `round` does not accept it.",
+       "rubric": [
+        "Line 1: missing annotation, and line 12: types disagree (an `int` start value that later holds floats)",
+        "Line 18: None not handled, although the message says `arg-type` and not `union-attr`: the clue is `float | None`"
+       ],
+       "weak_answers_md": "Calling line 18 a types-disagree error because of the word `arg-type` is the trap: read the type, `float | None`, and ask what is missing. Mixing up lines 1 and 12 loses a mark."
+      },
+      {
+       "label": "2",
+       "prompt_md": "Which error can crash a user, and with what input?",
+       "marks": 2,
+       "model_answer_md": "Line 18. `mark_of` for a student who is not in the marks gets `None`, and `round(None, 1)` raises a `TypeError` (we ran it). The other two errors crash nothing.",
+       "rubric": [
+        "Line 18 / `mark_of` is the crash",
+        "The input: a student that is not in the marks, giving `None` and a `TypeError`"
+       ],
+       "weak_answers_md": "Choosing line 12 \"because int and float are different\" confuses a type disagreement with a runtime error: Python compares floats with an int without complaint. Naming line 18 without the student that triggers it earns one mark."
+      },
+      {
+       "label": "3",
+       "prompt_md": "A teammate says: \"Strict mode is slowing us down. Set `strict = false` until after the Review.\" Do you accept? Give your reasoning.",
+       "marks": 2,
+       "model_answer_md": "No. CI would go green, but the three problems stay, including the crash for an unknown student, and the referee would no longer report it. Fix them instead: add the hints, start `best` at 0.0 and handle the `None`.",
+       "rubric": [
+        "Refuses, because switching the check off hides the evidence and the crash stays",
+        "Offers the real fixes: hints, `0.0`, and handling `None`"
+       ],
+       "weak_answers_md": "\"Yes, it is only a type checker\" ignores that one of the three errors is a real crash. \"No, strict is the rule\" gives no reason: say what stays broken and what the group would be inspecting."
+      }
+     ],
+     "lines": "5–8",
+     "explanation_md": "This is sample question 9 on a different artefact. The three kinds are the same: missing annotation, types disagree and None not handled. The None error is reported under `arg-type`, so the code in brackets does not tell you the kind; the type `float | None` does. Only that one crashes a real user, and turning strict off, like an ignore comment, would make CI green while the crash stays. We ran the code: `mark_of` with a known student prints 7.2, and with an unknown one raises `TypeError: type NoneType doesn't define __round__ method`.",
+     "module_ref": "refactor-types",
+     "section_ref": "refactor-types-s9",
+     "source_ref": "S7 slides 8 to 10; sample Q9 shape",
+     "origin": "slides",
+     "verified_by": "run"
+    }
+   ]
+  }
+ ]
+}

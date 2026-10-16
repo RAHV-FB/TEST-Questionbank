@@ -1,0 +1,338 @@
+
+===== [slides-session-8.pdf] page 1 =====
+Testing and TDD
+Practice 2
+Session 8. October 9th 2026
+Alberto Cámara
+
+===== [slides-session-8.pdf] page 2 =====
+Goal for Today
+The core of your project is covered by tests that pass in CI.
+v0.2 is tagged and pushed. Checkpoint 2 is marked at that tag.
+Clock
+What
+10:45–11:15
+Briefing
+11:15–11:30
+Break
+11:30–11:45
+The parts that touch the world
+11:45–13:05
+Lab: labs/08-tdd.md
+13:05–13:15
+Tag v0.2 , push, watch CI
+Alberto Cámara | Software Development for Business | Session 8
+2
+
+===== [slides-session-8.pdf] page 3 =====
+Red · Green · Refactor
+
+===== [slides-session-8.pdf] page 4 =====
+Alberto Cámara | Software Development for Business | Session 8
+4
+
+===== [slides-session-8.pdf] page 5 =====
+Write the test first
+1. Red: write a test for behaviour that does not
+exist. Watch it fail
+2. Green: write the smallest code that makes it
+pass
+3. Refactor: clean up, with the test as your safety
+net
+The test forces you to say what "done" means
+before you can fool yourself.
+Alberto Cámara | Software Development for Business | Session 8
+5
+
+===== [slides-session-8.pdf] page 6 =====
+Arrange, Act, Assert.
+from expense_tracker.report import Expense, total_by_category
+def test_totals_are_grouped_by_category() -> None:
+    expenses = [
+        Expense("2025-07-01", "Bar Ramon", "dining", 10.0),
+        Expense("2025-07-02", "Zara", "clothing", 40.0),
+        Expense("2025-07-03", "Bar Ramon", "dining", 5.0),
+    ]
+    result = total_by_category(expenses, category="", minimum=0.0)
+    assert result == [("clothing", 40.0), ("dining", 15.0)]
+Alberto Cámara | Software Development for Business | Session 8
+6
+
+===== [slides-session-8.pdf] page 7 =====
+Run it
+uv run pytest -q
+.                                                                 [100%]
+1 passed in 0.02s
+On failure, pytest shows the values on both sides of the assert . Read the diff; it usually
+tells you the bug.
+Alberto Cámara | Software Development for Business | Session 8
+7
+
+===== [slides-session-8.pdf] page 8 =====
+Floats: compare with approx
+import pytest
+assert total == pytest.approx(15.0)
+0.1 + 0.2 == 0.3 is False . Money in floats needs a tolerance. (Real money code uses
+Decimal ; that is another course.)
+Alberto Cámara | Software Development for Business | Session 8
+8
+
+===== [slides-session-8.pdf] page 9 =====
+Fixtures: shared set-up
+@pytest.fixture
+def expenses() -> list[Expense]:
+    return [
+        Expense("2025-07-01", "Bar Ramon", "dining", 10.0),
+        Expense("2025-07-02", "Zara", "clothing", 40.0),
+    ]
+def test_category_filter(expenses: list[Expense]) -> None:
+    result = total_by_category(expenses, category="dining", minimum=0.0)
+    assert result == [("dining", 10.0)]
+A fixture is a function pytest calls for you. Ask for it by name in the test's arguments.
+Alberto Cámara | Software Development for Business | Session 8
+9
+
+===== [slides-session-8.pdf] page 10 =====
+parametrize : one test, many cases
+@pytest.mark.parametrize(
+    ("minimum", "expected"),
+    [
+        (0.0, [("dining", 15.0)]),
+        (10.0, [("dining", 10.0)]),
+        (100.0, []),
+    ],
+)
+def test_minimum_filters_small_amounts(
+    minimum: float,
+    expected: list[tuple[str, float]]
+    ) -> None:
+    expenses = [Expense("d", "m", "dining", 5.0), Expense("d", "m", "dining", 10.0)]
+    assert total_by_category(expenses, "", minimum) == expected
+Alberto Cámara | Software Development for Business | Session 8
+10
+
+===== [slides-session-8.pdf] page 11 =====
+Choose edge cases on purpose
+Ask
+Example
+Empty: nothing in?
+total_by_category([], "", 0.0) == []
+Zero: the boundary?
+an amount exactly equal to minimum
+Negative: nonsense?
+a refund
+Duplicate: twice?
+our expenses.csv has six exact duplicates
+Missing: not there?
+a category nobody used
+Do not test what feels likely. Test what could break.
+For this reason, it is often said that tests also behave as documentation.
+Alberto Cámara | Software Development for Business | Session 8
+11
+
+===== [slides-session-8.pdf] page 12 =====
+Live: one full cycle
+
+===== [slides-session-8.pdf] page 13 =====
+The demo repo: where we start
+git checkout v0.3
+uv run pytest
+no tests ran in 0.01s
+v0.3 is the functional core from Tuesday: report.py has no print , no sys.exit .
+The tests don't exist yet. v0.4 is where I end up; your tag is v0.2 .
+The data has a problem: expenses.csv has six exact duplicate rows. We need
+remove_duplicates(expenses) .
+I type it; you tell me the next edge case.
+Alberto Cámara | Software Development for Business | Session 8
+13
+
+===== [slides-session-8.pdf] page 14 =====
+Red: the tests first
+def test_no_expenses_means_no_duplicates() -> None:
+    assert remove_duplicates([]) == []
+def test_an_exact_duplicate_is_removed_and_the_first_one_kept() -> None:
+    assert remove_duplicates([BAR, ZARA, BAR]) == [BAR, ZARA]
+def test_same_merchant_on_another_day_is_not_a_duplicate() -> None:
+    next_day = Expense("2025-07-02", "Bar Ramon", "dining", 10.0)
+    assert remove_duplicates([BAR, next_day]) == [BAR, next_day]
+First a stub, return expenses , so the failure says something. Run it: two fail,
+the others pass by luck. Red is information, not a problem.
+Alberto Cámara | Software Development for Business | Session 8
+14
+
+===== [slides-session-8.pdf] page 15 =====
+Green: the smallest code that passes
+def remove_duplicates(expenses: list[Expense]) -> list[Expense]:
+    seen: set[Expense] = set()
+    unique: list[Expense] = []
+    for expense in expenses:
+        if expense not in seen:
+            seen.add(expense)
+            unique.append(expense)
+    return unique
+Not elegant. Nobody asked for elegant yet. All green.
+Alberto Cámara | Software Development for Business | Session 8
+15
+
+===== [slides-session-8.pdf] page 16 =====
+Refactor: with the tests as a net
+def remove_duplicates(expenses: list[Expense]) -> list[Expense]:
+    return list(dict.fromkeys(expenses))
+Dictionaries keep insertion order, and @dataclass(frozen=True) makes Expense
+hashable. Session 6's frozen=True pays off here.
+Run the tests: still green. That is what "refactoring" means.
+len(read_expenses("expenses.csv"))                      # 420
+len(remove_duplicates(read_expenses("expenses.csv")))   # 414
+Alberto Cámara | Software Development for Business | Session 8
+16
+
+===== [slides-session-8.pdf] page 17 =====
+The parts that touch the world
+
+===== [slides-session-8.pdf] page 18 =====
+Alberto Cámara | Software Development for Business | Session 8
+18
+
+===== [slides-session-8.pdf] page 19 =====
+Pure functions test themselves
+total_by_category takes a list and returns a list. No file, no setup, no clean-up.
+That is what session 7's functional core bought you. If a function you want to test
+needs a file, ask: can I split the file reading out?
+Alberto Cámara | Software Development for Business | Session 8
+19
+
+===== [slides-session-8.pdf] page 20 =====
+When you really do want a file: tmp_path
+def test_malformed_rows_are_skipped(tmp_path: Path) -> None:
+    csv_file = tmp_path / "expenses.csv"
+    csv_file.write_text("date,merchant,category,amount\n2025-07-01,Bar,dining,10.00\
+    result = read_expenses(str(csv_file))
+    assert len(result) == 1
+tmp_path is a fresh empty directory for this test. pytest deletes it afterwards. Your real
+files are never touched.
+Alberto Cámara | Software Development for Business | Session 8
+20
+
+===== [slides-session-8.pdf] page 21 =====
+The command line: CliRunner
+from typer.testing import CliRunner
+from expense_tracker.cli import app
+runner = CliRunner()
+def test_missing_file_exits_with_one() -> None:
+    result = runner.invoke(app, ["report", "nosuch.csv"])
+    assert result.exit_code == 1
+Session 5's exit code, now checked by a machine.
+Alberto Cámara | Software Development for Business | Session 8
+21
+
+===== [slides-session-8.pdf] page 22 =====
+monkeypatch : change the environment for one test
+def test_add_writes_into_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
+    monkeypatch.chdir(tmp_path)
+    runner.invoke(app, ["add", "Bar Ramon", "dining", "12.50"])
+    assert (tmp_path / "data" / "expenses.csv").exists()
+Working directory, environment variables, attributes: set for this test, restored after.
+Alberto Cámara | Software Development for Business | Session 8
+22
+
+===== [slides-session-8.pdf] page 23 =====
+Which one do I use for Checkpoint 2?
+Tool
+Use it for
+Counts as an I/O test
+plain list
+pure functions
+no: most of your tests
+tmp_path
+the one place you read or write a file
+yes
+CliRunner
+the command line: exit code, output
+yes
+monkeypatch
+the working directory, environment
+yes
+CP2 allows one or two I/O tests, chosen on purpose. Eight tests that all need a file is
+the opposite of what we practised.
+Alberto Cámara | Software Development for Business | Session 8
+23
+
+===== [slides-session-8.pdf] page 24 =====
+Coverage is a map, not a score
+uv add --dev pytest-cov
+uv run pytest --cov=your_package \
+    --cov-report=term-missing
+The report lists lines no test ran. Use it to find what
+you forgot.
+100% coverage with weak assertions proves
+nothing. Never chase the number.
+Alberto Cámara | Software Development for Business | Session 8
+24
+
+===== [slides-session-8.pdf] page 25 =====
+A pointer: property-based testing
+from hypothesis import given, strategies as st
+@given(st.lists(st.floats(min_value=0, max_value=1e6)))
+def test_total_never_negative(amounts: list[float]) -> None: ...
+Instead of examples, you state a property and the library invents hundreds of inputs.
+Not required. For the curious.
+Alberto Cámara | Software Development for Business | Session 8
+25
+
+===== [slides-session-8.pdf] page 26 =====
+The lab
+
+===== [slides-session-8.pdf] page 27 =====
+What you are doing
+labs/08-tdd.md
+1. Find the pure functions that decide something: a total, a score, a next state, a price
+2. Write the test first; watch it fail; make it pass
+3. At least 8 tests; 2 on edge cases
+4. One or two tests of your I/O edge ( tmp_path , CliRunner or monkeypatch )
+5. ruff , mypy --strict , pytest all green, then tag v0.2
+If your logic is tangled up with print or open , split it first. That is refactoring under
+test.
+Alberto Cámara | Software Development for Business | Session 8
+27
+
+===== [slides-session-8.pdf] page 28 =====
+The three that will bite
+-> None missing on a test. Strict mypy: Function is missing a return type annotation .
+CI is red; pytest alone passes.
+The function prints. You cannot assert on a print . Make it return, and print in the shell.
+Tests that need your laptop. A test that reads data/expenses.csv passes only on your
+machine. Use tmp_path , or build the data inside the test.
+Alberto Cámara | Software Development for Business | Session 8
+28
+
+===== [slides-session-8.pdf] page 29 =====
+Checkpoint 2: three binary items
+1. ≥ 8 tests, all passing, CI green on the v0.2 commit
+2. ≥ 2 tests aimed at an edge case, not the happy path
+3. Most tests call pure functions with plain data; at most one or two use
+tmp_path , CliRunner or monkeypatch , on purpose
+Marked at the v0.2 tag. Deadline: 13:15 today.
+git tag -a v0.2 -m "Checkpoint 2: tested core"
+git push origin v0.2
+A missing tag means nothing to mark.
+Alberto Cámara | Software Development for Business | Session 8
+29
+
+===== [slides-session-8.pdf] page 30 =====
+Ground rules for the next 80 minutes
+Split the modules between you; agree who pushes when
+Ask me early
+Green CI before you leave the room
+Not finished by 13:05 → push what you have and say so
+Alberto Cámara | Software Development for Business | Session 8
+30
+
+===== [slides-session-8.pdf] page 31 =====
+The mid-term sample questions
+Nine sample questions and their answers, on Moodle. They show the kind of question,
+not the exam.
+1 hour, closed book, pen only. You will never write code
+You read code, tool output or a diff, and say what it does or what is wrong
+Answer on paper first, then open the answers. Judge your reasons, not the letter
+Alberto Cámara | Software Development for Business | Session 8
+31

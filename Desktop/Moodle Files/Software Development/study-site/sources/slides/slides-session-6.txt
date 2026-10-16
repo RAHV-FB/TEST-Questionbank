@@ -1,0 +1,334 @@
+
+===== [slides-session-6.pdf] page 1 =====
+Clean Code
+Naming and Responsibility
+Session 6. September 29th 2026
+Alberto Cámara
+
+===== [slides-session-6.pdf] page 2 =====
+Today's goal
+Readable code as an economic argument
+Learn how to rename your way out of a comment
+See a function that does two things, and split it
+Turn a tuple into a type
+Read ruff output and act on it
+Exercise: real code refactor.
+Alberto Cámara | Software Development for Business | Session 6
+2
+
+===== [slides-session-6.pdf] page 3 =====
+Several announcements
+
+===== [slides-session-6.pdf] page 4 =====
+The mid-term exam: your questions answered
+Thursday 22 October, 14:00 · 1 hour · room 108 · 30% of your mark
+Covers
+Sessions 1–10: starting a project, clean code and tests, the terminal
+Format
+Pen and paper. Closed book, no devices
+Question
+types
+Mixture of multiple-choice questions (no penalty for wrong) and open questions with short
+answers
+You will be expected to explain, compare, or read a piece of code or tool output and say what
+it does or what is wrong. You will not write code. Judgement, not memorised flags.
+Prepare with the session slides and the expense-tracker history on GitHub.
+It removes nothing from the final.
+Alberto Cámara | Software Development for Business | Session 6
+4
+
+===== [slides-session-6.pdf] page 5 =====
+Another thing
+Start working on the group project: the Product Backlog and Definition of Done from
+session 4 are not homework for later.
+After today's lecture, you should start building against them. Checkpoint 2, on October 9th,
+needs code to write tests for.
+Alberto Cámara | Software Development for Business | Session 6
+5
+
+===== [slides-session-6.pdf] page 6 =====
+Where we are
+Sessions
+Module
+1–4
+M1 Starting a software project
+done
+5–8
+M2 Clean code and tests
+you are here
+9–10
+M3 Terminal
+We will start at Friday's v0.1 .
+First we attempt to get code to run.
+Today's lecture is about what happens after code runs.
+Alberto Cámara | Software Development for Business | Session 6
+6
+
+===== [slides-session-6.pdf] page 7 =====
+Why "clean"?
+
+===== [slides-session-6.pdf] page 8 =====
+The same logic, twice
+What does this code do?
+def calc(c, i, d):
+    t = 0
+    for p in c:
+        t += p[1] * p[2]
+    if d > 0:
+        t = t - (t * d)
+    if i > 0:
+        t = t + (t * i)
+    return t
+Alberto Cámara | Software Development for Business | Session 6
+8
+
+===== [slides-session-6.pdf] page 9 =====
+Now we rewrite the code into something readable:
+def invoice_total(lines, tax_rate, discount_rate):
+    subtotal = 0
+    for line in lines:
+        subtotal += line.price * line.quantity
+    discounted = subtotal * (1 - discount_rate)
+    return discounted * (1 + tax_rate)
+Question: which one would you dare to change?
+Alberto Cámara | Software Development for Business | Session 6
+9
+
+===== [slides-session-6.pdf] page 10 =====
+An economic argument, not an
+aesthetic one
+Code is read far more often than it is written
+The cost of a maintaining a codebase is the cost
+of understanding it
+The next reader is a teammate, or you in the
+Future
+Clean code is cheap to change. Unclean code is
+expensive to change, and the only code that doesn't
+change the code that never runs.
+Alberto Cámara | Software Development for Business | Session 6
+10
+
+===== [slides-session-6.pdf] page 11 =====
+A disagreement, out loud
+It is standard practice in introductory courses to comment liberally.
+The reason is that in a learning context it is good to explain what the code does.
+However, we will apply the following rule:
+A comment that explains what the code does is a failure of naming.
+The reason, as explained by Robert C. Martin:
+"Truth can only be found in one place: the code."
+The advice makes sense depending on context; never follow it blindly.
+Alberto Cámara | Software Development for Business | Session 6
+11
+
+===== [slides-session-6.pdf] page 12 =====
+Naming
+
+===== [slides-session-6.pdf] page 13 =====
+Rename instead of comment
+# total of all expenses in this category above the threshold
+d[e[2]] = d[e[2]] + e[3]
+totals[expense.category] += expense.amount
+The comment is a symptom. The fix is a name.
+Alberto Cámara | Software Development for Business | Session 6
+13
+
+===== [slides-session-6.pdf] page 14 =====
+Comments are for why
+Legitimate comments explain what the code cannot say:
+# Suppose the bank's export sometimes ends with a summary row with fewer fields.
+if len(row) == FIELDS_PER_ROW:
+A business rule
+A workaround, with its reason
+A deliberate oddity
+If the comment restates the next line, delete the comment and improve the line.
+Alberto Cámara | Software Development for Business | Session 6
+14
+
+===== [slides-session-6.pdf] page 15 =====
+Names that work
+Kind
+Bad
+Better
+Rule
+Variable
+d , t , x
+totals , expense
+says what it holds
+Function
+calculate_totals
+total_by_category
+says what it returns
+Boolean
+flag
+is_duplicate
+reads as a yes/no question
+Module
+utils.py
+storage.py
+says what it is for
+A name that needs a comment is not finished.
+Alberto Cámara | Software Development for Business | Session 6
+15
+
+===== [slides-session-6.pdf] page 16 =====
+Magic numbers
+This is how we call constants that appear in the code without a name. In general it is better to
+name them as constants.
+print("-" * 40)
+print(name.ljust(20) + amount.rjust(10))
+RULE_WIDTH = 40
+NAME_WIDTH = 20
+AMOUNT_WIDTH = 10
+Change the width once, in one place, with a name that says what it is. if e[3] < z
+becomes if expense[AMOUNT] < minimum .
+Alberto Cámara | Software Development for Business | Session 6
+16
+
+===== [slides-session-6.pdf] page 17 =====
+Functions
+
+===== [slides-session-6.pdf] page 18 =====
+One function, one job
+run() in v0.1 does five things:
+1. opens and parses the file
+2. handles the failure
+3. prints the header
+4. totals by category
+5. finds the largest and prints it
+Ask: can I describe it without the word "and"?
+Important: Single Responsibility Principle.
+Alberto Cámara | Software Development for Business | Session 6
+18
+
+===== [slides-session-6.pdf] page 19 =====
+Guard clauses, not pyramids
+if e[2] == category:
+    if e[3] >= minimum:
+        totals[e[2]] += e[3]
+if category != "" and expense.category != category:
+    continue
+if expense.amount < minimum:
+    continue
+totals[expense.category] += expense.amount
+Deal with the exceptions first and get out. What is left is the main path.
+Alberto Cámara | Software Development for Business | Session 6
+19
+
+===== [slides-session-6.pdf] page 20 =====
+Computation is not output
+def total_by_category(expenses, category, minimum):   # returns data
+    ...
+def format_report(...):                               # returns lines
+    ...
+def run(...):                                         # the only one that prints
+    ...
+A function that returns can be tested, reused and read on its own.
+A function that prints can only be looked at.
+Alberto Cámara | Software Development for Business | Session 6
+20
+
+===== [slides-session-6.pdf] page 21 =====
+A tuple is a missing type
+
+===== [slides-session-6.pdf] page 22 =====
+row[2] or expense.category ?
+rows.append((row[0], row[1], row[2], float(row[3])))
+...
+if e[3] < z:
+What is e[3] ?
+Impossible to tell without looking it up.
+Alberto Cámara | Software Development for Business | Session 6
+22
+
+===== [slides-session-6.pdf] page 23 =====
+Instead of a tuple, we can use:
+@dataclass(frozen=True)
+class Expense:
+    date: str
+    merchant: str
+    category: str
+    amount: float
+e[3] becomes expense.amount .
+The name is documentation, and the type checker knows it too.
+Alberto Cámara | Software Development for Business | Session 6
+23
+
+===== [slides-session-6.pdf] page 24 =====
+dataclass is a naming tool
+Not a Python feature to memorise. It is how you give a name to business domain concepts.
+frozen=True : it does not change after creation
+The editor autocompletes expense.
+A typo in a field name is an error, not a silent wrong answer
+Every group project has concepts that can be modelled with a dataclass: a booking, a
+product, a match, a reading...
+Alberto Cámara | Software Development for Business | Session 6
+24
+
+===== [slides-session-6.pdf] page 25 =====
+Type hints, ruff and mypy
+
+===== [slides-session-6.pdf] page 26 =====
+Type hints are contracts
+def total_by_category(
+    expenses: list[Expense], category: str, minimum: float
+) -> list[tuple[str, float]]:
+Say what goes in and what comes out
+Read by the next person and by mypy
+Wrong call → an error before the program runs
+Session 7 turns the checker up. Today you only write the hints.
+Alberto Cámara | Software Development for Business | Session 6
+26
+
+===== [slides-session-6.pdf] page 27 =====
+The linter is the arbiter
+uv run ruff check .          # finds problems
+uv run ruff format .         # fixes layout
+Configured once, in pyproject.toml . Nobody argues about quotes or line length again; the
+tool decides, and CI enforces it.
+E501  Line too long (112 > 100)
+F401  `os` imported but unused
+Read the code, read the message, fix the cause.
+Alberto Cámara | Software Development for Business | Session 6
+27
+
+===== [slides-session-6.pdf] page 28 =====
+Break, 15 min.
+Clone expense-tracker and run uv sync now, so the lab starts on time.
+Alberto Cámara | Software Development for Business | Session 6
+28
+
+===== [slides-session-6.pdf] page 29 =====
+Your turn
+
+===== [slides-session-6.pdf] page 30 =====
+Pairs, 12 minutes
+expense-tracker at v0.1 , file src/expense_tracker/report.py :
+git clone https://github.com/esade-swdev-2026/expense-tracker
+cd expense-tracker && uv sync
+uv run expenses report --category dining --min 20 > before.txt
+1. Rename three things (variables, a function)
+2. Extract one function out of run()
+3. The output must stay identical — check it:
+uv run expenses report --category dining --min 20 > after.txt
+diff before.txt after.txt   # nothing printed = you're safe
+Alberto Cámara | Software Development for Business | Session 6
+30
+
+===== [slides-session-6.pdf] page 31 =====
+Then we replay it
+Five commits, one at a time. At each one I stop and ask you for the name.
+#
+Commit
+8
+Replace magic numbers with named constants
+9
+Rename calculate_totals to total_by_category
+10
+Separate reading and printing from the calculation
+11
+Give an expense a type instead of a tuple
+12
+Add type hints and make the code ruff clean
+The demo's v0.2 is clean code. Yours, on Friday 9 October, is tests.
+Alberto Cámara | Software Development for Business | Session 6
+31

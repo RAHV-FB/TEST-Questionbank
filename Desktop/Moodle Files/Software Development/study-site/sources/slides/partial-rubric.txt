@@ -1,0 +1,123 @@
+
+===== [partial-rubric.pdf] page 1 =====
+Software Development for Business
+Partial submission
+Partial submission
+Due Sunday 18 October 2026, 2359 · worth 30% of the group project mark
+Marked against your group repo’s main at the v0.5tag. A repository without that tag has nothing
+to mark.
+The partial submission is the mid-point of your project: a program that does its core job end
+to end, in the structure the course has taught so far. It is not the finished product. Everything
+below is something you have already done in sessions 5–8.
+How it is marked
+Five criteria, each scored 0–3, equal weight. Total out of 15, scaled to the 30%.
+Score
+Meaning
+3
+Fully meets the description
+2
+Meets it with one clear gap
+1
+Partly there; several gaps
+0
+Missing, or does not work
+The CI gate. The check workflow must be green on the v0.5 commit. If it is red there, the
+Tests criterion is capped at 1, whatever else is true. A fix pushed after the tag does not count:
+move the tag, or tag again as v0.5 before the deadline.
+Marking criteria
+1. Functionality
+3
+A stranger can run the main command on real input and get a correct, useful result.
+At least two commands or options do real work. Bad input gives a clear message
+and a non-zero exit code, not a traceback.
+2
+The core job works end to end, but one path fails or bad input gives a traceback.
+1
+It runs, but the core job is only partly done or only works on one hand-picked input.
+0
+It does not run, or does not do the core job.
+2. Structure
+3
+src/<package>/ layout. Computation lives in functions that take and return plain data;
+reading files and printing live in a thin outer layer. No module does both.
+2
+Layout is right, but one function still mixes computing with reading or printing.
+1
+Layout is right, but logic is mostly inside the command functions.
+0
+A script, or code outside src/.
+1
+
+===== [partial-rubric.pdf] page 2 =====
+Software Development for Business
+Partial submission
+3. Naming and clean code
+3
+Names say what things are. No tuples of mixed things where a class belongs, no
+magic numbers, no function doing two jobs.
+2
+Mostly clear, with a few vague names (data, x, process) or one function that should
+be two.
+1
+Many unclear names or long functions you have to trace to understand.
+0
+Hard to follow at all.
+4. Tests
+3
+At least 8 tests pass, including edge cases, and most test pure functions with plain
+data. CI is green at v0.5.
+2
+Tests pass and cover the core, but few edge cases, or most of them go through the
+file system or the command line.
+1
+Fewer than 8 tests, or tests that pass without checking anything.
+0
+No tests, or the suite does not run.
+Capped at 1 if CI is red at v0.5.
+5. README
+3
+A stranger can follow it from clone to a first result: what it is, how to install (uv sync),
+how to run it with a copy-pasteable example, how to run the checks. Every
+command in it works.
+2
+Readable, but one step is missing or one command no longer works.
+1
+The template skeleton with a few lines filled in.
+0
+The template as issued, or missing.
+Check yourself before the deadline
+uv run ruff check . && uv run ruff format --check . \
+&& uv run mypy src tests && uv run pytest
+git tag -a v0.5 -m "Partial submission" && git push origin v0.5
+Then open the Actions tab and confirm the green tick on the tagged commit. Finally, clone
+your own repo into an empty folder and follow your README literally. The first place it breaks
+is the first thing the marker will find.
+2
+
+===== [partial-rubric.pdf] page 3 =====
+Software Development for Business
+Partial submission
+If CI is red on the tag
+Do not leave the tag where it is. Fix the problem, commit and push the fix, wait for a green
+tick on that new commit, and only then move the tag onto it.
+1. Find out what failed. Open the red run on the Actions tab and read the log of the failing
+step. To see the same failure on your machine, run the checks locally:
+uv run ruff check . && uv run ruff format --check . \
+&& uv run mypy src tests && uv run pytest
+2. Fix it, commit and push to main.
+git switch main && git pull
+git add -A
+git commit -m "Fix the failing check"
+git push origin main
+3. Wait for CI. Open the Actions tab and wait for the check run on your new commit. If it is red
+again, go back to step 1. Do not move the tag yet.
+4. Move the tag onto the green commit.
+git tag -fa v0.5 -m "Partial submission"
+git push --force origin v0.5
+git log -1 --oneline v0.5
+-f replaces your local tag and --force replaces the one on GitHub. The last line shows the
+commit the tag now points to: it must be the one with the green tick. Check that the Actions
+tab shows a green run for it.
+You can repeat all four steps as often as you need. What counts is where v0.5 points at Sunday
+18 October, 2359, and whether CI is green there.
+3

@@ -1,0 +1,74 @@
+
+===== [calendar.pdf] page 1 =====
+Software Development for Business - Course calendar
+Autumn 2026 · UGRA_016269 · Tuesdays 08:00–10:30 · Fridays 10:45–13:15 · Room 108
+#
+Date
+Remarks
+Assessment due
+1
+Tue 8 Sep
+-
+Fri 11 Sep
+Diada - no class
+2
+Tue 15 Sep
+Groups + topics locked
+3
+Fri 18 Sep
+Setup lab
+4
+Tue 22 Sep
+5
+Fri 25 Sep
+CP1
+6
+Tue 29 Sep
+-
+Fri 2 Oct
+No class
+7
+Tue 6 Oct
+8
+Fri 9 Oct
+CP2
+9
+Tue 13 Oct
+10
+Fri 16 Oct
+Partial submission
+-
+Tue 20 & Fri 23 Oct
+Mid-term week - no classes
+-
+Thu 22, 14:00
+Mid-term exam
+11
+Tue 27 Oct
+12
+Fri 30 Oct
+CP3
+13
+Tue 3 Nov
+14
+Fri 6 Nov
+CP4
+15
+Tue 10 Nov
+16
+Fri 13 Nov
+17
+Tue 17 Nov
+18
+Fri 20 Nov
+Final submission
+-
+Tue 24 Nov
+No class
+19
+Fri 27 Nov
+Demo Day - project presentations
+Final demo
+Final exam - date, time and room set by the Registrar’s Oﬀice.
+Checkpoints (CP1–CP4) and both submissions are the group project. Every deadline is mandatory and late work
+scores 0. Individual session dates may change - the calendar on Moodle is always the current one.

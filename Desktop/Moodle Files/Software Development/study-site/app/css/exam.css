@@ -1,0 +1,220 @@
+/* ---------------------------------------------------------------- exam: the papers and attempts */
+.paper-list, .attempts { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+.paper-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 24px; align-items: baseline;
+  padding: 16px 6px 18px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink); text-decoration: none;
+}
+.paper-row:hover { background: var(--paper); }
+/* an arrow shows these rows open something, without hovering */
+.paper-title::after { content: "→"; display: inline-block; margin-left: 8px; color: var(--ink-3); font-weight: 400; }
+.paper-kind { grid-column: 1 / -1; margin: 0 0 2px; }
+.paper-title { font-weight: 600; font-size: 1.0625rem; }
+.paper-last {
+  grid-row: 2; grid-column: 2;
+  font: 0.8125rem/1.6 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--ink-2); text-align: right;
+}
+.paper-about { grid-column: 1 / -1; max-width: 62ch; font-size: 0.9375rem; color: var(--ink-2); }
+.paper-meta { grid-column: 1 / -1; margin-top: 4px; font: 0.8125rem/1.5 var(--font-mono); color: var(--ink-3); }
+
+.exam-running { margin: 24px 0 8px; }
+.exam-running p:not(.label) { margin-bottom: 12px; }
+
+.attempt-row {
+  display: grid; grid-template-columns: 11rem minmax(0, 1fr) auto; gap: 2px 16px; align-items: baseline;
+  padding: 12px 6px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink); text-decoration: none;
+}
+.attempt-row:hover { background: var(--paper); }
+.attempt-date { font: 0.8125rem/1.5 var(--font-mono); color: var(--ink-3); }
+.attempt-paper { font-weight: 500; }
+.attempt-score { font: 500 0.9375rem/1.5 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.attempt-line { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; }
+.attempt-line .pytest { margin: 0; font-size: 0.8125rem; font-weight: 400; }
+.attempt-line .fine { font-size: 0.8125rem; }
+
+/* ---------------------------------------------------------------- the rules screen */
+.paper-facts {
+  display: flex; flex-wrap: wrap; gap: 16px 0;
+  margin: 0 0 8px;
+  border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+}
+.fact { min-width: 9rem; padding: 14px 28px 14px 0; }
+.fact + .fact { padding-left: 28px; border-left: 1px solid var(--rule); }
+.fact dt { margin-bottom: 2px; }
+.fact dd { margin: 0; }
+.fact-value { display: block; font: 500 1.5rem/1.25 var(--font-mono); font-variant-numeric: tabular-nums; }
+.fact .fine { display: block; font-size: 0.8125rem; }
+.rules { margin: 0 0 8px; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+.rules li { padding: 11px 0; border-bottom: 1px solid var(--rule); }
+.rules strong { font-weight: 600; }
+
+/* ---------------------------------------------------------------- the answer paper */
+.exam-head { margin-bottom: 18px; }
+.exam-head h1 { margin-bottom: 4px; }
+.exam-head .fine { max-width: 62ch; margin: 0; }
+.exam-bar {
+  position: sticky; top: var(--top-h); z-index: 10;
+  margin: 0 0 12px; padding: 8px 0 10px;
+  background: var(--sheet);
+  border-bottom: 1px solid var(--rule);
+}
+.exam-bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.exam-clock { display: flex; align-items: baseline; gap: 10px; margin: 0; }
+.exam-clock .label { margin: 0; }
+.exam-time { min-width: 4.2ch; font: 500 1.5rem/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+.exam-time-off { font: 0.8125rem/1.2 var(--font-mono); color: var(--ink-3); }
+.exam-hide { font-size: 0.8125rem; }
+.exam-bar.is-warn .exam-time { color: var(--warn); }
+.exam-bar.is-urgent .exam-time { color: var(--fail); }
+.exam-warn {
+  margin: 0; padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--warn-bg); color: var(--warn);
+  font: 500 0.8125rem/1.6 var(--font-mono);
+  white-space: nowrap;
+}
+.exam-bar.is-urgent .exam-warn { background: var(--fail-bg); color: var(--fail); }
+.exam-bar-end { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.exam-q-tools { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.exam-nav-count { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.exam-nav-toggle[aria-expanded="true"] { background: var(--paper); }
+.exam-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-top: 10px; }
+.nav-cells { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* A navigator cell: hollow = blank, thick outline = partly answered, filled = answered; the corner
+   triangle marks a flag (a shape, so colour is not the only signal). */
+.nav-cell {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0;
+  border: 1px solid var(--control-edge); border-radius: var(--radius);
+  background: var(--sheet); color: var(--ink-2);
+  font: 500 0.8125rem/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out;
+}
+.nav-cell:hover { border-color: var(--ink-2); }
+.nav-cell.is-partial { border: 2px solid var(--ink); color: var(--ink); }
+.nav-cell.is-full { background: var(--ink); border-color: var(--ink); color: var(--sheet); }
+.nav-cell.is-flagged::after, .exam-flag::before {
+  content: "";
+  width: 9px; height: 9px;
+  background: var(--signal);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+.nav-cell.is-flagged::after { position: absolute; top: 3px; right: 3px; }
+.nav-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font: 0.75rem/1.4 var(--font-mono); color: var(--ink-3); }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.nav-sample { width: 16px; height: 16px; border-radius: 3px; cursor: default; }
+.nav-sample.is-flagged::after { top: 1px; right: 1px; width: 7px; height: 7px; }
+
+.exam-sheets .qsheet { margin: 0 0 20px; }
+.exam-sheets .qsheet:focus { outline: none; }
+.exam-sheets .qsheet:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+/* an open answer written on paper: the lined box is only for those who type */
+.exam-sheets .is-on-paper .lined { opacity: 0.55; }
+.exam-q-foot {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  margin-top: 20px; padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+.exam-flag::before, .exam-paper-toggle::before { margin-right: 8px; background: var(--control-edge); }
+.exam-flag[aria-pressed="true"]::before { background: var(--signal); }
+.exam-q-marks { font: 0.8125rem/1.5 var(--font-mono); color: var(--ink-3); }
+
+.handin {
+  margin: 32px 0 0; padding: var(--pad-l);
+  border: 1px solid var(--control-edge); border-radius: var(--radius);
+  background: var(--sheet);
+}
+.handin h2 { margin: 0 0 10px; }
+.handin h2:focus { outline: none; }
+.handin .actions { margin-top: 18px; align-items: center; }
+.handin-count { font-weight: 600; margin-bottom: 6px; }
+.handin-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin: 0 0 4px; }
+.handin-key { min-width: 10.5rem; font-size: 0.9375rem; color: var(--ink-2); }
+.q-jump { font: 500 0.9375rem/1.5 var(--font-mono); color: var(--signal); }
+.handin .fine { margin: 10px 0 0; }
+
+/* ---------------------------------------------------------------- results and review */
+.exam-summary .pytest { font-size: 1.25rem; margin-bottom: 14px; }
+.exam-summary .pytest span, .attempt-line .pytest span { white-space: nowrap; }
+.exam-figures { margin-top: 8px; border-top: 1px solid var(--rule); }
+.to-mark { margin: 16px 0 0; padding: var(--pad-s); border-radius: var(--radius); background: var(--warn-bg); color: var(--ink); font-size: 0.9375rem; }
+.to-mark .link-btn { color: var(--ink); font-weight: 500; }
+.module-table { width: 100%; }
+.module-table th[scope="row"] { font-weight: 400; border-bottom-color: var(--rule); }
+.module-table th[scope="row"] a { color: var(--ink); text-decoration: none; }
+.module-table th[scope="row"] a:hover { color: var(--signal); text-decoration: underline; }
+.module-code { display: inline-block; min-width: 2.6em; font: 500 0.8125rem/1 var(--font-mono); color: var(--ink-3); }
+.module-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.module-table td.num { font-family: var(--font-mono); }
+.module-table th:last-child, .module-table td:last-child { padding-right: 0; }
+.to-mark-note { display: block; font-size: 0.75rem; color: var(--warn); }
+
+.review-filter { margin: 4px 0 20px; }
+.review-grid-label { margin-bottom: 6px; }
+.seg-count { margin-left: 6px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink-3); }
+.review-grid { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.review-cell {
+  display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+  min-width: 44px; height: 34px; padding: 0 6px;
+  border: 1px solid var(--control-edge); border-radius: var(--radius);
+  background: var(--sheet); color: var(--ink-2);
+  font: 500 0.8125rem/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+/* only the border and the shape carry the verdict, so a bad paper is not a block of red */
+.review-cell.is-pass { border-color: var(--pass); color: var(--pass); }
+.review-cell.is-fail { border-color: var(--fail); color: var(--fail); }
+.review-cell.is-mark { border-style: dashed; border-color: var(--warn); color: var(--warn); }
+.review-q { margin-top: 28px; }
+.review-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0 0 8px; font-size: 0.9375rem; }
+.review-word { font-weight: 600; }
+.review-score { font: 500 0.8125rem/1.5 var(--font-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.review-q .qsheet:focus { outline: none; }
+.review-q .qsheet:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.paper-prompt { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 8px; }
+.paper-prompt .fine { margin: 0; max-width: 46ch; }
+
+/* ---------------------------------------------------------------- phones */
+@media (max-width: 767px) {
+  /* three short figures stay side by side (Home's figures stack) */
+  .exam-figures { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .exam-figures .figure { padding: 14px 10px 14px 0; }
+  .exam-figures .figure + .figure { padding-left: 12px; border-top: 0; border-left: 1px solid var(--rule); }
+  .exam-figures .figure-value { font-size: 1.25rem; }
+  .exam-figures .fine { font-size: 0.8125rem; }
+}
+@media (max-width: 599px) {
+  .paper-row { grid-template-columns: minmax(0, 1fr); }
+  .paper-last { grid-row: auto; grid-column: 1; text-align: left; }
+  .attempt-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .attempt-date { grid-column: 1 / -1; }
+  .attempt-line { grid-column: 1 / -1; }
+  .paper-facts { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .fact { min-width: 0; padding-right: 12px; }
+  .fact + .fact { padding-left: 12px; }
+  .fact-value { font-size: 1.25rem; }
+  .exam-bar { padding: 6px 0 8px; }
+  .exam-bar-row { gap: 4px 10px; }
+  .exam-clock { gap: 8px; }
+  .exam-clock .label { display: none; }
+  .exam-time { font-size: 1.25rem; }
+  .exam-bar-end { gap: 8px; }
+  .exam-nav-toggle, .exam-bar-end .btn-primary { padding-left: 12px; padding-right: 12px; font-size: 0.9375rem; }
+  /* the warning takes a line of its own, only while it shows */
+  .exam-warn { order: 3; flex-basis: 100%; text-align: center; }
+  .exam-nav { margin-top: 10px; }
+  .handin { padding: 18px 16px 20px; }
+  .handin-key { min-width: 0; flex-basis: 100%; }
+}
+@media (pointer: coarse) {
+  .nav-cell { width: 44px; height: 44px; }
+  .nav-sample { width: 16px; height: 16px; }
+  .review-cell { height: 44px; }
+}

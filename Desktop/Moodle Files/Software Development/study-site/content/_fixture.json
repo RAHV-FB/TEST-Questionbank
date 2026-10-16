@@ -1,0 +1,1461 @@
+{
+ "modules": [
+  {
+   "id": "scrum",
+   "order": 2,
+   "module": "M1",
+   "title": "Scrum",
+   "sessions": [
+    4
+   ],
+   "predicted": false,
+   "sources": [
+    "slides-session-4"
+   ],
+   "summary_md": "Scrum is the framework the course uses to organise work in short cycles. This module covers the three accountabilities, the three artifacts and the commitment each one carries. The exam asks you to judge a situation: who decides, which artifact makes something visible, and when an item is really done.",
+   "exam_focus_md": "- A scenario where someone outside the team decides how much goes into a Sprint: say what is wrong.\n- Matching each artifact to its commitment (Product Goal, Sprint Goal, Definition of Done).\n- An item that is \"done except for tests\": is it done?",
+   "sections": [
+    {
+     "id": "scrum-s1",
+     "heading": "Three accountabilities",
+     "body_md": "Scrum names three accountabilities, and each answers a different question. The **Product Owner** is accountable for the value of the product. They own and order the Product Backlog, and they are one person, not a committee. The **Scrum Master** makes sure the process works: they remove impediments and coach the team. A Scrum Master is not a manager. The **Developers** build the Increment. They are cross-functional and self-managing.\n\nSelf-managing has a precise meaning in the slides. The team decides how the work is done and who does what. The Product Owner decides what is worth doing and in what order. Nobody outside the team decides how much goes into a Sprint.\n\nThe slides add two practical limits: the team should ideally be ten people or fewer, and the hierarchy stays as horizontal as possible. Your group project follows the same split on a small scale. One person orders the backlog, everyone builds, and the team agrees the scope of each Sprint together.",
+     "key_points": [
+      "The Product Owner orders the backlog: one person, not a committee.",
+      "The Scrum Master removes impediments and coaches; not a manager.",
+      "The team decides how the work is done and how much fits in a Sprint."
+     ],
+     "exam_note_md": "Expect a scenario where a manager or stakeholder fixes the scope of a Sprint. The judgement is that only the team decides how much fits.",
+     "source_ref": "S4 slides 6–7",
+     "check": [
+      "scrum-q01"
+     ]
+    },
+    {
+     "id": "scrum-s2",
+     "heading": "Artifacts and their commitments",
+     "body_md": "Scrum has three artifacts, and each one exists to make something visible. The slides pair every artifact with a commitment, because without its commitment an artifact is just a list.\n\n| Artifact | Commitment |\n|---|---|\n| Product Backlog | Product Goal |\n| Sprint Backlog | Sprint Goal |\n| Increment | Definition of Done |\n\nThe **Product Backlog** is ordered, emergent and never finished. Its items are outcomes, not tasks, and only the items near the top are refined in detail. Estimating item 40 precisely is waste, because it will change before anyone builds it.\n\nThe **Definition of Done** is the quality bar every Increment meets: compiles, tested, reviewed, documented, deployable. It is decided once and applied to everything. An item that is \"done except for tests\" is not done, and it does not ship. In this course the CI referee checks part of that bar on every push: `ruff`, `mypy` and `pytest` must all pass.",
+     "key_points": [
+      "Product Backlog and Product Goal; Sprint Backlog and Sprint Goal; Increment and Definition of Done.",
+      "\"Done except for tests\" is not done."
+     ],
+     "exam_note_md": "A common shape: an item misses one part of the Definition of Done. It is not done and does not ship.",
+     "source_ref": "S4 slides 8–10",
+     "check": [
+      "scrum-q02",
+      "scrum-q03"
+     ]
+    }
+   ],
+   "terms": [
+    {
+     "term": "Product Owner",
+     "definition_md": "The one person accountable for the value of the product; owns and orders the Product Backlog.",
+     "section_ref": "scrum-s1"
+    },
+    {
+     "term": "Scrum Master",
+     "definition_md": "Makes sure the process works by removing impediments and coaching the team. Not a manager.",
+     "section_ref": "scrum-s1"
+    },
+    {
+     "term": "Definition of Done",
+     "definition_md": "The quality bar every Increment meets, decided once and applied to everything: compiles, tested, reviewed, documented, deployable.",
+     "section_ref": "scrum-s2"
+    },
+    {
+     "term": "Sprint Goal",
+     "definition_md": "The commitment of the Sprint Backlog: the one objective the Sprint works towards.",
+     "section_ref": "scrum-s2"
+    }
+   ],
+   "traps": [
+    "The Scrum Master is the team's manager. **Correction:** the Scrum Master removes impediments and coaches; nobody manages the Developers' work for them.",
+    "The Product Owner decides how much the team takes into a Sprint. **Correction:** the Product Owner orders the backlog; the team decides how much fits.",
+    "An item can ship as done and get its tests later. **Correction:** an item that misses the Definition of Done is not done."
+   ],
+   "flashcards": [
+    {
+     "id": "scrum-f01",
+     "front_md": "Which commitment belongs to the Sprint Backlog?",
+     "back_md": "The Sprint Goal.",
+     "kind": "recall",
+     "section_ref": "scrum-s2"
+    },
+    {
+     "id": "scrum-f02",
+     "front_md": "Product Owner and Scrum Master: who is accountable for what?",
+     "back_md": "The Product Owner for the value of the product and the order of the backlog; the Scrum Master for the process working.",
+     "kind": "distinction",
+     "section_ref": "scrum-s1"
+    },
+    {
+     "id": "scrum-f03",
+     "front_md": "Why is estimating backlog item 40 precisely a waste?",
+     "back_md": "The backlog is emergent: the item will change before anyone builds it, so only the top is refined in detail.",
+     "kind": "concept",
+     "section_ref": "scrum-s2"
+    }
+   ],
+   "questions": [
+    {
+     "id": "scrum-q01",
+     "type": "mcq",
+     "level": "core",
+     "skills": [
+      "concept",
+      "judgement"
+     ],
+     "stem_md": "During Sprint Planning, the head of marketing tells your team to take twelve backlog items into the next two-week Sprint because a campaign launches soon. According to the session 4 slides, who decides how much goes into a Sprint?",
+     "options": [
+      {
+       "text_md": "The head of marketing, because the campaign sets the deadline",
+       "correct": false,
+       "why_md": "Stakeholders can bring the campaign to the Product Owner, but the slides say nobody outside the team decides how much goes into a Sprint."
+      },
+      {
+       "text_md": "The Product Owner, because they own the Product Backlog",
+       "correct": false,
+       "why_md": "The Product Owner orders the backlog and decides what comes first. Owning the order is not the same as deciding how much fits in one Sprint."
+      },
+      {
+       "text_md": "The team, because it is self-managing",
+       "correct": true,
+       "why_md": "Self-managing means the team decides how the work is done and how much it takes on. The campaign can change the order of the backlog, not the team's capacity."
+      },
+      {
+       "text_md": "The Scrum Master, because they run the process",
+       "correct": false,
+       "why_md": "The Scrum Master removes impediments and coaches. They are not a manager and do not set the scope of a Sprint."
+      }
+     ],
+     "explanation_md": "Scrum splits decisions on purpose. The Product Owner decides **what** is worth doing and in what order; the team decides **how** the work is done and **how much** fits in a Sprint. The slide states it directly: nobody outside decides how much goes into a Sprint. The marketing deadline is real information, so the right move is to bring it to the Product Owner, who may reorder the backlog. The team then plans the Sprint from that order.",
+     "section_ref": "scrum-s1",
+     "source_ref": "S4 slide 7",
+     "origin": "slides",
+     "verified_by": "source"
+    },
+    {
+     "id": "scrum-q02",
+     "type": "sort",
+     "level": "core",
+     "skills": [
+      "concept"
+     ],
+     "stem_md": "Sort each phrase under the Scrum artifact it belongs to.",
+     "categories": [
+      {
+       "id": "pb",
+       "label": "Product Backlog"
+      },
+      {
+       "id": "sb",
+       "label": "Sprint Backlog"
+      },
+      {
+       "id": "inc",
+       "label": "Increment"
+      }
+     ],
+     "items": [
+      {
+       "text_md": "The Product Goal",
+       "category": "pb",
+       "why_md": "The Product Goal is the commitment that turns the backlog from a list into a direction."
+      },
+      {
+       "text_md": "The Sprint Goal",
+       "category": "sb",
+       "why_md": "The Sprint Backlog commits to one goal for the Sprint."
+      },
+      {
+       "text_md": "The Definition of Done",
+       "category": "inc",
+       "why_md": "Every Increment meets the Definition of Done; that is its commitment."
+      },
+      {
+       "text_md": "Ordered, emergent, never finished",
+       "category": "pb",
+       "why_md": "The slides describe the Product Backlog with exactly these three words."
+      },
+      {
+       "text_md": "Compiles, tested, reviewed, documented, deployable",
+       "category": "inc",
+       "why_md": "This is the content of the Definition of Done, the bar every Increment meets."
+      }
+     ],
+     "explanation_md": "Each artifact makes something visible and carries one commitment: the Product Backlog commits to the Product Goal, the Sprint Backlog to the Sprint Goal and the Increment to the Definition of Done. Without its commitment, the slides say, an artifact is just a list.",
+     "section_ref": "scrum-s2",
+     "source_ref": "S4 slides 8–10",
+     "origin": "slides",
+     "verified_by": "source"
+    },
+    {
+     "id": "scrum-q03",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "judgement"
+     ],
+     "stem_md": "At the Sprint Review your teammate says the `add` command is done. It works on her laptop, but it has no tests yet, and the team's Definition of Done includes \"tested\". What is the status of the item?",
+     "options": [
+      {
+       "text_md": "Done, because the feature works when she runs it",
+       "correct": false,
+       "why_md": "Working on one laptop is the \"works on my machine\" trap. The Definition of Done is the bar, and this item misses part of it."
+      },
+      {
+       "text_md": "Done, as long as the tests arrive in the next Sprint",
+       "correct": false,
+       "why_md": "This is \"done except for tests\", which the slides call not admissible."
+      },
+      {
+       "text_md": "Not done, so it does not ship in this Increment",
+       "correct": true,
+       "why_md": "An item that misses the Definition of Done is not done and does not ship."
+      },
+      {
+       "text_md": "Not done, so the Scrum Master cancels the Sprint",
+       "correct": false,
+       "why_md": "One unfinished item is no reason to cancel a Sprint, and only the Product Owner holds that power, which almost never gets used."
+      }
+     ],
+     "explanation_md": "The Definition of Done is decided once and applied to everything: compiles, tested, reviewed, documented, deployable. This item is not tested, so it is not done, whatever it does on one machine. The slides say \"done except for tests\" is not admissible. The item goes back to the backlog, and the Sprint carries on.",
+     "section_ref": "scrum-s2",
+     "source_ref": "S4 slides 10, 12",
+     "origin": "slides",
+     "verified_by": "source"
+    }
+   ]
+  },
+  {
+   "id": "testing-tdd",
+   "order": 8,
+   "module": "M2",
+   "title": "Testing and TDD",
+   "sessions": [
+    8
+   ],
+   "predicted": false,
+   "sources": [
+    "slides-session-8",
+    "labs/08-tdd.md",
+    "expense-tracker v0.3..v0.4"
+   ],
+   "summary_md": "Testing turns \"I think it works\" into a check a machine repeats on every push. This module follows session 8: the red, green, refactor cycle, reading a pytest failure and choosing edge cases on purpose. The exam shows you a test or a failure and asks what you can conclude.",
+   "exam_focus_md": "- A `FAILED` line from pytest: what can you conclude, and what do you check next?\n- Why a function that prints is hard to test.\n- Which edge case a test covers, and which one is missing.",
+   "sections": [
+    {
+     "id": "testing-tdd-s1",
+     "heading": "Red, green, refactor",
+     "body_md": "Test-driven development is a loop of three steps. **Red**: write a test for behaviour that does not exist yet, and watch it fail. **Green**: write the smallest code that makes it pass. **Refactor**: clean up, with the test as your safety net. The slides give the reason in one line: the test forces you to say what \"done\" means before you can fool yourself.\n\nIn the live demo the teacher started from v0.3, which had no tests and a data problem: `expenses.csv` has six exact duplicate rows. The tests came first:\n\n```python\ndef test_an_exact_duplicate_is_removed_and_the_first_one_kept() -> None:\n    assert remove_duplicates([BAR, ZARA, BAR]) == [BAR, ZARA]\n```\n\nThe first version of `remove_duplicates` used a `seen` set and a loop. It was not elegant, and it did not need to be. The refactor replaced the loop with `list(dict.fromkeys(expenses))`, and every test stayed green. That is what refactoring means: the behaviour stays the same, the tests prove it, and the code is cleaner. It also only worked because session 6 made `Expense` a `@dataclass(frozen=True)`, which is hashable.",
+     "key_points": [
+      "Red is information, not a problem.",
+      "Green means the smallest code that passes, not the final code.",
+      "A refactor keeps every test green without changing the tests."
+     ],
+     "exam_note_md": "A refactoring question often hides here: a change that keeps every test passing unchanged is a refactor; a change that needs new tests is new behaviour.",
+     "source_ref": "S8 slides 5, 13–16",
+     "check": [
+      "testing-tdd-q02"
+     ]
+    },
+    {
+     "id": "testing-tdd-s2",
+     "heading": "Reading a pytest failure",
+     "body_md": "When an `assert` fails, pytest prints the values on both sides. Read that line first: it usually points at the bug, or shows that the test is wrong.\n\n```text\nE       AssertionError: assert [('dining', 10.0)] == []\nFAILED tests/test_minimum.py::test_amount_equal_to_minimum_is_dropped - Asser...\n1 failed in 0.01s\n```\n\nThe `E` line shows the comparison: the left side is what the code returned, the right side is what the test expected. The `FAILED` line names the file and the test.\n\nA failure does not tell you who is right. The test encodes one belief about the behaviour and the function encodes another. Before you change either, check which one matches what the behaviour is supposed to be: the backlog item, the README, the teammate who wrote it.\n\nThe slides list the edge cases to choose on purpose: empty, zero or the boundary, negative, duplicate, missing. The test above is a boundary case, an amount exactly equal to `minimum`. Floats need care too: `0.1 + 0.2 == 0.3` is `False`, so money in floats is compared with `pytest.approx`.",
+     "key_points": [
+      "The `E` line shows both sides of the failed comparison.",
+      "A red test says the code and the test disagree, not which one is wrong.",
+      "Compare floats with `pytest.approx`."
+     ],
+     "exam_note_md": "Sample question 4 has this shape: check the intended behaviour before trusting either side.",
+     "source_ref": "S8 slides 7–8, 11",
+     "check": [
+      "testing-tdd-q01",
+      "testing-tdd-q04"
+     ]
+    }
+   ],
+   "terms": [
+    {
+     "term": "Red, green, refactor",
+     "definition_md": "The TDD loop: a failing test first, then the smallest code that passes, then a clean-up with the tests as a net.",
+     "section_ref": "testing-tdd-s1"
+    },
+    {
+     "term": "Refactor",
+     "definition_md": "A change to the structure of code that keeps its behaviour, proved by tests that stay green.",
+     "section_ref": "testing-tdd-s1"
+    },
+    {
+     "term": "Edge case",
+     "definition_md": "An input chosen because it could break the code: empty, zero or a boundary, negative, duplicate, missing.",
+     "section_ref": "testing-tdd-s2"
+    },
+    {
+     "term": "`pytest.approx`",
+     "definition_md": "Compares floats with a tolerance, because `0.1 + 0.2 == 0.3` is `False`.",
+     "section_ref": "testing-tdd-s2"
+    }
+   ],
+   "traps": [
+    "A failing test means the function is broken. **Correction:** it means the test and the function disagree; check the intended behaviour before changing either.",
+    "Rerunning a failing test until it passes fixes it. **Correction:** a deterministic test fails the same way every time; rerunning hides information.",
+    "100% coverage means the code is tested. **Correction:** coverage is a map of the lines no test ran; with weak assertions it proves nothing."
+   ],
+   "flashcards": [
+    {
+     "id": "testing-tdd-f01",
+     "front_md": "Why write the test before the code?",
+     "back_md": "The test forces you to say what \"done\" means before you can fool yourself.",
+     "kind": "concept",
+     "section_ref": "testing-tdd-s1"
+    },
+    {
+     "id": "testing-tdd-f02",
+     "front_md": "What does the `E` line of a pytest failure show?",
+     "back_md": "The values on both sides of the failed `assert`. Read it first; it usually points at the bug.",
+     "kind": "reading",
+     "section_ref": "testing-tdd-s2"
+    },
+    {
+     "id": "testing-tdd-f03",
+     "front_md": "Name the five edge-case questions from session 8.",
+     "back_md": "Empty, zero (the boundary), negative, duplicate, missing.",
+     "kind": "recall",
+     "section_ref": "testing-tdd-s2"
+    }
+   ],
+   "questions": [
+    {
+     "id": "testing-tdd-q01",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "`total_by_category(expenses, category, minimum)` skips an expense when `expense.amount < minimum`. A teammate adds this test and runs `uv run pytest`:\n\n```python\ndef test_amount_equal_to_minimum_is_dropped() -> None:\n    expenses = [Expense(\"2025-07-01\", \"Bar Ramon\", \"dining\", 10.0)]\n    assert total_by_category(expenses, \"\", 10.0) == []\n```\n\n```text\nE       AssertionError: assert [('dining', 10.0)] == []\nFAILED tests/test_minimum.py::test_amount_equal_to_minimum_is_dropped - Asser...\n1 failed in 0.01s\n```\n\nWhat can you conclude?",
+     "options": [
+      {
+       "text_md": "The function keeps the boundary amount; check which rule the report needs",
+       "correct": true,
+       "why_md": "The `E` line shows the function returned the dining total, so `<` keeps an amount equal to `minimum`. Whether that is a bug depends on the intended rule, which you check before editing anything."
+      },
+      {
+       "text_md": "The function drops every amount, so its comparison is reversed",
+       "correct": false,
+       "why_md": "The left side is `[('dining', 10.0)]`, not `[]`: the expense was kept. Reading the left side of the assert rules this out."
+      },
+      {
+       "text_md": "The test is flaky, so run it again before changing anything",
+       "correct": false,
+       "why_md": "Nothing here depends on time, order or the network. The same input fails the same way on every run."
+      },
+      {
+       "text_md": "pytest cannot compare tuples, so the assert needs `pytest.approx`",
+       "correct": false,
+       "why_md": "pytest compares lists of tuples with `==` and prints both sides; `approx` is for float tolerance, and `10.0` here is exact."
+      }
+     ],
+     "explanation_md": "Read the `E` line: the left side is what the function returned, the right side is what the test expected. The function returned the dining total, so an amount exactly equal to `minimum` is kept, because the code only skips amounts strictly below it. The test expects it to be dropped. A failure says the two disagree, not which one is right, so you check the intended rule before you change the code or the test. This is the boundary edge case from session 8.",
+     "section_ref": "testing-tdd-s2",
+     "source_ref": "S8 slides 7, 11; run in the sandbox",
+     "origin": "slides",
+     "verified_by": "run"
+    },
+    {
+     "id": "testing-tdd-q02",
+     "type": "mcq",
+     "level": "core",
+     "skills": [
+      "concept"
+     ],
+     "stem_md": "In the session 8 demo, the loop with a `seen` set was replaced by `return list(dict.fromkeys(expenses))`, and every test stayed green without changes. Which step of the cycle was that?",
+     "options": [
+      {
+       "text_md": "Red, because a new test described the behaviour first",
+       "correct": false,
+       "why_md": "Red is writing a failing test. No test was added or failed in this step."
+      },
+      {
+       "text_md": "Green, because the new code is shorter than the old one",
+       "correct": false,
+       "why_md": "Green is making a failing test pass. The tests were already green before this change."
+      },
+      {
+       "text_md": "Refactor, because the code changed and the behaviour did not",
+       "correct": true,
+       "why_md": "The structure changed, the behaviour stayed the same, and the unchanged tests prove it."
+      },
+      {
+       "text_md": "Green, because `dict.fromkeys` is the smallest possible code",
+       "correct": false,
+       "why_md": "Size is not the test of the step. The tests passed before and after, so this was a clean-up under a safety net."
+      }
+     ],
+     "explanation_md": "The order in the demo was: write the tests (red), make them pass with a plain loop and a `seen` set (green), then replace the loop with `dict.fromkeys` while the tests stay green (refactor). The slide says it directly: run the tests, still green, that is what refactoring means.",
+     "section_ref": "testing-tdd-s1",
+     "source_ref": "S8 slides 14–16",
+     "origin": "slides",
+     "verified_by": "source"
+    },
+    {
+     "id": "testing-tdd-q03",
+     "type": "open",
+     "level": "exam",
+     "skills": [
+      "read-code",
+      "judgement"
+     ],
+     "stem_md": "A teammate wrote this test for the report module:\n\n```python\ndef test_report() -> None:\n    expenses = read_expenses(\"data/expenses.csv\")\n    print_report(expenses)\n```\n\nIt passes on her laptop. In CI it fails with `FileNotFoundError`.",
+     "parts": [
+      {
+       "label": "1",
+       "prompt_md": "In one sentence, what does this test check?",
+       "marks": 1,
+       "model_answer_md": "Only that reading her data file and printing the report raise no exception; it has no `assert`, so it checks nothing about the result.",
+       "rubric": [
+        "Says there is no `assert`, so it only checks that nothing raises"
+       ],
+       "weak_answers_md": "Many answers say \"it tests the report\", which repeats the name. The mark is for seeing that without an `assert` the test passes whenever no exception is raised, whatever the report contains."
+      },
+      {
+       "label": "2",
+       "prompt_md": "Why does it pass on her laptop and fail in CI?",
+       "marks": 2,
+       "model_answer_md": "It reads `data/expenses.csv`, a file that exists on her machine but not in the repository. CI runs on a clean clone, so the file is missing there.",
+       "rubric": [
+        "Names `data/expenses.csv` as a file only her machine has",
+        "Says CI starts from a clean clone, so the file is missing there"
+       ],
+       "weak_answers_md": "\"CI is broken\" or \"the path is wrong\" misses the idea. The path is right on her laptop; the test needs a file only her laptop has, one of the three that bite in session 8."
+      },
+      {
+       "label": "3",
+       "prompt_md": "Describe in words how you would change it, and what each change fixes.",
+       "marks": 3,
+       "model_answer_md": "Make the report a pure function that returns its lines, build the expenses inside the test and assert on the lines it returns. That removes the file and gives the test something to check. If reading must be tested, write a small file into `tmp_path` first.",
+       "rubric": [
+        "Builds the data inside the test or writes it into `tmp_path`",
+        "Separates computing the report from printing it",
+        "Adds an `assert` on the returned value"
+       ],
+       "weak_answers_md": "\"Add the CSV to the repo\" makes CI pass but keeps a test that asserts nothing. \"Wrap it in try/except\" hides the failure. Full marks fix both problems: the missing data and the missing check."
+      }
+     ],
+     "lines": "5–8",
+     "explanation_md": "Session 8 lists this as one of the three that bite: tests that need your laptop. A test that reads `data/expenses.csv` passes only where that file exists. The second problem is quieter: without an `assert`, the test proves only that nothing crashed. The course's fix is the functional core: compute in a pure function, test it with plain data, and keep file access to one deliberate `tmp_path` test.",
+     "section_ref": "testing-tdd-s2",
+     "source_ref": "S8 slides 20, 28",
+     "origin": "slides",
+     "verified_by": "reasoning"
+    },
+    {
+     "id": "testing-tdd-q04",
+     "type": "sort",
+     "level": "core",
+     "skills": [
+      "concept"
+     ],
+     "stem_md": "Session 8 asks you to choose edge cases on purpose. Sort each test input under the question it answers.",
+     "categories": [
+      {
+       "id": "empty",
+       "label": "Empty: nothing in?"
+      },
+      {
+       "id": "boundary",
+       "label": "Zero: the boundary?"
+      },
+      {
+       "id": "negative",
+       "label": "Negative: nonsense?"
+      },
+      {
+       "id": "duplicate",
+       "label": "Duplicate: twice?"
+      }
+     ],
+     "items": [
+      {
+       "text_md": "`total_by_category([], \"\", 0.0)`",
+       "category": "empty",
+       "why_md": "No expenses at all; the result should be an empty list, not an error."
+      },
+      {
+       "text_md": "An amount exactly equal to `minimum`",
+       "category": "boundary",
+       "why_md": "Whether the code uses `<` or `<=` decides this case, so it sits on the boundary."
+      },
+      {
+       "text_md": "A refund of `-12.50` at Zara",
+       "category": "negative",
+       "why_md": "A negative amount is a value the code may not expect."
+      },
+      {
+       "text_md": "The same Bar Ramon row twice in `expenses.csv`",
+       "category": "duplicate",
+       "why_md": "An exact repeat; `remove_duplicates` exists because of these."
+      },
+      {
+       "text_md": "`remove_duplicates([])`",
+       "category": "empty",
+       "why_md": "The first red test in the demo: no expenses means no duplicates."
+      }
+     ],
+     "explanation_md": "The slides say: do not test what feels likely, test what could break. Each question points at a different way to break the code: nothing in, the exact boundary, a value that makes no sense, the same thing twice. Choosing them on purpose is what makes the tests read as documentation.",
+     "section_ref": "testing-tdd-s2",
+     "source_ref": "S8 slide 11",
+     "origin": "slides",
+     "verified_by": "source"
+    }
+   ]
+  },
+  {
+   "id": "pipes-bash",
+   "order": 10,
+   "module": "M3",
+   "title": "Pipes and bash scripts",
+   "sessions": [
+    10
+   ],
+   "predicted": true,
+   "sources": [
+    "slides-session-9 take-aways",
+    "labs/README.md"
+   ],
+   "summary_md": "Predicted from the session 10 announcement: pipes, text wrangling and bash scripts. This module covers how a pipe joins small programs and how exit codes decide what runs next in a chain like `scripts/check.sh`. Re-check it against the slides after Friday's class.",
+   "exam_focus_md": "- \"What does this command print?\" for a short pipeline on `expenses.csv` (sample Q6 already does this).\n- Which commands run in a `&&` chain when one of them fails.\n- What `$?` holds after a command.",
+   "sections": [
+    {
+     "id": "pipes-bash-s1",
+     "heading": "Pipes join small programs",
+     "body_md": "A pipe, written `|`, sends the output of one command into the input of the next. Each program does one small job, and the pipe joins them. Session 9 gave this as the first reason the terminal survived: it composes.\n\nRead a pipeline from left to right, one stage at a time:\n\n```console\n$ grep dining expenses.csv | wc -l\n4\n```\n\n`grep dining expenses.csv` prints every line of the file that contains `dining`. That output never reaches the screen: the pipe hands it to `wc -l`, which counts lines. The screen shows only the output of the last stage, a single number.\n\nThe same habit answers most questions of the form \"what does this print\". Ask what the first command prints, then what the next command does to exactly that text. When the sample paper asks what `grep \"food\" expenses.csv | wc -l` prints, the answer is the number of lines that contain `food`, not the number of times the word appears, because `wc -l` counts lines and a line with two matches is still one line.",
+     "key_points": [
+      "`|` sends one command's output into the next command's input.",
+      "Only the last stage reaches the screen.",
+      "`grep ... | wc -l` counts matching lines, not matches."
+     ],
+     "exam_note_md": "Predicted: \"what does this command print\" for a two- or three-stage pipeline on `expenses.csv`.",
+     "source_ref": "S9 slide 6; session 10 announcement (predicted)",
+     "check": [
+      "pipes-bash-q01"
+     ]
+    },
+    {
+     "id": "pipes-bash-s2",
+     "heading": "Exit codes and &&",
+     "body_md": "Every command ends with an exit code: `0` means success, anything else means failure. Session 5 used this for the `expenses` CLI, which exits with `1` when the file is missing, and session 8 tested it with `CliRunner`. In the shell, `$?` holds the exit code of the last command.\n\nThe `&&` operator runs the next command only if the previous one succeeded. That is how a check script stops at the first problem:\n\n```bash\nuv run ruff check . && uv run mypy src tests && uv run pytest\n```\n\nIf `ruff` exits with `1`, neither `mypy` nor `pytest` runs, and the whole line exits with `1`. The `||` operator does the opposite: it runs the next command only if the previous one failed. A `;` runs the next command whatever happened.\n\nCI works the same way. The check workflow is a list of commands someone else's computer types for you, and a red check is a non-zero exit code somewhere in that list. A script that prints an error but exits with `0` misleads CI, which is why the course asks you to fail loudly at the boundary.",
+     "key_points": [
+      "`0` is success; any other exit code is failure.",
+      "`a && b` runs `b` only if `a` succeeded; `a || b` only if it failed.",
+      "`$?` is the exit code of the last command."
+     ],
+     "exam_note_md": "A chain with one failing command, and the question asks which commands ran. Read left to right and stop at the first failure for `&&`.",
+     "source_ref": "S5 exit codes; S9 slide 6; session 10 announcement (predicted)",
+     "check": [
+      "pipes-bash-q02",
+      "pipes-bash-q03"
+     ]
+    }
+   ],
+   "terms": [
+    {
+     "term": "Pipe",
+     "definition_md": "`|`: sends the standard output of one command into the standard input of the next.",
+     "section_ref": "pipes-bash-s1"
+    },
+    {
+     "term": "Exit code",
+     "definition_md": "The number a command ends with: `0` for success, anything else for failure.",
+     "section_ref": "pipes-bash-s2"
+    },
+    {
+     "term": "`$?`",
+     "definition_md": "The exit code of the last command the shell ran.",
+     "section_ref": "pipes-bash-s2"
+    }
+   ],
+   "traps": [
+    "`grep word file | wc -l` counts how many times the word appears. **Correction:** it counts lines that contain the word; two matches on one line count once.",
+    "`a && b` runs `b` after `a` whatever happens. **Correction:** `b` runs only if `a` exits with `0`."
+   ],
+   "flashcards": [
+    {
+     "id": "pipes-bash-f01",
+     "front_md": "What does `grep \"food\" expenses.csv | wc -l` print?",
+     "back_md": "The number of lines in `expenses.csv` that contain `food`.",
+     "kind": "reading",
+     "section_ref": "pipes-bash-s1"
+    },
+    {
+     "id": "pipes-bash-f02",
+     "front_md": "`a && b` and `a || b`: when does `b` run?",
+     "back_md": "With `&&`, only if `a` exits with `0`. With `||`, only if `a` fails.",
+     "kind": "distinction",
+     "section_ref": "pipes-bash-s2"
+    }
+   ],
+   "questions": [
+    {
+     "id": "pipes-bash-q01",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "predict-output"
+     ],
+     "stem_md": "This is `expenses.csv`:\n\n```text\ndate,merchant,category,amount\n2025-07-01,Cabify,transport,36.25\n2025-07-01,Bar Ramon,dining,10.00\n2025-07-02,Zara,clothing,40.00\n2025-07-03,Bar Ramon,dining,5.00\n2025-07-03,Mercadona,groceries,21.50\n2025-07-04,Can Recasens,dining,33.02\n2025-07-05,Cabify,transport,30.57\n2025-07-06,Lidl,groceries,56.77\n2025-07-07,Federal Cafe,dining,53.82\n2025-07-08,Cabify,transport,12.40\n```\n\nWhat does this pipeline print?\n\n```bash\ncut -d, -f3 expenses.csv | tail -n +2 | sort | uniq -c | sort -rn | head -n 1\n```",
+     "options": [
+      {
+       "text_md": "One line: the count `4` followed by `dining`",
+       "correct": true,
+       "why_md": "Four rows are dining, more than any other category, so after `sort -rn` it comes first and `head -n 1` keeps it."
+      },
+      {
+       "text_md": "One line: `category`, because the header sorts first",
+       "correct": false,
+       "why_md": "`tail -n +2` removed the header line before `sort` ever saw it."
+      },
+      {
+       "text_md": "Four lines, one per category, largest count first",
+       "correct": false,
+       "why_md": "That is the output before the last stage; `head -n 1` keeps only the first line."
+      },
+      {
+       "text_md": "One line: the count `1` followed by `clothing`",
+       "correct": false,
+       "why_md": "`sort -rn` sorts from largest to smallest, so the smallest count ends up last, not first."
+      }
+     ],
+     "explanation_md": "Take it one stage at a time. `cut -d, -f3` prints the category column, header included. `tail -n +2` starts at line 2, dropping the header. `sort` puts equal categories next to each other so that `uniq -c` can count each run: 1 clothing, 4 dining, 2 groceries, 3 transport. `sort -rn` orders those counts from largest to smallest, and `head -n 1` keeps the first line.",
+     "section_ref": "pipes-bash-s1",
+     "source_ref": "session 10 announcement (predicted); run on the sample file",
+     "origin": "predicted",
+     "verified_by": "run"
+    },
+    {
+     "id": "pipes-bash-q02",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "predict-output",
+      "read-code"
+     ],
+     "stem_md": "`scripts/check.sh` contains one line:\n\n```bash\nuv run ruff check . && uv run mypy src tests && uv run pytest\n```\n\n`ruff` passes; `mypy` reports two errors and exits with `1`. Which commands ran, and what is the exit code of the line?",
+     "options": [
+      {
+       "text_md": "`ruff` and `mypy` ran, `pytest` did not, and the exit code is `1`",
+       "correct": true,
+       "why_md": "`&&` ran `mypy` because `ruff` succeeded, then skipped `pytest` because `mypy` failed. The line ends with the code of the last command that ran."
+      },
+      {
+       "text_md": "All three ran, and the exit code is `1` because `mypy` failed",
+       "correct": false,
+       "why_md": "`&&` stops the chain: `pytest` runs only if `mypy` exited with `0`."
+      },
+      {
+       "text_md": "`ruff` and `mypy` ran, `pytest` did not, and the exit code is `0`",
+       "correct": false,
+       "why_md": "The line's exit code is that of the last command that ran, `mypy`, which is `1`."
+      },
+      {
+       "text_md": "Only `ruff` ran, because `mypy` failed before it started",
+       "correct": false,
+       "why_md": "`mypy` did run: that is how it found the two errors. `&&` decides whether the next command runs."
+      }
+     ],
+     "explanation_md": "`&&` is evaluated left to right. `ruff` exits with `0`, so `mypy` runs. `mypy` exits with `1`, so `pytest` is skipped. The exit code of the whole list is the exit code of the last command that ran, so `$?` is `1` and CI shows a red check. That is what a check script should do: stop at the first failure and say so.",
+     "section_ref": "pipes-bash-s2",
+     "source_ref": "session 10 announcement (predicted); run with bash",
+     "origin": "predicted",
+     "verified_by": "run"
+    },
+    {
+     "id": "pipes-bash-q03",
+     "type": "sort",
+     "level": "core",
+     "skills": [
+      "concept"
+     ],
+     "stem_md": "Sort each case by when the second command runs.",
+     "categories": [
+      {
+       "id": "ok",
+       "label": "Only if the first succeeded"
+      },
+      {
+       "id": "fail",
+       "label": "Only if the first failed"
+      },
+      {
+       "id": "always",
+       "label": "Whatever happened"
+      }
+     ],
+     "items": [
+      {
+       "text_md": "`uv sync && uv run pytest`",
+       "category": "ok",
+       "why_md": "`&&` needs exit code `0` from `uv sync` before `pytest` runs."
+      },
+      {
+       "text_md": "`cd build || echo \"no build folder\"`",
+       "category": "fail",
+       "why_md": "`||` runs the `echo` only when `cd` fails."
+      },
+      {
+       "text_md": "`uv run ruff check . ; uv run pytest`",
+       "category": "always",
+       "why_md": "`;` separates two commands; the second runs whatever the first returned."
+      },
+      {
+       "text_md": "`uv run mypy src && echo \"types ok\"`",
+       "category": "ok",
+       "why_md": "The `echo` runs only if `mypy` exits with `0`."
+      }
+     ],
+     "explanation_md": "The three separators differ only in what they do with the first command's exit code: `&&` continues on `0`, `||` continues on anything else, and `;` ignores it. A check script uses `&&` so that a failure stops the chain and the exit code reaches CI.",
+     "section_ref": "pipes-bash-s2",
+     "source_ref": "session 10 announcement (predicted)",
+     "origin": "predicted",
+     "verified_by": "reasoning"
+    }
+   ],
+   "sample_files": {
+    "expenses.csv": "date,merchant,category,amount\n2025-07-01,Cabify,transport,36.25\n2025-07-01,Bar Ramon,dining,10.00\n2025-07-02,Zara,clothing,40.00\n2025-07-03,Bar Ramon,dining,5.00\n2025-07-03,Mercadona,groceries,21.50\n2025-07-04,Can Recasens,dining,33.02\n2025-07-05,Cabify,transport,30.57\n2025-07-06,Lidl,groceries,56.77\n2025-07-07,Federal Cafe,dining,53.82\n2025-07-08,Cabify,transport,12.40\n"
+   },
+   "pipelines": [
+    {
+     "id": "count-dining",
+     "title": "How many dining expenses?",
+     "goal_md": "Count the dining rows in `expenses.csv`.",
+     "stages": [
+      {
+       "cmd": "grep dining expenses.csv",
+       "output": "2025-07-01,Bar Ramon,dining,10.00\n2025-07-03,Bar Ramon,dining,5.00\n2025-07-04,Can Recasens,dining,33.02\n2025-07-07,Federal Cafe,dining,53.82",
+       "explain_md": "`grep` prints every line that contains `dining`."
+      },
+      {
+       "cmd": "| wc -l",
+       "output": "4",
+       "explain_md": "`wc -l` counts the lines it receives through the pipe."
+      }
+     ],
+     "takeaway_md": "`grep ... | wc -l` counts matching lines, not matches."
+    },
+    {
+     "id": "categories-by-count",
+     "title": "Which category appears most often?",
+     "goal_md": "Count the rows per category, most frequent first.",
+     "stages": [
+      {
+       "cmd": "cut -d, -f3 expenses.csv",
+       "output": "category\ntransport\ndining\nclothing\ndining\ngroceries\ndining\ntransport\ngroceries\ndining\ntransport",
+       "explain_md": "`cut -d, -f3` keeps the third comma-separated field of each line, the header included."
+      },
+      {
+       "cmd": "| tail -n +2",
+       "output": "transport\ndining\nclothing\ndining\ngroceries\ndining\ntransport\ngroceries\ndining\ntransport",
+       "explain_md": "`tail -n +2` starts at line 2, so the header is gone."
+      },
+      {
+       "cmd": "| sort",
+       "output": "clothing\ndining\ndining\ndining\ndining\ngroceries\ngroceries\ntransport\ntransport\ntransport",
+       "explain_md": "`sort` puts equal lines next to each other."
+      },
+      {
+       "cmd": "| uniq -c",
+       "output": "      1 clothing\n      4 dining\n      2 groceries\n      3 transport",
+       "explain_md": "`uniq -c` collapses each run of equal lines into one, with its count in front. It only sees neighbours, which is why `sort` comes first."
+      },
+      {
+       "cmd": "| sort -rn",
+       "output": "      4 dining\n      3 transport\n      2 groceries\n      1 clothing",
+       "explain_md": "`sort -rn` orders the lines by number, largest first."
+      }
+     ],
+     "takeaway_md": "`sort | uniq -c | sort -rn` is the classic \"count and rank\" pipeline."
+    },
+    {
+     "id": "top-dining",
+     "title": "The two largest dining amounts",
+     "goal_md": "Show the two largest dining amounts.",
+     "stages": [
+      {
+       "cmd": "grep dining expenses.csv",
+       "output": "2025-07-01,Bar Ramon,dining,10.00\n2025-07-03,Bar Ramon,dining,5.00\n2025-07-04,Can Recasens,dining,33.02\n2025-07-07,Federal Cafe,dining,53.82",
+       "explain_md": "Keep the dining rows."
+      },
+      {
+       "cmd": "| cut -d, -f4",
+       "output": "10.00\n5.00\n33.02\n53.82",
+       "explain_md": "Keep the amount column."
+      },
+      {
+       "cmd": "| sort -rn",
+       "output": "53.82\n33.02\n10.00\n5.00",
+       "explain_md": "Sort as numbers, largest first. A plain `sort` would compare text and put `5.00` after `33.02`."
+      },
+      {
+       "cmd": "| head -n 2",
+       "output": "53.82\n33.02",
+       "explain_md": "Keep the first two lines."
+      }
+     ],
+     "takeaway_md": "Filter rows, cut the column, sort, then take the top."
+    }
+   ]
+  },
+  {
+   "id": "history",
+   "order": 11,
+   "module": "X",
+   "title": "The expense-tracker history",
+   "sessions": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "predicted": false,
+   "sources": [
+    "expense-tracker git history"
+   ],
+   "summary_md": "The expense-tracker is the course's worked example: twenty commits from a 49-line script to a tested package with CI. The teacher says to prepare with this history. Each commit applies one session idea to real code, and its diff is the kind of artefact the exam asks you to read.",
+   "exam_focus_md": "- A diff from the history: what does the change do?\n- Two commit messages for the same diff: which one helps someone reading the history six months later?\n- Which session idea a commit applies.",
+   "sections": [
+    {
+     "id": "history-s1",
+     "heading": "v0.0: the script",
+     "body_md": "The history starts with one file, `tracker.py`, 49 lines long. It reads `expenses.csv`, totals the amounts per category and prints a report. It works, and that is the point of starting here: working code can still be hard to read, test and change.\n\n```python\ndef calculate_totals(x):\n    d = {}\n    for e in x:\n        if e[2] not in d:\n            d[e[2]] = 0\n        d[e[2]] = d[e[2]] + e[3]\n```\n\nEvery problem the later sessions fix is already visible. The names say nothing (`x`, `d`, `e`). Each expense is a tuple, so `e[2]` and `e[3]` are magic indexes that only make sense if you remember the column order. The `run` function reads the file, computes, prints and calls `sys.exit`, so nothing in it can be tested without a real file and a terminal. A bare `except:` turns every error into the same message.\n\nThe next two commits add features on top of this: a category filter with a minimum amount, and the largest expense. The tag `v0.0` marks the end of the script era.",
+     "key_points": [
+      "Working code can still be hard to read, test and change.",
+      "A tuple with magic indexes is a missing type."
+     ],
+     "exam_note_md": "Code in the style of `tracker.py` is the raw material for \"read code and say what is wrong\" questions.",
+     "source_ref": "expense-tracker 3e0834f, c746d38",
+     "check": [
+      "history-q02"
+     ]
+    },
+    {
+     "id": "history-s2",
+     "heading": "v0.2: clean code",
+     "body_md": "Five commits take the packaged project from v0.1 to v0.2, one session 6 idea each: named constants instead of magic numbers, a better name for `calculate_totals`, separating reading and printing from the calculation, a type for an expense, and type hints with a ruff-clean codebase.\n\nThe fourth one, `017f926`, is the clearest example of \"a tuple is a missing type\". Before it, an expense was `(date, merchant, category, amount)` and the code read `expense[CATEGORY]`. After it, an expense is a frozen dataclass:\n\n```python\n@dataclass(frozen=True)\nclass Expense:\n    date: str\n    merchant: str\n    category: str\n    amount: float\n```\n\nEvery `expense[CATEGORY]` becomes `expense.category`. Nothing the program prints changes, so this is a refactoring. The `frozen=True` matters later: in session 8 it makes `Expense` hashable, which is what allows `dict.fromkeys` to remove duplicates.\n\nRead the five commits in order and notice their size. Each one is small enough to review in a minute, and each message names the idea it applies. That is the habit the exam rewards when it shows you a diff: say what changed, say which idea it applies, and say whether the behaviour changed.",
+     "key_points": [
+      "One commit, one idea: each v0.2 commit applies one session 6 rule.",
+      "`017f926` turns a tuple into `@dataclass(frozen=True)` without changing output."
+     ],
+     "exam_note_md": "A diff question may show part of `017f926` and ask which idea it applies.",
+     "source_ref": "expense-tracker 5e9466d..04d699f",
+     "check": [
+      "history-q01"
+     ]
+    }
+   ],
+   "terms": [
+    {
+     "term": "Tag",
+     "definition_md": "A name fixed to one commit, such as `v0.2`; checkpoints are marked at a tag.",
+     "section_ref": "history-s1"
+    },
+    {
+     "term": "Frozen dataclass",
+     "definition_md": "`@dataclass(frozen=True)`: a class with named, typed fields that cannot change after creation, and so is hashable.",
+     "section_ref": "history-s2"
+    }
+   ],
+   "traps": [
+    "A refactoring commit must change what the program prints. **Correction:** a refactoring keeps the behaviour; `017f926` changes no output at all.",
+    "A short commit message is a bad one. **Correction:** a message is judged by whether it says what changed and why, not by its length."
+   ],
+   "flashcards": [
+    {
+     "id": "history-f01",
+     "front_md": "Which commit gave an expense a type, and which idea does it apply?",
+     "back_md": "`017f926`: a tuple is a missing type, so `Expense` becomes a frozen dataclass.",
+     "kind": "recall",
+     "section_ref": "history-s2"
+    },
+    {
+     "id": "history-f02",
+     "front_md": "Why can nothing in the v0.0 `run` function be tested on its own?",
+     "back_md": "It reads the file, computes, prints and exits in one function.",
+     "kind": "concept",
+     "section_ref": "history-s1"
+    }
+   ],
+   "questions": [
+    {
+     "id": "history-q01",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-diff",
+      "concept"
+     ],
+     "stem_md": "Part of commit `017f926` in the expense-tracker:\n\n```diff\n-        if expense[AMOUNT] < minimum:\n+        if expense.amount < minimum:\n             continue\n-        if expense[CATEGORY] not in totals:\n-            totals[expense[CATEGORY]] = 0\n+        if expense.category not in totals:\n+            totals[expense.category] = 0\n```\n\nWhich session 6 idea does this change apply?",
+     "options": [
+      {
+       "text_md": "A tuple is a missing type: each field gets a name and a type",
+       "correct": true,
+       "why_md": "Positions such as `expense[AMOUNT]` become named attributes of a typed `Expense`, which is exactly this idea."
+      },
+      {
+       "text_md": "Magic numbers: the field positions get named constants",
+       "correct": false,
+       "why_md": "`AMOUNT` and `CATEGORY` were already named constants before this commit; here they disappear because the fields have names."
+      },
+      {
+       "text_md": "Computation is not output: printing moves out of the loop",
+       "correct": false,
+       "why_md": "Nothing in these lines prints. The loop computes totals before and after."
+      },
+      {
+       "text_md": "Guard clauses: the loop now exits early on bad rows",
+       "correct": false,
+       "why_md": "The `continue` was already there and is unchanged; only the way fields are read changes."
+      }
+     ],
+     "explanation_md": "Before `017f926` an expense was a tuple, and the code had to remember that the amount lives at position `AMOUNT`. The commit introduces `@dataclass(frozen=True) class Expense`, and every positional read becomes an attribute such as `expense.amount`. The constants from the earlier commit were a step in the right direction; the dataclass finishes the job because the type itself now says what an expense is.",
+     "section_ref": "history-s2",
+     "source_ref": "expense-tracker 017f926",
+     "origin": "history",
+     "verified_by": "source"
+    },
+    {
+     "id": "history-q02",
+     "type": "mcq",
+     "level": "core",
+     "skills": [
+      "judgement"
+     ],
+     "stem_md": "Which message would help most someone reading the history six months later, for the commit that replaces the expense tuple with a dataclass?",
+     "options": [
+      {
+       "text_md": "Update report.py with the latest changes to the code",
+       "correct": false,
+       "why_md": "It names a file and says something changed, which the diff already shows."
+      },
+      {
+       "text_md": "Give an expense a type instead of a tuple",
+       "correct": true,
+       "why_md": "It says what changed in the words of the design, in the imperative, and a reader can find it when looking for where `Expense` came from."
+      },
+      {
+       "text_md": "Refactor the report module as discussed with the team",
+       "correct": false,
+       "why_md": "\"As discussed\" points at a conversation the reader never saw."
+      },
+      {
+       "text_md": "Fix tuples",
+       "correct": false,
+       "why_md": "Nothing was broken, so \"fix\" misleads, and \"tuples\" alone says nothing about what replaced them."
+      }
+     ],
+     "explanation_md": "A good message tells a future reader what the commit does, so they can find it again. \"Give an expense a type instead of a tuple\" is the real message of `017f926`: short, imperative, and specific about the design change. The others describe the act of committing rather than the change itself.",
+     "section_ref": "history-s1",
+     "source_ref": "expense-tracker 017f926",
+     "origin": "history",
+     "verified_by": "source"
+    }
+   ],
+   "commits": [
+    {
+     "hash": "3e0834f",
+     "tag": null,
+     "message": "Add a script that totals expenses by category",
+     "kind": "feature",
+     "summary_md": "Adds `tracker.py`, a 49-line script that reads `expenses.csv`, totals the amounts per category and prints a report, together with the data file.",
+     "concepts_md": "Session 1: working code that is still hard to read, test and change.",
+     "message_md": "Good: imperative, and it says what the script does.",
+     "section_ref": "history-s1"
+    },
+    {
+     "hash": "c746d38",
+     "tag": "v0.0",
+     "message": "Print the largest expense",
+     "kind": "feature",
+     "summary_md": "Adds a loop at the end of `run` that finds the largest expense and prints it. The calculation and the printing sit in the same place.",
+     "concepts_md": "Session 6: computation is not output. The new loop computes and prints in one go.",
+     "message_md": "Good: short and specific. It describes behaviour a user can see.",
+     "section_ref": "history-s1"
+    },
+    {
+     "hash": "017f926",
+     "tag": null,
+     "message": "Give an expense a type instead of a tuple",
+     "kind": "refactor",
+     "summary_md": "Introduces `@dataclass(frozen=True) class Expense` and replaces every positional read such as `expense[CATEGORY]` with an attribute. The output is unchanged.",
+     "concepts_md": "Session 6: a tuple is a missing type. Session 8 later relies on `frozen=True` for hashing.",
+     "message_md": "Very good: it names the design change, not the files.",
+     "section_ref": "history-s2"
+    }
+   ]
+  },
+  {
+   "id": "sample-paper",
+   "order": 12,
+   "module": "X",
+   "title": "The teacher's sample paper",
+   "sessions": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "predicted": false,
+   "sources": [
+    "moodle/midterm-sample-questions.md",
+    "slides-session-6 slide 4"
+   ],
+   "summary_md": "The teacher published nine sample questions that show the kind of question on the mid-term. This module explains how the paper works, dissects each sample question and adds variants in the same shape. The exam does not reuse these questions.",
+   "exam_focus_md": "- Multiple choice: an artefact and a judgement, with distractors a careless student would pick.\n- Open answers in 5–8 lines: say what code does, what is wrong, and how you would change it, in words.",
+   "sections": [
+    {
+     "id": "sample-paper-s1",
+     "heading": "How the paper works",
+     "body_md": "The mid-term is on Thursday 22 October at 14:00 in room 108. It lasts one hour and is worth 30% of the course mark. It is pen and paper, closed book, with no devices. It covers sessions 1 to 10: starting a project, clean code and tests, and the terminal.\n\nThere are two kinds of question. Multiple-choice questions have four options and no penalty for a wrong answer. Open questions have short answers, 5–8 lines in total, usually split into two to four numbered parts.\n\nThe teacher is precise about what he will not ask. You will not write code. \"Judgement, not memorised flags.\" You will read code, tool output or a diff and say what it does or what is wrong. When a question says \"describe in words\", it means prose: a refactoring is explained, never typed out.\n\nThe sample questions show the kind of question, not the exam, and the topics they touch are not a full list. Use them to learn the shapes: a scenario with an artefact and a judgement, a piece of code to read, a diff to compare.",
+     "key_points": [
+      "Thursday 22 October, 14:00, room 108, one hour, 30%.",
+      "No penalty for a wrong multiple-choice answer.",
+      "You never write code; open answers are 5–8 lines of prose."
+     ],
+     "source_ref": "S6 slide 4; S8 slide 31; sample questions document",
+     "check": [
+      "sample-paper-q06"
+     ]
+    },
+    {
+     "id": "sample-paper-s2",
+     "heading": "Multiple choice with no penalty",
+     "body_md": "With no penalty for a wrong answer, a blank is the only certain way to lose a mark. Answer every question, even when you have to guess between two options.\n\nRead the artefact before the options. In the sample paper the artefact carries the answer: the uv error names the file, the line and the column; the pytest line shows both sides of the comparison. If you read the options first, the distractors set the frame for you.\n\nThe distractors are the moves a careless student makes under pressure: delete `.venv`, reinstall the tool, add `# type: ignore`, change the type to `Any`, rerun the failing test, trust whichever side changed last. Each one makes a symptom go away without reading the message. When an option sounds like that, ask what the message actually says.\n\nEliminate before you choose. Most questions have one option that is clearly off topic and one that is a plausible shortcut. Cross both out, then decide between the two that are left by going back to the artefact.",
+     "key_points": [
+      "Never leave a multiple-choice answer blank.",
+      "Read the artefact first; it usually carries the answer.",
+      "Distractors are shortcuts that skip reading the message."
+     ],
+     "exam_note_md": "Every multiple-choice question in the sample follows the pattern artefact, then judgement.",
+     "source_ref": "sample questions document",
+     "check": [
+      "sample-paper-q01",
+      "sample-paper-q10"
+     ]
+    }
+   ],
+   "terms": [
+    {
+     "term": "Distractor",
+     "definition_md": "A wrong option written to look like a move a careless student would make.",
+     "section_ref": "sample-paper-s2"
+    }
+   ],
+   "traps": [
+    "Leaving a multiple-choice question blank is safer than guessing. **Correction:** there is no penalty, so a blank can only lose the mark.",
+    "Open answers are better when longer. **Correction:** the target is 5–8 lines; a precise short answer scores the rubric points."
+   ],
+   "flashcards": [
+    {
+     "id": "sample-paper-f01",
+     "front_md": "How long are the open answers on the mid-term?",
+     "back_md": "5–8 lines in total, in prose. You never write code.",
+     "kind": "recall",
+     "section_ref": "sample-paper-s1"
+    },
+    {
+     "id": "sample-paper-f02",
+     "front_md": "Why read the artefact before the options?",
+     "back_md": "The artefact usually carries the answer; the options are written to frame it for a careless reader.",
+     "kind": "concept",
+     "section_ref": "sample-paper-s2"
+    }
+   ],
+   "questions": [
+    {
+     "id": "sample-paper-q01",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "You run `uv sync` in a fresh clone of your group's repo and see:\n\n```console\n$ uv sync\nUsing CPython 3.13.1\nerror: Failed to parse `pyproject.toml`\n  TOML parse error at line 7, column 12\n```\n\nWhat should you do next?",
+     "options": [
+      {
+       "text_md": "Delete `.venv` and run `uv sync` again",
+       "correct": false,
+       "why_md": "The virtual environment is not the problem: uv stopped while reading the project file, before it touched `.venv`."
+      },
+      {
+       "text_md": "Open `pyproject.toml` at line 7 and look for the syntax mistake",
+       "correct": true,
+       "why_md": "The error names the file, the line and the column. Read the message, fix the cause."
+      },
+      {
+       "text_md": "Run `uv sync --upgrade` to refresh the packages",
+       "correct": false,
+       "why_md": "Upgrading still needs a readable `pyproject.toml`, so it fails the same way."
+      },
+      {
+       "text_md": "Reinstall uv",
+       "correct": false,
+       "why_md": "uv is working: it reported a precise parse error. Reinstalling changes nothing in the file."
+      }
+     ],
+     "explanation_md": "The message says uv failed to parse `pyproject.toml` and points at line 7, column 12. That is a TOML syntax mistake in the project file, such as a missing quote or bracket. Every other option repairs something that is not broken. The habit the question tests is reading the error before acting on it.",
+     "dissection_md": "**What it tests:** reading an error message, from session 3 and 4 tooling. **The trap:** three options are rituals that make problems disappear on a good day. **Full marks:** b, because the message names file, line and column. **Harder version:** a `uv sync --locked` failure after someone edited `pyproject.toml` without running `uv lock`.",
+     "section_ref": "sample-paper-s2",
+     "source_ref": "sample questions Q1",
+     "origin": "teacher-sample",
+     "verified_by": "source"
+    },
+    {
+     "id": "sample-paper-q06",
+     "type": "mcq",
+     "level": "core",
+     "skills": [
+      "predict-output"
+     ],
+     "stem_md": "`expenses.csv` has one expense per line, and each line includes its category. What does this command print?\n\n```bash\ngrep \"food\" expenses.csv | wc -l\n```",
+     "options": [
+      {
+       "text_md": "The number of lines that contain the word food",
+       "correct": true,
+       "why_md": "`grep` keeps the matching lines and `wc -l` counts them."
+      },
+      {
+       "text_md": "The number of times food appears in the whole file",
+       "correct": false,
+       "why_md": "`wc -l` counts lines; two matches on one line count once."
+      },
+      {
+       "text_md": "Every line that contains food",
+       "correct": false,
+       "why_md": "That is what `grep` alone prints; the pipe sends those lines to `wc -l`."
+      },
+      {
+       "text_md": "The number of words in the file",
+       "correct": false,
+       "why_md": "That would be `wc -w expenses.csv`, with no `grep` in front."
+      }
+     ],
+     "explanation_md": "Read the pipeline left to right. `grep \"food\" expenses.csv` prints the lines that contain `food`. The pipe sends them to `wc -l`, which counts lines and prints one number. Because every expense is one line, that number is also the number of food expenses, provided the word appears nowhere else on a line.",
+     "dissection_md": "**What it tests:** reading a two-stage pipeline (session 10). **The trap:** confusing lines with occurrences. **Full marks:** a. **Harder version:** add a header line or a merchant whose name contains the word.",
+     "section_ref": "sample-paper-s1",
+     "source_ref": "sample questions Q6",
+     "origin": "teacher-sample",
+     "verified_by": "reasoning"
+    },
+    {
+     "id": "sample-paper-q07",
+     "type": "open",
+     "level": "exam",
+     "skills": [
+      "read-code",
+      "judgement"
+     ],
+     "stem_md": "```python\ndef process(rows):\n    total = 0\n    for r in rows:\n        if r[2] == \"food\":\n            total += float(r[1])\n    print(\"Food total:\", total)\n    return total\n```",
+     "parts": [
+      {
+       "label": "1",
+       "prompt_md": "In one sentence, what does this function do?",
+       "marks": 1,
+       "model_answer_md": "It adds up the amounts of the rows whose category is food, prints that total and returns it.",
+       "rubric": [
+        "Says it totals the food amounts and both prints and returns it"
+       ],
+       "weak_answers_md": "\"It processes rows\" repeats the name. The mark needs what it computes (the food total) and the two things it does with it."
+      },
+      {
+       "label": "2",
+       "prompt_md": "Name two problems a teammate would face when reading, testing or changing it.",
+       "marks": 2,
+       "model_answer_md": "`r[2]` and `r[1]` are magic indexes, so a reader must know the column order. It prints inside the calculation, so a test cannot check the result without capturing output, and the name `process` says nothing.",
+       "rubric": [
+        "Magic indexes or a tuple instead of a type",
+        "Printing mixed with computation, which makes testing harder",
+        "A vague name (`process`, `r`)"
+       ],
+       "weak_answers_md": "\"No comments\" is not one of the course's problems: the fix is names, not comments. Each problem needs its consequence for a teammate, not just a label."
+      },
+      {
+       "label": "3",
+       "prompt_md": "Describe in words how you would change it, and which of the two problems each change solves.",
+       "marks": 3,
+       "model_answer_md": "Give a row a type with named fields, so the code reads the category and the amount by name; that fixes the magic indexes. Remove the print and return the total, printing it in the shell; that makes it testable. Rename it to say what it computes, such as a food total.",
+       "rubric": [
+        "Introduces a type with named fields (a dataclass)",
+        "Moves the print out and keeps the return",
+        "Links each change to the problem it solves"
+       ],
+       "weak_answers_md": "Writing code instead of words loses marks. So does listing changes without saying which problem each one fixes, which the question asks for explicitly."
+      }
+     ],
+     "lines": "5–8",
+     "explanation_md": "The function mixes three of session 6's problems: magic indexes on a tuple, printing inside a computation, and a name that says nothing. The repairs are the course's own: a dataclass for the row, computation separated from output, and a name that describes the result.",
+     "dissection_md": "**What it tests:** reading code against session 6. **The trap:** answering with code or with \"add comments\". **Full marks:** two problems with consequences, then changes each linked to a problem. **Harder version:** add a bare `except:` around the conversion.",
+     "section_ref": "sample-paper-s1",
+     "source_ref": "sample questions Q7",
+     "origin": "teacher-sample",
+     "verified_by": "reasoning"
+    },
+    {
+     "id": "sample-paper-q10",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "variant_of": "sample-paper-q01",
+     "stem_md": "You run the report from your home folder and see:\n\n```console\n$ uv run expenses report expenses.csv\ncould not read expenses.csv\n$ pwd\n/home/alice/code\n```\n\nThe file is at `/home/alice/code/expense-tracker/expenses.csv`. What should you do next?",
+     "options": [
+      {
+       "text_md": "Run `chmod 777 expenses.csv` so the program can read it",
+       "correct": false,
+       "why_md": "Permissions are not the problem: the file is not in the folder you are standing in. `chmod 777` is almost never the answer."
+      },
+      {
+       "text_md": "Delete `.venv` and run `uv sync` before trying again",
+       "correct": false,
+       "why_md": "The program ran and printed its own message, so the environment works."
+      },
+      {
+       "text_md": "Reinstall the package with `uv sync --upgrade`",
+       "correct": false,
+       "why_md": "The package is installed and running; upgrading does not move the file."
+      },
+      {
+       "text_md": "Run `cd expense-tracker`, then run the same command again",
+       "correct": true,
+       "why_md": "A relative path starts where you are. From `/home/alice/code` there is no `expenses.csv`; inside `expense-tracker` there is."
+      }
+     ],
+     "explanation_md": "`expenses.csv` is a relative path, so the program looks for it in the current directory, which `pwd` shows is `/home/alice/code`. The file lives one level down. Session 9 makes the point directly: most file-not-found errors are the wrong current directory, so run `pwd` first.",
+     "section_ref": "sample-paper-s2",
+     "source_ref": "S9 slides 10–11",
+     "origin": "teacher-variant",
+     "verified_by": "source"
+    }
+   ]
+  }
+ ],
+ "papers": [
+  {
+   "id": "paper-a",
+   "title": "Paper A",
+   "kind": "realistic",
+   "minutes": 60,
+   "intro_md": "A small fixture paper in the shape of the real one: multiple choice first, then a short open question.",
+   "questions": [
+    {
+     "id": "paper-a-q01",
+     "module_ref": "scrum",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "judgement"
+     ],
+     "stem_md": "Your team's Daily Scrum has turned into each developer reporting to the Product Owner for ten minutes. What does this miss about the event?",
+     "options": [
+      {
+       "text_md": "It is a fifteen-minute check for the Developers on the Sprint Goal",
+       "correct": true,
+       "why_md": "The Daily is for the Developers to check they are on track for the Sprint Goal; the Product Owner can join but is not the audience."
+      },
+      {
+       "text_md": "It should last one hour so that every developer can finish",
+       "correct": false,
+       "why_md": "The time-box is fifteen minutes; a longer meeting makes the problem worse."
+      },
+      {
+       "text_md": "It is where the Product Owner reorders the Product Backlog",
+       "correct": false,
+       "why_md": "Ordering the backlog is the Product Owner's job, but not the purpose of the Daily."
+      },
+      {
+       "text_md": "It is where the team decides who caused the last bug",
+       "correct": false,
+       "why_md": "Scrum has no blame meeting; even the Retrospective is not about blame."
+      }
+     ],
+     "explanation_md": "The slides say the Daily Scrum is not a status report to a manager. It is fifteen minutes for the Developers, each giving their latest work, what they do next and any blockers, so the team can see whether it is on track for the Sprint Goal.",
+     "section_ref": "scrum-s1",
+     "source_ref": "S4 slides 11–12",
+     "origin": "slides",
+     "verified_by": "source"
+    },
+    {
+     "id": "paper-a-q02",
+     "module_ref": "pipes-bash",
+     "type": "mcq",
+     "level": "exam",
+     "skills": [
+      "predict-output",
+      "judgement"
+     ],
+     "stem_md": "`expenses.csv` has a header line and one expense per line. `cat expenses.csv | wc -l` prints `11`. How many expenses does the file hold?",
+     "options": [
+      {
+       "text_md": "11, one per line",
+       "correct": false,
+       "why_md": "The header line is a line too, and `wc -l` counts it."
+      },
+      {
+       "text_md": "10, because the header is counted as a line",
+       "correct": true,
+       "why_md": "Eleven lines minus the header leaves ten expenses."
+      },
+      {
+       "text_md": "12, because `wc -l` skips the last line",
+       "correct": false,
+       "why_md": "`wc -l` counts newline characters; a file that ends with one is counted in full."
+      },
+      {
+       "text_md": "It depends on how many categories there are",
+       "correct": false,
+       "why_md": "The count is about lines, not about what they contain."
+      }
+     ],
+     "explanation_md": "`wc -l` counts lines, and the header is one of them. With one expense per line after the header, the file holds one fewer expense than the number printed. This is why the pipelines in this module use `tail -n +2` before counting.",
+     "section_ref": "pipes-bash-s1",
+     "source_ref": "session 10 announcement (predicted)",
+     "origin": "predicted",
+     "verified_by": "run"
+    },
+    {
+     "id": "paper-a-q03",
+     "module_ref": "history",
+     "type": "open",
+     "level": "exam",
+     "skills": [
+      "read-diff",
+      "compare"
+     ],
+     "stem_md": "A teammate shows you this diff:\n\n```diff\n-    m = 0.0\n-    mr = None\n+    largest = None\n     for e in rows:\n-        if e[3] > m:\n-            m = e[3]\n-            mr = e\n+        if largest is None or e[3] > largest[3]:\n+            largest = e\n```\n\nTwo candidate messages: A `changes`, B `Find the largest expense without a zero starting value`.",
+     "parts": [
+      {
+       "label": "1",
+       "prompt_md": "What does this change do?",
+       "marks": 1,
+       "model_answer_md": "It finds the largest expense by starting from no expense instead of from 0.0, and keeps one variable instead of two.",
+       "rubric": [
+        "Says the search no longer starts from 0.0"
+       ],
+       "weak_answers_md": "\"It renames variables\" sees only half of it; the starting value changes too."
+      },
+      {
+       "label": "2",
+       "prompt_md": "Which message is better for someone reading the history six months later, and why?",
+       "marks": 2,
+       "model_answer_md": "B: it says what changed and hints why, so a reader can find it; A says nothing the diff does not.",
+       "rubric": [
+        "Chooses B",
+        "Explains that it says what changed for a future reader"
+       ],
+       "weak_answers_md": "Choosing B without a reason earns half: the question asks for the reader's point of view."
+      }
+     ],
+     "lines": "5–8",
+     "explanation_md": "Starting the search at `0.0` silently assumes no amount is negative or zero; starting from `None` makes no assumption. A message that names that change helps a future reader understand the commit without opening the diff.",
+     "section_ref": "history-s1",
+     "source_ref": "expense-tracker c746d38 (diff written in its style)",
+     "origin": "history",
+     "verified_by": "reasoning"
+    }
+   ]
+  },
+  {
+   "id": "paper-b",
+   "title": "Paper B",
+   "kind": "worst-case",
+   "minutes": 60,
+   "intro_md": "A small fixture paper with longer artefacts, in the worst-case shape.",
+   "questions": [
+    {
+     "id": "paper-b-q01",
+     "module_ref": "testing-tdd",
+     "type": "mcq",
+     "level": "hard",
+     "skills": [
+      "judgement"
+     ],
+     "stem_md": "A test suite reaches 100% line coverage. Every test calls a function and none of them contains an `assert`. What does the suite prove?",
+     "options": [
+      {
+       "text_md": "That every line works as intended",
+       "correct": false,
+       "why_md": "Coverage shows a line ran, not that its result was checked."
+      },
+      {
+       "text_md": "That no line raised an exception on these inputs",
+       "correct": true,
+       "why_md": "Without asserts, a test fails only when something raises; that is all it can prove."
+      },
+      {
+       "text_md": "Nothing, because coverage tools ignore tests without asserts",
+       "correct": false,
+       "why_md": "Coverage counts every line a test runs, assert or not."
+      },
+      {
+       "text_md": "That the code is ready to tag as done",
+       "correct": false,
+       "why_md": "Done includes tested; tests that check nothing do not meet that bar."
+      }
+     ],
+     "explanation_md": "Session 8 calls coverage a map, not a score: 100% coverage with weak assertions proves nothing about results. A test with no `assert` still fails if an exception is raised, so the suite proves the code runs without crashing on those inputs, and no more.",
+     "section_ref": "testing-tdd-s1",
+     "source_ref": "S8 slide 24",
+     "origin": "slides",
+     "verified_by": "reasoning"
+    },
+    {
+     "id": "paper-b-q02",
+     "module_ref": "testing-tdd",
+     "type": "open",
+     "level": "hard",
+     "skills": [
+      "read-tool-output",
+      "judgement"
+     ],
+     "stem_md": "CI is red on your branch:\n\n```text\nE       AssertionError: assert [('dining', 10.0)] == []\nFAILED tests/test_minimum.py::test_amount_equal_to_minimum_is_dropped - Asser...\n1 failed in 0.01s\n```\n\nYour teammate suggests changing the test's expected value to `[('dining', 10.0)]` to get CI green.",
+     "parts": [
+      {
+       "label": "1",
+       "prompt_md": "What does the failure tell you?",
+       "marks": 1,
+       "model_answer_md": "The function kept an amount equal to the minimum, while the test expected it to be dropped.",
+       "rubric": [
+        "Reads both sides of the assert correctly"
+       ],
+       "weak_answers_md": "\"The function is wrong\" decides too early; the line shows only that the two disagree."
+      },
+      {
+       "label": "2",
+       "prompt_md": "Do you accept the suggestion? Give your reasoning.",
+       "marks": 2,
+       "model_answer_md": "Only after checking the intended rule. If amounts equal to the minimum should count, the test is wrong and the change is right; if not, the change hides a real bug just to get CI green.",
+       "rubric": [
+        "Checks the intended behaviour before choosing",
+        "Says changing a test only to turn CI green hides bugs"
+       ],
+       "weak_answers_md": "\"Yes, CI must be green\" treats the referee as the goal; \"No, never touch tests\" ignores that the test may be the wrong side."
+      }
+     ],
+     "lines": "5–8",
+     "explanation_md": "The failure is information: the code and the test disagree about the boundary. Which one changes depends on the intended rule, not on which one is easier to edit. CI is the referee, not the judge.",
+     "section_ref": "testing-tdd-s2",
+     "source_ref": "S8 slides 7, 11; run in the sandbox",
+     "origin": "slides",
+     "verified_by": "run"
+    }
+   ]
+  }
+ ]
+}

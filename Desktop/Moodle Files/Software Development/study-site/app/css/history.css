@@ -1,0 +1,85 @@
+/* ---------------------------------------------------------------- history: the timeline */
+.hist-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin: 0 0 26px; }
+.hist-cta .meta-line { margin: 0; }
+.hist-kinds { margin: 0 0 6px; }
+.hist-group { margin-top: 34px; }
+.hist-group-head { padding-bottom: 10px; border-bottom: 1px solid var(--rule-strong); }
+.hist-group-head h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; margin: 0; }
+.hist-tag { font: 500 1.25rem/1.3 var(--font-mono); }
+.hist-untagged { font: 600 1.25rem/1.3 var(--font-body); }
+.hist-note { font: 400 1.0625rem/1.45 var(--font-body); color: var(--ink-2); }
+.hist-lesson { margin: 4px 0 0; }
+/* the graph: one vertical line, a dot per commit, filled for the tagged one */
+.hist-list { position: relative; margin: 0; padding: 0; list-style: none; }
+.hist-list::before {
+  content: ""; position: absolute; left: 7px; top: 0; bottom: 0; border-left: 2px solid var(--rule);
+}
+.hist-item { position: relative; padding: 16px 6px 18px 34px; border-bottom: 1px solid var(--rule); }
+.hist-item::before {
+  content: ""; position: absolute; left: 2px; top: 22px; width: 12px; height: 12px;
+  border-radius: 50%; border: 2px solid var(--ink-3); background: var(--sheet);
+}
+.hist-item:has(.chip-tag)::before { border-color: var(--ink); background: var(--ink); }
+.hist-link { display: block; color: var(--ink); text-decoration: none; }
+.hist-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 4px; }
+.hist-hash { font: 500 0.9375rem/1.5 var(--font-mono); color: var(--signal); }
+.hist-date { font: 0.8125rem/1.5 var(--font-mono); color: var(--ink-3); }
+.hist-guessed { margin-left: auto; }
+.hist-msg { display: block; font-size: 1.0625rem; font-weight: 600; line-height: 1.4; }
+.hist-sum { margin-top: 6px; font-size: 0.9375rem; color: var(--ink-2); }
+.hist-sum p { margin-bottom: 0.5em; }
+
+/* ---------------------------------------------------------------- history: one commit */
+.hist-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 8px; }
+.hist-meta .meta-line { margin: 0; }
+.hist-title { margin-bottom: 8px; }
+.hist-read { max-width: 68ch; }
+.hist-read .note { margin-top: 20px; }
+.hist-stat .code-lang { text-transform: none; }
+.stat-add { color: var(--pass); }
+.stat-del { color: var(--fail); }
+.hist-hidden { margin: -4px 0 0; }
+.hist-diff-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 8px; margin: -6px 0 4px; }
+.hist-file { margin: 12px 0; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--sheet); }
+.hist-file > summary {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-height: 44px;
+  padding: 10px 14px; font: 0.8125rem/1.5 var(--font-mono);
+}
+.hist-file[open] > summary { border-bottom: 1px solid var(--rule); }
+.hist-file > summary:hover .hist-file-path { color: var(--signal); }
+.hist-file-status { min-width: 5.5em; color: var(--ink-3); }
+.hist-file-path { flex: 1 1 14rem; min-width: 0; font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
+.hist-counts { white-space: nowrap; }
+.hist-file-note { color: var(--warn); }
+.hist-file-body .code { margin: 0; border: 0; border-radius: 0 0 var(--radius) var(--radius); }
+
+/* ---------------------------------------------------------------- history: guess the message */
+.guess-sheet, .guess-out { max-width: 46rem; }
+.guess-sheet { margin-top: 32px; }
+.hist .guess-h { margin: 0 0 12px; font-size: 1.25rem; }
+.wide-input { width: 100%; max-width: 40rem; }
+.guess-preview { margin: 6px 0 0; }
+.guess-preview:empty { display: none; }
+.guess-opts { margin: 26px 0 8px; }
+.guess-legend { margin-bottom: 8px; font-size: 0.9375rem; font-weight: 600; }
+.guess-out { margin-top: 24px; }
+
+.guess-compare { display: grid; gap: 12px; margin: 16px 0; }
+.guess-line { padding: var(--pad-s); border: 1px solid var(--rule); border-radius: var(--radius); }
+.guess-line .label { margin-bottom: 2px; }
+.guess-msg {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 0 0 4px;
+  font-size: 1.0625rem; font-weight: 600; overflow-wrap: anywhere;
+}
+.guess-line .fine { margin: 0; }
+.guess-habits { margin: 18px 0; }
+.guess-habits legend { margin-bottom: 4px; font-size: 0.9375rem; font-weight: 600; }
+.kind-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 16px 0 0; }
+.kind-line .label { margin: 0; }
+
+@media (max-width: 599px) {
+  .hist-item { padding-left: 28px; }
+  .hist-file > summary { padding: 10px 12px; }
+  .hist-file-status { min-width: 0; }
+  .hist-file-path { order: 5; flex-basis: 100%; padding-left: 1em; }
+}

@@ -1,0 +1,61 @@
+# Concatenation order for tools/build.py: one file per line; # starts a comment.
+# Every .js file in app/js must be listed exactly once (the build fails otherwise).
+
+# The namespace, then pure logic (unit-tested in tests/*.test.mjs)
+sd.js
+util.js
+route.js
+progress.js
+leitner.js
+scoring.js
+select.js
+planner.js
+marking.js
+data.js
+exam.js
+history.js
+pipes.js
+perms.js
+paths.js
+chains.js
+
+# Runtime services
+store.js
+claude.js
+sync.js
+dom.js
+router.js
+
+# Shared UI and the question components
+ui.js
+q-parts.js
+q-mcq.js
+q-open.js
+q-sort.js
+q-mount.js
+shell.js
+
+# Views (each registers its routes). Add a new view's line at the end of this group; a pure
+# logic file it needs goes in the first group, after data.js.
+view-home.js
+view-plan.js
+view-learn.js
+view-practice.js
+view-cards.js
+view-glossary.js
+view-more.js
+exam-paper.js
+exam-results.js
+view-exam.js
+history-diff.js
+view-history-guess.js
+view-history.js
+labs-ui.js
+lab-pipes.js
+lab-perms.js
+lab-paths.js
+lab-chains.js
+view-labs.js
+
+# Boot (always last)
+main.js

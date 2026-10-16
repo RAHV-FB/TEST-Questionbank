@@ -1,0 +1,248 @@
+
+===== [slides-session-2.pdf] page 1 =====
+From Waterfall to Agile
+How software work gets organised
+Session 2. September 15th 2026
+Alberto Cámara
+
+===== [slides-session-2.pdf] page 2 =====
+Where we are
+Last week we saw the seven phases of the lifecycle, and how the Development happens
+relatively late.
+Today: how a team moves from one phase to the next — and why the answer changed
+completely between 1995 and 2005.
+This is project management, not project work.
+That is: about how the work is organised, not how the code gets written.
+Alberto Cámara | Software Development for Business | Session 2
+2
+
+===== [slides-session-2.pdf] page 3 =====
+The way it used to be done
+
+===== [slides-session-2.pdf] page 4 =====
+Requirements
+Design
+Implementation
+Testing
+Deployment & 
+Maintenance
+Software project management in the late
+1990s
+Waterfall: linear, sequential phases. Each one finished before
+the next begins.
+Requirements fixed early; changing them is costly and
+discouraged
+Long cycles — months or years before delivery
+Customer involved mostly at the start and the end
+Heavy documentation, up front
+Alberto Cámara | Software Development for Business | Session 2
+4
+
+===== [slides-session-2.pdf] page 5 =====
+Waterfall: the five phases
+Phase
+What happens
+Output
+Requirements
+Gather everything the system must do
+A signed specification
+Design
+Decide the structure before any code
+Architecture documents
+Implementation
+Build strictly from the design
+Code
+Testing
+Verify against the specification
+A test report
+Deployment & maintenance
+Ship it; fix what breaks
+A running system
+The gate between phases is a document that gets approved.
+Alberto Cámara | Software Development for Business | Session 2
+5
+
+===== [slides-session-2.pdf] page 6 =====
+Where Waterfall genuinely works
+Waterfall assumes the requirements are known in advance and stable.
+When that is true, it works.
+Bridges, buildings, aircraft, cars. The requirements really are known up front, changing
+them mid-build really is ruinously expensive, and regulation demands the documentation.
+Projects where predictability matters more than speed: you know early roughly what the
+finished thing looks like and what it costs.
+Contracts with a fixed scope and a fixed price.
+Alberto Cámara | Software Development for Business | Session 2
+6
+
+===== [slides-session-2.pdf] page 7 =====
+Why it fails for software
+Software breaks all three of Waterfall's assumptions:
+Requirements change. The customer sees the first version and understands what they
+actually wanted. This is normal, not a failure of analysis.
+Feedback arrives too late. Testing is done near the end, so a wrong assumption early in
+the project is only found close to the end.
+Integration risk piles up. Four people build four parts in isolation; they are first combined
+at the end, and then nothing fits.
+Alberto Cámara | Software Development for Business | Session 2
+7
+
+===== [slides-session-2.pdf] page 8 =====
+Disadvantages, and what answers them
+Waterfall disadvantage
+Agile's answer
+Inflexible to change
+Iterative — change is expected at any stage
+Problems found late
+Continuous feedback finds them early
+Testing delayed to the end
+Testing integrated into every short cycle
+Poor fit for evolving requirements
+Built for evolving requirements
+Focus on the plan, not the user
+Frequent user involvement drives the product
+Alberto Cámara | Software Development for Business | Session 2
+8
+
+===== [slides-session-2.pdf] page 9 =====
+Agile
+
+===== [slides-session-2.pdf] page 10 =====
+What Agile is
+Formalised in 2001, by practitioners reacting to Waterfall's failures on software
+Iterative, incremental, adaptable: build a small working slice, show it, learn, adjust
+Delivers working software frequently — weeks, not years
+Plan
+Build
+Review with user
+Learn
+The same lifecycle phases still happen — they just happen in every cycle, on a small
+slice, instead of once across the whole project.
+Alberto Cámara | Software Development for Business | Session 2
+10
+
+===== [slides-session-2.pdf] page 11 =====
+The Agile Manifesto — four values
+We have come to value:
+Valued more
+over
+Valued less
+Individuals and interactions
+›
+processes and tools
+Working software
+›
+comprehensive documentation
+Customer collaboration
+›
+contract negotiation
+Responding to change
+›
+following a plan
+"While there is value in the items on the right, we value the items on the left more."
+Alberto Cámara | Software Development for Business | Session 2
+11
+
+===== [slides-session-2.pdf] page 12 =====
+Twelve principles, in four groups
+Deliver value continuously
+Early and continuous delivery
+Deliver working software often
+Working software = progress
+Expect change; collaborate
+Welcome changing requirements
+Business and developers, daily
+Trust people; sustainable pace
+Motivated individuals, trusted
+Face-to-face conversation
+A pace sustainable indefinitely
+Self-organising teams
+Keep improving
+Technical excellence
+Simplicity — maximise work not done
+Reflect and adjust, regularly
+Alberto Cámara | Software Development for Business | Session 2
+12
+
+===== [slides-session-2.pdf] page 13 =====
+Methodologies that follow Agile principles
+Approach
+What it actually prescribes
+Best when
+Scrum
+Fixed-length sprints; roles (PO, Scrum Master,
+Developers); planning / daily / review / retrospective
+Feature work with a
+team of ≤10
+Kanban
+A board of columns; a limit on work-in-progress; pull the
+next item when you have capacity
+A steady stream of
+varied requests
+XP (Extreme
+Programming)
+Engineering practices: pair programming, test-driven
+development, continuous integration, small releases
+Code quality and
+change-rate are both
+high
+Lean
+Eliminate waste; optimise the whole flow; decide as late
+as responsibly possible
+Cutting cycle time end to
+end
+XP is where TDD comes from. (more to be seen in Module 2)
+Alberto Cámara | Software Development for Business | Session 2
+13
+
+===== [slides-session-2.pdf] page 14 =====
+What this course uses
+Scrum vocabulary for the project:
+Checkpoints are sprints
+Definition of Done is a green CI check
+Product Owner is me
+XP's engineering practices are the technical spine: TDD, CI, small commits.
+Kanban board is how you will track your group's work.
+Alberto Cámara | Software Development for Business | Session 2
+14
+
+===== [slides-session-2.pdf] page 15 =====
+What most teams get wrong
+It is not about picking one methodology and
+following blindly, but borrowing the practices that will
+help you iterate fast and deliver value.
+Alberto Cámara | Software Development for Business | Session 2
+15
+
+===== [slides-session-2.pdf] page 16 =====
+Workshop: plan, then re-plan
+
+===== [slides-session-2.pdf] page 17 =====
+What to do
+Full brief on Moodle. In short:
+Part 1 — as Waterfall (15 min)
+Take a simple project idea. Plan it in five
+phases, start to finish. Prepare a 2-minute
+pitch of the plan.
+Part 2 — as Agile (15 min)
+Same idea. Re-plan as short iterations.
+What do you build first? What changed?
+What did the change cost you?
+Then a few groups present both plans and we compare.
+Alberto Cámara | Software Development for Business | Session 2
+17
+
+===== [slides-session-2.pdf] page 18 =====
+Before you leave — the lock
+Groups and topics are due now. On Moodle (the Database activity) or on the paper sheet,
+before anyone leaves.
+Group name, all four (or five) members, each member's GitHub username, one topic
+One topic per group, no duplicates — settled first-come, in the room
+No group yet? You are assigned to one now.
+This list is what your repositories are built from on Wednesday.
+Alberto Cámara | Software Development for Business | Session 2
+18
+
+===== [slides-session-2.pdf] page 19 =====
+Next: Friday's setup lab
+Bring your laptop and charger. Session 3 is hands-on from the first minute.
+Read labs/00-setup.md beforehand if you can.

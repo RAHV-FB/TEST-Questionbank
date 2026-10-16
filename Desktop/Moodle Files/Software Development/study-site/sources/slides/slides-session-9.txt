@@ -1,0 +1,289 @@
+
+===== [slides-session-9.pdf] page 1 =====
+The Terminal
+Module 3
+Session 9. October 13th 2026
+Alberto Cámara
+
+===== [slides-session-9.pdf] page 2 =====
+Where we are
+Done: M1 Starting a project, M2 Clean code and tests
+Today and Friday: M3 Terminal and shell
+Mid-term: Thu 22 Oct, 14:00, 1 hour
+Then: M4 Git, M5 Docker
+We have been using the terminal since the beginning of the course.
+Today, we deep dive into it.
+Alberto Cámara | Software Development for Business | Session 9
+2
+
+===== [slides-session-9.pdf] page 3 =====
+Group Project partial submission
+Due Sunday 18 October, 23:59.
+Marked at the v0.5 tag.
+Worth 30% of the continuous mark.
+The rubric is on Moodle. Five criteria, scored 0 to 3:
+functionality · structure · naming · tests · README
+CI must be green on the tagged commit, or tests is capped at 1.
+We write v0.5 's scripts/check.sh together on Friday. Read the rubric before then.
+Alberto Cámara | Software Development for Business | Session 9
+3
+
+===== [slides-session-9.pdf] page 4 =====
+Terminal, shell, operating system
+
+===== [slides-session-9.pdf] page 5 =====
+Three different things
+What it is
+Example
+Terminal
+The window. It shows text and sends your
+keystrokes
+Windows Terminal, GNOME
+Terminal
+Shell
+The program inside it that reads a line and runs it
+bash , zsh
+Operating
+system
+What actually creates files and starts programs
+Linux kernel
+Terminal and shell swap independently. Your scripts depend on the shell.
+Alberto Cámara | Software Development for Business | Session 9
+5
+
+===== [slides-session-9.pdf] page 6 =====
+Why a 50-year-old interface survived
+It composes. Small programs, joined by pipes (Friday)
+It scripts. Whatever you typed once, you can save and run again
+It works over ssh . Every server you will ever touch has one, and nothing else
+CI is a terminal. The check workflow is a list of commands someone else's computer
+types for you
+A GUI is for doing something once. A terminal is for doing it a hundred times.
+The current trend in AI-assisted SDLC drops IDEs in favour of terminals.
+Alberto Cámara | Software Development for Business | Session 9
+6
+
+===== [slides-session-9.pdf] page 7 =====
+The filesystem
+
+===== [slides-session-9.pdf] page 8 =====
+One tree, one root
+/
+├── home/
+│   └── alice/              ← your home, ~
+│       └── code/
+│           └── my-project/
+│               ├── .git/
+│               ├── src/
+│               └── pyproject.toml
+├── etc/
+└── usr/
+Everything is under / . There are no drive letters. On WSL, your Windows disk is at /mnt/c .
+Alberto Cámara | Software Development for Business | Session 9
+8
+
+===== [slides-session-9.pdf] page 9 =====
+Where am I? What is here?
+$ pwd
+/home/alice/code/expense-tracker
+$ ls
+LICENSE  README.md  expenses.csv  pyproject.toml  src  tests  uv.lock
+$ ls -a
+.  ..  .git  .github  .gitignore  .python-version  LICENSE  README.md  ...
+ls hides names that start with a dot. .git is one: that is why you never see it, and why it is
+safe.
+. is the folder you are in. .. is its parent.
+Alberto Cámara | Software Development for Business | Session 9
+9
+
+===== [slides-session-9.pdf] page 10 =====
+Absolute and relative paths
+Path
+Means
+/home/alice/code/expense-tracker
+Absolute. Starts at / . Same from anywhere
+src/expense_tracker/cli.py
+Relative. Starts here
+../project-template
+Up one level, then down
+~/code
+Your home, then code
+$ cd ~/code/expense-tracker/src
+$ cd ../tests
+Most "file not found" errors are the wrong current directory. Run pwd first.
+Alberto Cámara | Software Development for Business | Session 9
+10
+
+===== [slides-session-9.pdf] page 11 =====
+Reading a path in an error
+$ uv run expenses report expenses.csv
+could not read expenses.csv
+Which expenses.csv ? The one in the folder you are standing in, not the one next to the
+code.
+$ pwd
+/home/alice/code
+$ ls expenses.csv
+ls: cannot access 'expenses.csv': No such file or directory
+$ cd expense-tracker
+$ uv run expenses report expenses.csv     # now it is there
+Alberto Cámara | Software Development for Business | Session 9
+11
+
+===== [slides-session-9.pdf] page 12 =====
+Move around without typing
+The following are huge time savers:
+Tab completes names. If it does not complete, the name is wrong or ambiguous
+↑ brings back the last command
+Ctrl-R searches your history
+Ctrl-C stops the program that is running
+cd - goes back to where you just were
+cd alone goes home
+Alberto Cámara | Software Development for Business | Session 9
+12
+
+===== [slides-session-9.pdf] page 13 =====
+Managing files
+
+===== [slides-session-9.pdf] page 14 =====
+Make, copy, move, remove
+$ mkdir notes
+$ touch notes/todo.txt
+$ cp notes/todo.txt notes/todo-backup.txt
+$ cp -r notes notes-old
+$ mv notes/todo-backup.txt notes/old.txt
+$ rm notes/old.txt
+mv is also rename. cp -r copies a folder and everything in it.
+rm does not ask and there is no bin. What it removes is gone.
+Alberto Cámara | Software Development for Business | Session 9
+14
+
+===== [slides-session-9.pdf] page 15 =====
+Dangerous, and how to be careful
+$ rm -r notes-old
+$ rm -r notes-old/ *
+The second line removes notes-old/ and every
+file in the current directory.
+Habits:
+ls the exact path before you rm it. Then press
+↑ and swap ls for rm
+rm -i asks first. Use it when you are tired
+Never rm -rf with a variable you have not
+printed
+Alberto Cámara | Software Development for Business | Session 9
+15
+
+===== [slides-session-9.pdf] page 16 =====
+Permissions
+
+===== [slides-session-9.pdf] page 17 =====
+$ ls -l
+-rw-rw-r-- 1 alice alice  1193 Oct 11 17:07 README.md
+-rw-rw-r-- 1 alice alice 15221 Oct 11 17:07 expenses.csv
+drwxrwxr-x 3 alice alice    60 Oct 11 17:07 src
+-  rw-  rw-  r--
+d  rwx  rwx  r-x
+│   │    │    └── everyone else
+│   │    └─────── your group
+│   └──────────── you (the owner)
+└──────────────── type: - file, d directory
+r read · w write · x execute (for a folder: enter it)
+Alberto Cámara | Software Development for Business | Session 9
+17
+
+===== [slides-session-9.pdf] page 18 =====
+Why your script says "permission denied"
+$ cat hello.sh
+#!/usr/bin/env bash
+echo hello
+$ ./hello.sh
+permission denied: ./hello.sh
+$ ls -l hello.sh
+-rw-rw-r-- 1 alice alice 31 Oct 11 17:07 hello.sh
+Alberto Cámara | Software Development for Business | Session 9
+18
+
+===== [slides-session-9.pdf] page 19 =====
+There is no x .
+Nobody said this file is a program.
+A new file never gets execution permissions.
+$ chmod +x hello.sh
+$ ls -l hello.sh
+-rwxrwxr-x 1 alice alice 31 Oct 11 17:07 hello.sh
+$ ./hello.sh
+hello
+Alberto Cámara | Software Development for Business | Session 9
+19
+
+===== [slides-session-9.pdf] page 20 =====
+Where chmod does nothing
+On WSL, a project under /mnt/c shows every file as rwxrwxrwx , and chmod silently does
+nothing.
+Keep your projects in your Linux home: ~/code/...
+This is the same reason uv and git are faster there
+Check: pwd should start with /home/ , not /mnt/
+Friday's scripts/check.sh depends on this. In CI it needs the x bit too, and git remembers
+it.
+Alberto Cámara | Software Development for Business | Session 9
+20
+
+===== [slides-session-9.pdf] page 21 =====
+Numbers instead of letters
+r = 4, w = 2, x = 1. Add them per group of three.
+Number
+Letters
+Typical use
+644
+rw-r--r--
+A normal file
+755
+rwxr-xr-x
+A script or a folder
+600
+rw-------
+A private key
+777
+rwxrwxrwx
+Almost never the answer
+chmod 777 makes the error go away and the problem worse.
+Alberto Cámara | Software Development for Business | Session 9
+21
+
+===== [slides-session-9.pdf] page 22 =====
+A few more tools
+Command
+Use
+man ls
+The manual. q quits. ls --help is shorter
+whoami · date · uname -a
+Who, when, what machine
+df -h · top
+Disk space · running processes ( q quits top )
+nano file
+A small editor. Ctrl-O saves, Ctrl-X exits
+You may look these up when they are needed; not examined as recall.
+Alberto Cámara | Software Development for Business | Session 9
+22
+
+===== [slides-session-9.pdf] page 23 =====
+Lab: labs/09-terminal.md
+You navigate and manage files on your real project, then fix a script that says "permission
+denied".
+1. Navigate expense-tracker and your group repo with pwd , ls -la , cd
+2. Build a small folder tree, copy and move files
+3. Read permissions and fix a script
+4. Stretch (if you finish early): a tour of the tree with find
+Work in pairs. One types, one reads the instructions. Swap at each exercise.
+Work in ~/code , not /mnt/c .
+Alberto Cámara | Software Development for Business | Session 9
+23
+
+===== [slides-session-9.pdf] page 24 =====
+Take-aways
+Terminal is the window, shell reads your line, the OS does the work
+One tree under / . pwd before you suspect anything else
+Relative paths start here. Absolute paths start at /
+rm is permanent
+No x , no run. chmod +x is a statement that a file is a program
+Friday: pipes, text wrangling and bash scripts. Same terminal, same project.
+Alberto Cámara | Software Development for Business | Session 9
+24

@@ -1,0 +1,326 @@
+
+===== [slides-session-4.pdf] page 1 =====
+Scrum, and the Anatomy of a Project
+Session 4. September 22nd 2026
+Alberto Cámara
+
+===== [slides-session-4.pdf] page 2 =====
+Where we are
+Session
+What it left you with
+1
+What software development actually is
+2
+Why plans change: waterfall → agile
+3
+A working machine, and a repository that CI checks
+Today: the framework that organises the work, and the shape of the thing being worked on.
+Alberto Cámara | Software Development for Business | Session 4
+2
+
+===== [slides-session-4.pdf] page 3 =====
+Two halves
+Scrum — roles, artifacts, events, time-boxes; and how this course maps onto them
+Anatomy of a project — every file in a well-formed Python project, and what it is for
+The goal for Friday is to turn your repository into your project.
+Alberto Cámara | Software Development for Business | Session 4
+3
+
+===== [slides-session-4.pdf] page 4 =====
+Scrum
+
+===== [slides-session-4.pdf] page 5 =====
+The problem Scrum answers
+A year-long plan, written before anything is built, on estimates nobody can make.
+Agile moves short cycles, working software, feedback.
+Scrum is the most used way of doing that. Also, the most commonly misapplied.
+Alberto Cámara | Software Development for Business | Session 4
+5
+
+===== [slides-session-4.pdf] page 6 =====
+The Agile team
+Role
+Accountable for
+Product
+Owner
+The value of the product. Owns and orders the Product Backlog. One person, not a
+committee
+Scrum Master
+Ensures the process works. Removes impediments; coaches. Not a manager
+Developers
+Building the Increment. Cross-functional, self-managing
+The team should ideally consist of ten people or fewer.
+Hierarchy stays as horizontal as possible.
+Alberto Cámara | Software Development for Business | Session 4
+6
+
+===== [slides-session-4.pdf] page 7 =====
+More about Self-managing
+The team decides how the work is done, and who does what.
+The Product Owner decides what is worth doing, and in what order.
+Nobody outside decides how much goes into a Sprint.
+Alberto Cámara | Software Development for Business | Session 4
+7
+
+===== [slides-session-4.pdf] page 8 =====
+Artifacts, and what each commits to
+Artifact
+Commitment
+Product Backlog
+Product Goal
+Sprint Backlog
+Sprint Goal
+Increment
+Definition of Done
+Each artifact exists to make something visible. Without its commitment, it is just a list.
+Alberto Cámara | Software Development for Business | Session 4
+8
+
+===== [slides-session-4.pdf] page 9 =====
+The Product Backlog
+Ordered. Emergent. Never finished.
+Items are outcomes, not tasks: "a returning user can log in with an email link"
+Ordered by the Product Owner, top = next
+Refined continuously, in detail only near the top
+Estimating item 40 precisely is waste: it will change before it is built.
+Alberto Cámara | Software Development for Business | Session 4
+9
+
+===== [slides-session-4.pdf] page 10 =====
+Definition of Done
+The quality bar every Increment meets — decided once, applied to everything.
+Compiles · tested · reviewed · documented · deployable
+Things like not "done except for tests" are not admissible.
+An item that misses the Definition of Done is not done, and does not ship.
+Alberto Cámara | Software Development for Business | Session 4
+10
+
+===== [slides-session-4.pdf] page 11 =====
+The Ceremonies
+These are meetings that are often scheduled within each Sprint
+Name
+Time-box (2-week
+Sprint)
+Question
+Refinement
+~4h
+The PO and developers discuss implementation details for
+increments
+Sprint Planning
+1h
+Agree on what will be delivered at the end of sprint
+Daily
+15min
+Are we on track for the Sprint Goal?
+Sprint Review
+1h
+What was built; what should change
+Sprint
+Retrospective
+1h
+How the team worked, and what to improve
+Shorter Sprint → proportionally shorter events.
+Longer Sprint → proportionally longer events.
+Alberto Cámara | Software Development for Business | Session 4
+11
+
+===== [slides-session-4.pdf] page 12 =====
+What the ceremonies are not
+Daily Scrum is not a status report to a manager. Fifteen minutes, for the Developers. PO
+can join but not expected to participate. Each developer should take 1min to state:
+Their latest work
+What they intend on working next
+Whether they have any blockers
+Review is not a demo for applause. Stakeholders come to give feedback and change the
+backlog
+Retrospective is not blame. It's about discussing as a team what worked and what did
+not, and what changes can be introduced accordingly
+The PO retains the power to cancel the Sprint; this almost never happens
+Alberto Cámara | Software Development for Business | Session 4
+12
+
+===== [slides-session-4.pdf] page 13 =====
+Pillars and values
+Pillars: transparency · inspection · adaptation.
+Values: commitment · focus · openness · respect · courage.
+Inspection without transparency inspects a fiction. Adaptation without courage produces the
+same Sprint, twelve times.
+Alberto Cámara | Software Development for Business | Session 4
+13
+
+===== [slides-session-4.pdf] page 14 =====
+What Scrum does not give you
+No requirements document
+No promise about what is in version 1.0, a year out
+No architecture, no testing strategy, no engineering practices at all
+Scrum organises the work; it does not do it.
+Just like there is a tendency to imitate Agile development by mocking the Scrum ceremonies,
+there is an equally dangerous tendency to believe that following the ceremonies around
+Scrum is enough to get real work done.
+Alberto Cámara | Software Development for Business | Session 4
+14
+
+===== [slides-session-4.pdf] page 15 =====
+Scrum in this course
+
+===== [slides-session-4.pdf] page 16 =====
+The mapping
+Scrum
+This course
+Sprint
+The stretch between two checkpoints
+Sprint Goal
+The checkpoint's deliverable
+Definition of Done
+A green CI check — the same one for all fourteen groups
+Product Owner
+The lecturer
+Developers
+Your group of four
+Sprint Review
+Practice sessions, and Demo Day
+Alberto Cámara | Software Development for Business | Session 4
+16
+
+===== [slides-session-4.pdf] page 17 =====
+What that means on Friday
+Our Definition of Done for CP1 is public, binary and checkable before you submit:
+1. uv sync && uv run <your-app> --help works from a clean clone
+2. src/ layout, package importable
+3. README says what the program does and how to run it
+A Definition of Done you cannot check yourself is a wish.
+Alberto Cámara | Software Development for Business | Session 4
+17
+
+===== [slides-session-4.pdf] page 18 =====
+Anatomy of a project
+
+===== [slides-session-4.pdf] page 19 =====
+A script
+tracker.py
+expenses.csv
+Runs with python tracker.py .
+No name, no version, no dependencies, no home for tests.
+Fine for a weekend project.
+Alberto Cámara | Software Development for Business | Session 4
+19
+
+===== [slides-session-4.pdf] page 20 =====
+A project
+pyproject.toml          the single source of truth
+uv.lock                 exact versions, pinned
+README.md               what it is, how to run it
+LICENSE                 what others may do with it
+.gitignore              what git must never see
+src/expense_tracker/    the package
+  cli.py                the command-line interface
+  __main__.py           makes python -m expense_tracker work
+tests/                  mirrors src/
+Alberto Cámara | Software Development for Business | Session 4
+20
+
+===== [slides-session-4.pdf] page 21 =====
+pyproject.toml , line by line
+[project]
+name = "expense-tracker"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = ["typer>=0.12"]
+[project.scripts]
+expenses = "expense_tracker.cli:app"
+[build-system]
+requires = ["hatchling"]
+Identity · what it needs · what it installs as a command · how it is built.
+Alberto Cámara | Software Development for Business | Session 4
+21
+
+===== [slides-session-4.pdf] page 22 =====
+Why src/
+Without src/ , import expense_tracker finds the folder you are standing in — whether or
+not the package is installed.
+With src/ , the import only works if the project is installed. The tests then exercise what a
+user would get, not what happens to be lying next to them.
+We get a separation between the deployable code in src/ and the tests in tests/ , which
+are typically not included in the build.
+Alberto Cámara | Software Development for Business | Session 4
+22
+
+===== [slides-session-4.pdf] page 23 =====
+Installed, not just present
+python tracker.py                # needs the file, and the right directory
+uv run expenses report           # needs the project, from anywhere
+uv run resolves the environment from pyproject.toml and uv.lock , installs what is
+missing, and runs the command.
+Same versions for every teammate and for CI.
+Alberto Cámara | Software Development for Business | Session 4
+23
+
+===== [slides-session-4.pdf] page 24 =====
+uv.lock
+pyproject.toml says typer>=0.12 . The lockfile says exactly which typer, and which
+of its dependencies, down to the hash.
+Committed. CI runs uv sync --locked and fails if the two disagree.
+"Works on my machine" becomes a problem that can usually be pinpointed to a lockfile that
+was never committed.
+Alberto Cámara | Software Development for Business | Session 4
+24
+
+===== [slides-session-4.pdf] page 25 =====
+This is not hypothetical
+89afbe1 Add a README and the MIT licence
+bc9ef3d Add an add command that writes to data/
+2ecad20 Move the report into the package behind a typer CLI
+a953d05 Turn the script into a uv package
+c746d38 Print the largest expense
+6efdf9d Filter by category and ignore small amounts
+3e0834f Add a script that totals expenses by category
+The demo project, February to March. The bottom three are the script; a953d05 is the
+moment it became a project.
+Alberto Cámara | Software Development for Business | Session 4
+25
+
+===== [slides-session-4.pdf] page 26 =====
+The commit that did it
+ .gitignore                      |  6 ++++++
+ .python-version                 |  1 +
+ README.md                       |  0
+ pyproject.toml                  | 17 +++++++++++++++++
+ src/expense_tracker/__init__.py |  2 ++
+ uv.lock                         |  8 ++++++++
+uv init --package , and one edit. No code changed — the code became installable.
+Alberto Cámara | Software Development for Business | Session 4
+26
+
+===== [slides-session-4.pdf] page 27 =====
+Your repository already has all of it
+Generated from project-template : pyproject.toml , src/app/ , tests/ , CI, licence.
+It is called app .
+The job for Friday's lab is to adapt it to your group project topic.
+Alberto Cámara | Software Development for Business | Session 4
+27
+
+===== [slides-session-4.pdf] page 28 =====
+Backlog and Definition of Done
+
+===== [slides-session-4.pdf] page 29 =====
+The next 20 minutes
+Per group, on backlog-brief.md :
+1. Product Backlog — at least eight items for your topic, ordered, top three detailed
+2. Definition of Done — the bar every item meets, written by you
+Hand in on Moodle before you leave. I hold you to your own Definition of Done in November.
+Alberto Cámara | Software Development for Business | Session 4
+29
+
+===== [slides-session-4.pdf] page 30 =====
+What makes an item usable
+Instead of
+Write
+"Do the CSV part"
+"A user can add an expense and see it in the next report"
+"Make it good"
+"Invalid input prints a message and exits non-zero"
+"Tests"
+(that belongs in the Definition of Done, not the backlog)
+Ordered by value, not by what is easiest to start.
+Alberto Cámara | Software Development for Business | Session 4
+30

@@ -1,0 +1,155 @@
+
+===== [slides-session-5.pdf] page 1 =====
+Scaffold Your Project
+Practice 1
+Session 5. September 25th 2026
+Alberto Cámara
+
+===== [slides-session-5.pdf] page 2 =====
+Goal for Today
+Your repository stops being a template and becomes the home for your project.
+One command of your own runs, and v0.1 is tagged and pushed.
+Clock
+What
+10:45–11:15
+Briefing
+11:15–11:30
+Break
+11:30–13:05
+Lab: labs/01-scaffold.md
+13:05–13:15
+Tag v0.1 , push, watch CI
+Checkpoint 1 is marked at that tag.
+Alberto Cámara | Software Development for Business | Session 5
+2
+
+===== [slides-session-5.pdf] page 3 =====
+A program, not a script
+
+===== [slides-session-5.pdf] page 4 =====
+Two ways to run the same code
+python tracker.py                    # a file, run by an interpreter
+uv run expenses report               # a command, installed from a project
+Same code. The second one has a name, a version, dependencies and an entry point.
+Alberto Cámara | Software Development for Business | Session 5
+4
+
+===== [slides-session-5.pdf] page 5 =====
+What uv run expenses resolves
+[project.scripts]
+expenses = "expense_tracker.cli:app"
+expenses → module expense_tracker.cli → object app .
+A wrapper is written into the environment on install. Rename either side and the command
+disappears.
+Alberto Cámara | Software Development for Business | Session 5
+5
+
+===== [slides-session-5.pdf] page 6 =====
+__main__.py — the other door
+python -m expense_tracker            # runs src/expense_tracker/__main__.py
+from expense_tracker.cli import app
+if __name__ == "__main__":
+    app()
+Works without the install step. The template ships one — and it is the file everyone
+forgets to rename.
+Alberto Cámara | Software Development for Business | Session 5
+6
+
+===== [slides-session-5.pdf] page 7 =====
+typer: the type hints are the specification
+@app.command()
+def add(merchant: str, amount: float) -> None:
+    ...
+Usage: expenses add [OPTIONS] MERCHANT AMOUNT
+merchant: str with no default → argument. So is amount: float here — a default is
+what turns a parameter into an option. --help is generated, never written.
+Alberto Cámara | Software Development for Business | Session 5
+7
+
+===== [slides-session-5.pdf] page 8 =====
+Argument or option
+Argument
+Option
+Written
+add "Bar Ramon" 12.50
+--category dining
+In Python
+no default
+has a default
+For
+what the command acts on
+how it behaves
+Missing
+error
+falls back to the default
+A parameter with a default becomes an option — even when a positional value was intended.
+typer.Argument(...) overrides that.
+Alberto Cámara | Software Development for Business | Session 5
+8
+
+===== [slides-session-5.pdf] page 9 =====
+Exit codes
+uv run expenses add "Bar Ramon" -5.00
+amount must be positive
+echo $?
+1
+0 means success; anything else means failure.
+raise typer.Exit(code=1)
+Every tool downstream reads that number: the shell, && , CI. A program that prints an
+error and exits 0 is a program that lies.
+Alberto Cámara | Software Development for Business | Session 5
+9
+
+===== [slides-session-5.pdf] page 10 =====
+The stdlib fallback
+argparse ships with Python — no dependency, more code:
+parser = argparse.ArgumentParser()
+parser.add_argument("plate")
+parser.add_argument("--hours", type=int, default=1)
+Worth recognising in code you inherit. This course uses typer.
+Alberto Cámara | Software Development for Business | Session 5
+10
+
+===== [slides-session-5.pdf] page 11 =====
+The lab
+
+===== [slides-session-5.pdf] page 12 =====
+What you are doing
+labs/01-scaffold.md — the ordered path. In short:
+1. Rename app → your project, in six places
+2. uv lock , then uv sync
+3. One real command: an argument, an option, a non-zero exit
+4. Fix the tests, the README, the LICENSE
+5. The four checks locally, then commit, push, tag v0.1
+The repository is named after your topic; two spellings of your own name — hyphens
+( your-app ) for the command, underscores ( your_package ) for the package.
+Alberto Cámara | Software Development for Business | Session 5
+12
+
+===== [slides-session-5.pdf] page 13 =====
+The three that will bite
+uv lock after renaming. CI runs uv sync --locked and refuses a lockfile that
+disagrees with pyproject.toml .
+__main__.py . Still imports app.cli . pytest passes; mypy fails; CI is red.
+One command, no @app.callback() . typer drops the command's name, <app> <command> …
+errors, your tests fail. The lab gives you the four lines that prevent it.
+All three are in the lab's troubleshooting table.
+Alberto Cámara | Software Development for Business | Session 5
+13
+
+===== [slides-session-5.pdf] page 14 =====
+Checkpoint 1 — three binary items
+1. uv sync && uv run <your-app> --help works from a clean clone
+2. src/ layout, package importable
+3. README: what it does, how to install, how to run
+Alberto Cámara | Software Development for Business | Session 5
+14
+
+===== [slides-session-5.pdf] page 15 =====
+Ground rules for the next 95 minutes
+All four of you on main : agree who pushes when, or pair on one machine
+Ask me early
+Green CI before you leave the room
+Not finished by 13:05 → push what you have and say so
+Alberto Cámara | Software Development for Business | Session 5
+15

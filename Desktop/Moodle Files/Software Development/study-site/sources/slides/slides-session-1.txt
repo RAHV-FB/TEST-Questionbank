@@ -1,0 +1,321 @@
+
+===== [slides-session-1.pdf] page 1 =====
+Software Development for Business
+Course Introduction & Overview
+What software development actually is
+Session 1. September 8th 2026
+Alberto Cámara
+
+===== [slides-session-1.pdf] page 2 =====
+About me
+Alberto Cámara
+github: @ber2, github.com/ber2
+web: ber2.github.io
+PhD in Mathematics
+Work as a Data Freelancer
+PyBcn organiser
+Plenty of experience leading software developer teams,
+notably in Data Science, Machine Learning and AI
+Alberto Cámara | Software Development for Business | Session 1
+2
+
+===== [slides-session-1.pdf] page 3 =====
+There are no stupid questions
+I am very happy to take questions mid-lecture
+Worst thing that can happen is that I ask to leave the question for the end of the lecture
+Alberto Cámara | Software Development for Business | Session 1
+3
+
+===== [slides-session-1.pdf] page 4 =====
+Why this course exists
+
+===== [slides-session-1.pdf] page 5 =====
+What is Software Engineering?
+Software Engineering is the systematic process of designing, developing, testing, and
+maintaining computer software using scientific and engineering principles.
+This goes beyond just writing code: it is the structured approach to ensure that programs are
+reliable, secure, efficient, and easy to maintain over time.
+Alberto Cámara | Software Development for Business | Session 1
+5
+
+===== [slides-session-1.pdf] page 6 =====
+Six ways working code still fails
+"Works on my machine", and nowhere else
+A teammate's code change breaks the build
+Six months on, nobody can read it, not even its
+author
+Change one thing, three others break, silently
+No shared plan, four people build four corners
+Alberto Cámara | Software Development for Business | Session 1
+6
+
+===== [slides-session-1.pdf] page 7 =====
+In other words...
+...how do we stop things like this from happening:
+Alberto Cámara | Software Development for Business | Session 1
+7
+
+===== [slides-session-1.pdf] page 8 =====
+The methodology & tools against each problem
+No shared plan → Agile, Scrum
+Unreadable, breaks silently → Clean code, Testing, TDD
+A code change breaks the build → Version control, code reviews, CI
+"Works on my machine" → containerization, automatic deployment
+We will discuss a curated, opinionated selection of tools that will help us implement this
+methodology: pytest , git , GitHub, Docker...
+Alberto Cámara | Software Development for Business | Session 1
+8
+
+===== [slides-session-1.pdf] page 9 =====
+What we assume and our goals
+
+===== [slides-session-1.pdf] page 10 =====
+Not a Python course
+Prerequisites
+Computing Foundations: loops, functions,
+types
+Some Python fluency: a completed
+course of basic Python
+Syntax is assumed.
+New constructs arrive as design tools, not
+language tourism.
+Our goal
+This course is about what happens to that little program you wrote once three teammates
+get involved and it is supposed to run reliably, be easy to change, and trustworthy.
+Alberto Cámara | Software Development for Business | Session 1
+10
+
+===== [slides-session-1.pdf] page 11 =====
+And where it goes
+There are other courses that follow naturally:
+Course
+What we hand it
+Database Management and Design
+A running Postgres in a container
+Cloud Solutions
+Registries, images, remote hosts
+DevOps Management
+Containers and CI
+This course is a starter in all of these directions.
+Alberto Cámara | Software Development for Business | Session 1
+11
+
+===== [slides-session-1.pdf] page 12 =====
+Who is in the room
+
+===== [slides-session-1.pdf] page 13 =====
+Know your Audience
+I prepared a short questionnaire on Moodle.
+We will discuss results in a bit.
+Alberto Cámara | Software Development for Business | Session 1
+13
+
+===== [slides-session-1.pdf] page 14 =====
+The Software Development Lifecycle
+(SDLC)
+
+===== [slides-session-1.pdf] page 15 =====
+Seven phases
+1. Idea
+2. Analysis
+3. Design
+4. Development
+5. Testing
+6. Deployment
+7. Maintenance
+The point is that following this sequence of
+steps we build and protect the software
+before users get to it.
+The methodology lies in how we transition
+from one phase to the next.
+We will discuss all of them while working
+through one example: an app to track
+expenses.
+Alberto Cámara | Software Development for Business | Session 1
+15
+
+===== [slides-session-1.pdf] page 16 =====
+Idea → Analysis
+Idea: "We discover the mission: what do we want to create?"
+Who will use it? What problem does it solve? What should it do?
+Analysis: "We explore the terrain and gather tools."
+Feature
+What it does
+Add an expense
+Record its amount, category and date
+List expenses
+Show everything recorded
+Summary by category
+Total the spending in each category
+Everything it will do, pinned down before the build starts.
+Alberto Cámara | Software Development for Business | Session 1
+16
+
+===== [slides-session-1.pdf] page 17 =====
+Design → Development → Testing
+Design: the structure. How the pieces connect, how someone moves through it, how
+software behaves.
+Development: build it, from the design. Implement add, list and summarise. Wire them up.
+Testing: verify it does what the analysis said. A checklist, run every time, not once.
+Development arrives comparatively late. Three phases happen before anyone types code.
+Notice how there is a lot of thinking about the code prior to writing the code itself.
+Alberto Cámara | Software Development for Business | Session 1
+17
+
+===== [slides-session-1.pdf] page 18 =====
+Deployment → Maintenance
+Deployment: publish it, so someone who is not its author can actually use it.
+Maintenance: fix bugs. Improve what is slow or ugly, keep it running. Forever.
+Most software is maintained far longer than it is written.
+We will treat software as a something that is living and evolving.
+The lifecycle is not a finite set of steps that lead to a perfect program that will run forever
+without being changed.
+The only software that does not change is the one that stays forgotten on a shelf, without
+ever running.
+Alberto Cámara | Software Development for Business | Session 1
+18
+
+===== [slides-session-1.pdf] page 19 =====
+How the cycle goes on
+Eventually:
+We will discover unintended behaviours (bugs)
+We will have to add new behaviour (features)
+Ensure that the software can connect to new components that replace old components, or
+run on a different device (refactor)
+Sometimes we will willingly leave things implemented in a way which is not the best
+possible solution, knowing that at some point we will need to make an improvement (tech
+debt)
+In such cases, we start the cycle again, back to the Design phase.
+Alberto Cámara | Software Development for Business | Session 1
+19
+
+===== [slides-session-1.pdf] page 20 =====
+How the modules map onto it
+Phase
+Module
+Idea · Analysis
+M1 Starting a project: Agile, Scrum
+Design · Development
+M2 Clean code · M3 Terminal
+Development · Testing
+M2 Testing and TDD
+Testing · Deployment
+M4 Git, review, CI
+Deployment · Maintenance
+M5 Docker, registries, delivery
+The modules in the course, ordered by SDLC phase rather than by the problem each removes.
+Alberto Cámara | Software Development for Business | Session 1
+20
+
+===== [slides-session-1.pdf] page 21 =====
+How this course works
+
+===== [slides-session-1.pdf] page 22 =====
+Assessment
+Component
+Weight
+Individual or team exercises (continuous)
+30%
+Mid-term exam
+30%
+Final exam
+40%
+You need at least 4/10 on the final exam to pass, whatever else you have scored.
+Alberto Cámara | Software Development for Business | Session 1
+22
+
+===== [slides-session-1.pdf] page 23 =====
+The continuous 30%, in detail
+What
+Weight
+Four checkpoints (CP1 to CP4), 5% each
+20%
+Partial submission (session 10)
+30%
+Final submission + demo (sessions 18 and 19)
+50%
+Submitting is mandatory. Late is zero.
+Alberto Cámara | Software Development for Business | Session 1
+23
+
+===== [slides-session-1.pdf] page 24 =====
+Attendance
+Recorded every session
+Arriving more than 15 minutes late is recorded as an absence
+More than 20% absences (4 of the 19 sessions) means you sit the retake exam,
+whatever else you have scored
+Exceptions go through programme management, not through me.
+Alberto Cámara | Software Development for Business | Session 1
+24
+
+===== [slides-session-1.pdf] page 25 =====
+The group project
+Fifteen groups, four people each (two of them five), self-selected. One project, one
+group, all term.
+Every group builds a terminal program: no web, no GUI. You pick your topic from a
+menu of fifteen.
+One topic per group. No duplicates. Fifteen topics, fifteen groups, first come first
+served, settled in session 2.
+Every repository is public, deliberately.
+Alberto Cámara | Software Development for Business | Session 1
+25
+
+===== [slides-session-1.pdf] page 26 =====
+The menu: fifteen topics
+1. Mini Bingo
+2. Fortune Cookie
+3. Text Adventure
+4. Dice Dungeon
+5. Task manager
+6. Habit tracker
+7. Vending machine
+8. Parking lot
+9. Gradebook
+10. Library manager
+11. Flashcard trainer
+12. Meal planner
+13. Gym workout logger
+14. Transport fares
+15. Movie watchlist
+Easy to write. Hard to finish to standard.
+Alberto Cámara | Software Development for Business | Session 1
+26
+
+===== [slides-session-1.pdf] page 27 =====
+Card sort
+The coffee shop
+
+===== [slides-session-1.pdf] page 28 =====
+What to do
+Break into small groups, open the deck, go to the slide matching your group number
+You are given a stakeholder brief, three constraint cards, the seven SDLC phases, and
+fourteen decision cards to place.
+In your group, 25 minutes
+Drag every card under the phase where that
+decision actually gets made.
+Then answer, in the two boxes on your
+slide
+1. Which decisions affect more than one
+phase?
+2. Which trade-offs only become visible
+once the whole board is laid out?
+Alberto Cámara | Software Development for Business | Session 1
+28
+
+===== [slides-session-1.pdf] page 29 =====
+Before session 2
+
+===== [slides-session-1.pdf] page 30 =====
+Three things, by Tuesday 15 September
+1. GitHub account. Use your university email, and submit the username on Moodle.
+2. Your group of four, and a topic. Due at the end of session 2. That is the
+lock: the repositories are built from that list.
+3. Laptop and charger. From now on.
+Read the project brief on Moodle before you pick a topic.
+Alberto Cámara | Software Development for Business | Session 1
+30
+
+===== [slides-session-1.pdf] page 31 =====
+See you Tuesday
+Everything is on Moodle: these slides, the project brief, the menu.
+Bring questions.

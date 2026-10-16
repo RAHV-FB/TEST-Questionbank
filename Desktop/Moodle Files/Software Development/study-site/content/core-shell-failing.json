@@ -1,0 +1,2545 @@
+{
+ "id": "core-shell-failing",
+ "order": 7,
+ "module": "M2",
+ "title": "Functional core, imperative shell, and failing well",
+ "sessions": [
+  7
+ ],
+ "predicted": false,
+ "sources": [
+  "slides-session-7 (slides 12–20)",
+  "slides-session-8 (slides 17–23, 28–29)",
+  "slides-session-5 (slide 9)",
+  "partial-rubric.txt (Structure, Tests, Functionality)",
+  "labs/07-refactor.md Part 2",
+  "labs/08-tdd.md",
+  "expense-tracker v0.1, 9d6c607, 04d699f (v0.2), 15836e1, tests/test_io.py (v0.4)"
+ ],
+ "summary_md": "This module covers the second half of session 7: where a program's input and output should live, and what it should do when something goes wrong. The rule is functional core, imperative shell: pure functions that take values and return values in the middle, and a thin outer layer that reads files, prints and exits. Failing well follows from it: the core raises, the shell catches only what it can handle, writes the reason to stderr and exits non-zero, and the program's diary goes to logging, not `print`. The expense-tracker's commit `15836e1` (between v0.2 and v0.3) is the worked example, and the partial submission's Structure criterion marks this split.",
+ "exam_focus_md": "- Sort functions from a project like the parking lot or the gradebook into core, shell, or \"mixed: needs splitting\", and say what the first refactoring is.\n- Read a function that reads, computes and prints (the sample paper's Q5 and Q7 shape): describe the split in words and the tests it makes possible.\n- Decide between raising, returning `None` or empty, and an exit code; spot the `-1` that nobody checks.\n- Predict what a bare `except:` does with a typo or Ctrl-C, and judge `except Exception:` offered as a fix.\n- Read the v0.2 → v0.3 diff, or a transcript with `>` or a pipe, and explain where the error went and why stderr matters.\n- Judge an exit code: a program that prints an error and exits 0 is a program that lies.\n- Choose between `print` and logging, and say where logging is configured.",
+ "sections": [
+  {
+   "id": "core-shell-failing-s1",
+   "heading": "Where the I/O lives: core and shell",
+   "body_md": "Every program does two kinds of work. It **decides** things: a total per category, the fee for a parking ticket, whether a student passed. And it **touches the world**: it reads a file, prints to the terminal, ends with an exit code. Session 7 keeps the two apart, in two layers drawn one inside the other:\n\n```text\n        ┌─────────────────────────────┐\n        │  shell: cli.py              │   reads files, prints, exits\n        │  ┌───────────────────────┐  │\n        │  │  core: pure functions │  │   data in → data out\n        │  └───────────────────────┘  │\n        └─────────────────────────────┘\n```\n\nThe **functional core** takes values and returns values. No `open`, no `print`, no `sys.exit`. Give it a list of expenses and it hands back a list of totals. It does not know where the list came from or where the answer will go, and it gives the same answer every time it gets the same values. Functions like that are called **pure**: data in, data out.\n\nThe **imperative shell** is the only place that touches the world. It reads the input, calls the core, shows what the core returned and decides the exit code. It should be thin: a few lines of calls, very little logic of its own.\n\nWhat counts as touching the world? Part 2 of lab 07 gives the checklist you used on your own repo: every place your code reads or writes a file, calls `print`, or calls `sys.exit`, and typer's `typer.echo` and `raise typer.Exit` count too. Lab 08 adds the network. Reading the clock counts as well: the demo's `add` command calls `datetime.date.today()` in `cli.py`, the shell, and a core function that read the clock would give a different answer tomorrow for the same arguments. A function that does any of these is shell. A function that only computes from its arguments and returns the result can be core.\n\nThe lab asked each group to write that list down, because it is the shell of the project: \"next week's tests will want everything else to be pure.\" If the I/O turns out to be spread across many functions, the lab calls that \"a finding, not a failure\". Finding it is the first step to fixing it.",
+   "key_points": [
+    "Core: takes values, returns values. No `open`, no `print`, no `sys.exit`.",
+    "Shell: the only place that touches the world (files, the terminal, the exit code). Keep it thin.",
+    "`typer.echo` and `raise typer.Exit` are I/O too: they belong in the shell.",
+    "Quick test for core: could a test call it with values typed into the test and check what it returns?"
+   ],
+   "exam_note_md": "Expect to sort functions (or single lines) into core and shell, or to spot the one `print` or `open` hiding inside a function that should be pure.",
+   "source_ref": "S7 slides 12–13; labs/07-refactor.md Part 2 step 3; labs/08-tdd.md step 1",
+   "check": [
+    "core-shell-failing-q01",
+    "core-shell-failing-q02"
+   ]
+  },
+  {
+   "id": "core-shell-failing-s2",
+   "heading": "The demo: four lines, two layers",
+   "body_md": "The expense-tracker shows the split in a handful of lines. This is slide 14, the `report` command at v0.3:\n\n```python\nexpenses = read_expenses(path)                       # shell: touches a file\ntotals = total_by_category(expenses, category, minimum)   # core: pure\nlines = format_report(path, category, minimum, totals, largest)  # core: pure\nfor line in lines:\n    print(line)                                      # shell: prints\n```\n\nRead it top to bottom. The shell fetches data from the world: `read_expenses` opens the CSV and turns each row into an `Expense`. It hands plain values to the core: `total_by_category` takes the list and returns `(category, total)` pairs, and `format_report` turns the totals into the report's lines and returns them without printing. Only then does the shell touch the world again: the loop prints. (The repo's loop calls `typer.echo(line)`, typer's version of `print`, and the slide leaves out one more pure call, `largest = largest_expense(expenses)`.)\n\nThe slide's key sentence: `total_by_category` does not know that a CSV exists. Give it a list and it works. The list could come from a CSV file, a database, a web form or a test that types three `Expense` objects by hand. The function cannot tell the difference, and that is the point.\n\nHow the demo got here:\n\n- **v0.1**: one `run()` did five jobs: opened and parsed the file, handled the failure, printed the header, totalled by category, found the largest and printed it (session 6).\n- **`9d6c607`** \"Separate reading and printing from the calculation\": `read_expenses`, `largest_expense` and `format_report` appear beside the existing `total_by_category`, and a short `run()` reads, calls and prints.\n- **v0.2**: that `run()` still lives in `report.py` and still calls `print` and `sys.exit(1)`.\n- **`15836e1`** \"Move printing and exiting out of the report module\": the reading, printing and exiting move into the `report` command in `cli.py`. The next commit switches on strict type checking, and the tag v0.3 marks both: \"Functional core, imperative shell, strict types\". Since then `report.py` has no `print` and no `sys.exit`.\n\nOne detail to read carefully: `read_expenses` is still defined in `report.py`, yet slide 14 labels it shell, because it opens a file. Core or shell is decided by what a function does, not by the file it lives in.",
+   "key_points": [
+    "Shell reads, core computes and formats, shell prints: in that order.",
+    "`total_by_category` does not know that a CSV exists. Give it a list and it works.",
+    "`format_report` returns lines; it does not print them. Computation is not output.",
+    "Core or shell is decided by what a function does, not by the file it lives in."
+   ],
+   "exam_note_md": "A likely artefact: these lines, or the v0.2 → v0.3 diff, with the question 'which lines touch the world?' or 'what moved, and why?'.",
+   "source_ref": "S7 slide 14; expense-tracker 9d6c607, 04d699f, 15836e1; S6 slide 18",
+   "check": [
+    "core-shell-failing-q03",
+    "core-shell-failing-q04"
+   ]
+  },
+  {
+   "id": "core-shell-failing-s3",
+   "heading": "Why we care: testable, reusable, replaceable",
+   "body_md": "Slide 15 gives three reasons for the split.\n\n**Testable.** You test a core function by passing a list and checking the answer: no file, no setup, no clean-up. Session 8 called it \"pure functions test themselves\", and its first test does just that:\n\n```python\ndef test_totals_are_grouped_by_category() -> None:\n    expenses = [\n        Expense(\"2025-07-01\", \"Bar Ramon\", \"dining\", 10.0),\n        Expense(\"2025-07-02\", \"Zara\", \"clothing\", 40.0),\n        Expense(\"2025-07-03\", \"Bar Ramon\", \"dining\", 5.0),\n    ]\n    result = total_by_category(expenses, category=\"\", minimum=0.0)\n    assert result == [(\"clothing\", 40.0), (\"dining\", 15.0)]\n```\n\nA function that prints its answer instead of returning it can only be looked at. Its result is `None`, and session 8's \"three that will bite\" puts it plainly: you cannot assert on a `print`. Make it return, and print in the shell. If a function you want to test needs a file, ask: can I split the file reading out?\n\n**Reusable.** The same core can serve a CLI today and a web page later. The web page brings its own shell (read a form, show a page) and calls the same `total_by_category`.\n\n**Replaceable.** In session 17 the data moves into a database. Only the shell's reading changes: something that queries the database and still returns a `list[Expense]`. The core, and every test of the core, stay as they are.\n\nThe shell still deserves a test or two, but they are the expensive kind. Session 8's 2×2 diagram rates code by the benefit of unit-testing it (how non-obvious it is) against the cost (how many dependencies it has):\n\n| | Few dependencies (cheap to test) | Many dependencies (expensive to test) |\n|---|---|---|\n| Non-obvious code (high benefit) | **Algorithms**: pure logic such as `total_by_category` | **Overcomplicated code – needs refactoring**: logic mixed with I/O, like v0.1's `run()` |\n| Obvious code (low benefit) | **Trivial code** | **Coordinators**: code that only calls other parts, like the `report` command |\n\nThat is why Checkpoint 2 wants most tests on pure functions with plain data, and at most one or two with `tmp_path`, `CliRunner` or `monkeypatch`, chosen on purpose.",
+   "key_points": [
+    "Testable: pass a list, check the answer. No file needed.",
+    "Reusable: the same core behind a CLI today and a web page later.",
+    "Replaceable: session 17's database only changes the shell.",
+    "You cannot assert on a `print`. Make it return, and print in the shell."
+   ],
+   "exam_note_md": "The three words are easy marks in an open answer, but only when tied to the code in front of you: say which test becomes possible, or which part a database would change.",
+   "source_ref": "S7 slide 15; S8 slides 17–23, 28; slides/image-only-slides.md (S8 slide 18)",
+   "check": [
+    "core-shell-failing-q05",
+    "core-shell-failing-q07",
+    "core-shell-failing-q08"
+   ]
+  },
+  {
+   "id": "core-shell-failing-s4",
+   "heading": "Structure in your project: Checkpoint 2 and the rubric",
+   "body_md": "The course marks the split twice.\n\n**Checkpoint 2, item 3** (session 8 slide 29): most tests call pure functions with plain data; at most one or two use `tmp_path`, `CliRunner` or `monkeypatch`, on purpose. Session 7 slide 15 states the same item from the code's side: the code your tests call has no `print` and no file I/O.\n\n**The partial submission's Structure criterion** (marked at your `v0.5` tag):\n\n| Score | What the rubric says |\n|---|---|\n| 3 | `src/<package>/` layout. Computation lives in functions that take and return plain data; reading files and printing live in a thin outer layer. No module does both. |\n| 2 | Layout is right, but one function still mixes computing with reading or printing. |\n| 1 | Layout is right, but logic is mostly inside the command functions. |\n| 0 | A script, or code outside `src/`. |\n\n\"No module does both\" is the strict version of the rule: modules of pure functions on one side; on the other, a thin layer that does the I/O (your `cli.py`, perhaps with a small module that reads and writes your data files). The demo keeps `read_expenses` inside `report.py`; in your own project, giving the file reading a module of its own is the simplest way to meet the criterion. Session 6's naming table even has a name of the right kind: `storage.py`, a module name that says what it is for.\n\n**The refactoring that gets you there.** Slide 5's list of refactoring moves includes *separate I/O from logic*: the demo's `run()` split into read, compute, format. Described in words, as the exam will ask for it, for any function that reads, decides and prints:\n\n1. Find the decision inside it: the total, the fee, the grade.\n2. Move it into a new function whose parameters are the values it needs and which returns the answer.\n3. Leave the reading and printing in a thin function that calls the new one.\n4. Run the program: the output must not change, or it was not a refactoring. Then write the first test for the new function.\n\nSession 8's lab slide says the same: if your logic is tangled up with `print` or `open`, split it first. \"That is refactoring under test.\"",
+   "key_points": [
+    "CP2 item 3: the code your tests call has no `print` and no file I/O.",
+    "Structure 3: computation in functions that take and return plain data, I/O in a thin outer layer, no module does both.",
+    "Structure 2: one function still mixes computing with reading or printing. Structure 1: logic mostly inside the commands.",
+    "The fix is a refactoring (separate I/O from logic), so the output does not change."
+   ],
+   "exam_note_md": "The 'describe in words how you would change it' part of an open question (sample Q7.3) is this refactoring: name the pure function, what it takes and returns, and what stays in the shell.",
+   "source_ref": "partial-rubric.txt (Structure, Tests); S7 slides 5, 15, 22; S8 slides 27–29; labs/08-tdd.md; S6 slide 15",
+   "check": [
+    "core-shell-failing-q10",
+    "core-shell-failing-q11",
+    "core-shell-failing-q12"
+   ]
+  },
+  {
+   "id": "core-shell-failing-s5",
+   "heading": "Exceptions or return codes",
+   "body_md": "When something goes wrong, or there is nothing to return, how does a function say so? Slide 17:\n\n| Situation | What the function does |\n|---|---|\n| The caller can't carry on | `raise` an exception |\n| A normal \"no result\" | return `None` or empty |\n| Crossing to the shell | translate to an exit code |\n\n**Raise** when going on would produce nonsense. Give `read_expenses` a path that does not exist and `open` raises `FileNotFoundError`, a kind of `OSError`; give it a row whose amount is `forty` and `float` raises `ValueError`. No report can be built, so the exception travels up to code that can decide what to do.\n\n**Return `None` or empty** when \"nothing\" is a normal answer. `largest_expense([])` returns `None`: there is no largest of nothing. `total_by_category` for a category nobody used returns `[]`. The return type says so (`-> Expense | None`), and `mypy --strict` then refuses code that uses the result without checking it: session 7's `Item \"None\" of \"Expense | None\" has no attribute \"amount\"`.\n\n**Translate at the shell.** The edge of the program turns an exception into what users and scripts understand: a message and a non-zero exit code. That is the section \"Fail loudly, at the boundary\".\n\n**Do not return -1 and hope somebody checks.** A value like `-1` looks like an ordinary number, so it flows into sums without complaint, and the type checker cannot help, since mypy accepts `-1` wherever a `float` is promised. We ran this:\n\n```python\nPRICES = {\"rice\": 1.20, \"tomatoes\": 2.10, \"olive oil\": 6.50}\n\n\ndef price_of(item: str) -> float:\n    if item not in PRICES:\n        return -1\n    return PRICES[item]\n```\n\nA shopping list of rice, tomatoes and saffron totals `2.30` (1.20 + 2.10 − 1), and `mypy --strict` says `Success: no issues found in 1 source file`. Declare `-> float | None`, return `None`, and mypy stops at the line that adds the price: `Unsupported operand types for + (\"float\" and \"None\")`. The missing case can no longer be forgotten.\n\nThe opposite mistake is as bad. If `read_expenses` returned `[]` for a missing file, a misspelt file name would print a tidy report with `TOTAL 0.00` and exit 0. A missing file is a failure, not an empty month.",
+   "key_points": [
+    "Caller can't carry on → raise. Normal \"no result\" → `None` or empty. Crossing to the shell → exit code.",
+    "Do not return -1 and hope somebody checks: it adds up like any other number.",
+    "`-> X | None` makes mypy force every caller to handle the missing case.",
+    "A failure is not an empty result: a missing file must not become `[]`."
+   ],
+   "exam_note_md": "Typical questions: 'should this not-found raise or return None?', and a function returning -1 whose caller forgets to check. Justify with the table's words.",
+   "source_ref": "S7 slides 17, 8; expense-tracker report.py (v0.3)",
+   "check": [
+    "core-shell-failing-q15",
+    "core-shell-failing-q16",
+    "core-shell-failing-q19"
+   ]
+  },
+  {
+   "id": "core-shell-failing-s6",
+   "heading": "Catch only what you can handle",
+   "body_md": "v0.1 wrapped its file reading like this (slide 18):\n\n```python\ntry:\n    ...\nexcept:                       # ← v0.1\n    print(\"could not read \" + path)\n    sys.exit(1)\n```\n\nAn `except:` with nothing after it is a **bare except**: it catches every exception raised inside its `try`, whatever its kind. It feels safe and is the opposite. Whatever goes wrong inside the `try`, the user reads the same sentence. In the slide's words, a bare except hides every bug: a typo, a missing import, Ctrl-C. All become \"could not read\".\n\nWe tried it. Misspell `float` as `flaot` in v0.1's reading loop and run the report on a perfectly good file:\n\n```console\n$ uv run expenses report expenses.csv\ncould not read expenses.csv\n$ echo $?\n1\n```\n\nThe file is fine and the code is broken, yet the message blames the file. Ctrl-C does the same: pressing it raises `KeyboardInterrupt` inside the program, the bare except catches it, and v0.1 prints `could not read big.csv` as if the file were damaged.\n\nv0.2 (commit `04d699f`) names the two failures it expects:\n\n```python\nexcept (OSError, ValueError):     # ← v0.2: only the two we expect\n```\n\n- `OSError`: the file is missing, is a folder, or cannot be read.\n- `ValueError`: an amount is not a number, as in `float(\"forty\")`.\n\nBoth are problems with the input, which the user can fix, and for both the right reaction is a message and exit code 1. Everything else is a bug in the code, or the user stopping the program, and must not be disguised. With the same typo, v0.2 crashes with a traceback that points at the line and ends `NameError: name 'flaot' is not defined`. For a bug, that is the right result: it is addressed to the developer and names what to fix. From v0.2 the project runs ruff, which flags `flaot` before anything runs (`F821 Undefined name`), and a missing import the same way. The bare except does most harm with the bugs no tool sees, such as reading `row[4]` from a four-column file.\n\nRuff also has a rule against the bare except itself: the course's rule set includes `E722` (Do not use bare `except`), and v0.2 had to be ruff clean. Silencing it with `except Exception:` is not a fix: ruff passes, but a typo or a wrong column number is an `Exception` too and still comes out as \"could not read\". Of the slide's three, only Ctrl-C escapes, because `KeyboardInterrupt` is not an `Exception`.",
+   "key_points": [
+    "A bare `except:` turns everything raised inside its `try` (a typo, a missing import, Ctrl-C) into the same misleading message.",
+    "Catch only what you can handle: v0.2 names `(OSError, ValueError)`, the two failures it expects.",
+    "Bad input gets a clear message; a bug gets a traceback that names the line.",
+    "`except Exception:` silences ruff's `E722` but still hides typos."
+   ],
+   "exam_note_md": "Expect a short program with a bare except and a typo or Ctrl-C: predict the misleading output, then judge a proposed fix such as `except Exception:`.",
+   "source_ref": "S7 slide 18; expense-tracker v0.1, 04d699f; ruff E722 and F821 (run)",
+   "check": [
+    "core-shell-failing-q21",
+    "core-shell-failing-q22",
+    "core-shell-failing-q48"
+   ]
+  },
+  {
+   "id": "core-shell-failing-s7",
+   "heading": "Fail loudly, at the boundary",
+   "body_md": "Slide 19 divides the work:\n\n- **Core**: raises on bad input, never prints an error.\n- **Shell**: catches it, prints to stderr, exits non-zero.\n\n```python\ntry:\n    expenses = read_expenses(path)\nexcept (OSError, ValueError) as error:\n    typer.echo(f\"could not read {path}: {error}\", err=True)\n    raise typer.Exit(code=1)\n```\n\n`typer.echo(..., err=True)` writes the message to **stderr**; you first wrote it in lab 01: `typer.echo(\"amount must be positive\", err=True)`. `raise typer.Exit(code=1)` ends the command with exit code 1. Session 5's exit code, with the reason attached: on a missing file this prints `could not read nosuch.csv: [Errno 2] No such file or directory: 'nosuch.csv'`. (The repo prints just `could not read nosuch.csv` and ends with `raise typer.Exit(1) from None`. The `from None` keeps ruff quiet: its rule `B904`, in the course's rule set, flags raising a new exception inside an `except` without `from`.)\n\nWhy not let the core print the error? Because the core does not know who called it. The CLI wants stderr and exit code 1, a web page would want a message on the page, a test wants the exception itself. The core raises; each shell translates.\n\n**v0.2 → v0.3.** At v0.2 this code still sat in `run()` inside `report.py`, with `print` and `sys.exit(1)`. Commit `15836e1` moved it into the `report` command in `cli.py` and switched to `typer.echo(..., err=True)`: \"Moving this to the edge is v0.3.\"\n\n**Why stderr.** A program has two output streams: **stdout** for its output (the report) and **stderr** for messages to the person. When the user sends the output to a file with `>`, or into another program with a pipe, only stdout goes; stderr still reaches the screen. We ran both versions on a missing file:\n\n| What the user typed | v0.2 (`print`) | v0.3 (`err=True`) |\n|---|---|---|\n| the report, sent to `report.txt` | screen silent; the error is inside `report.txt` | error on screen; `report.txt` empty |\n| the report, piped into `wc -l` | prints `1`: the error counted as a line | error on screen, then `0` |\n\nTests can check the streams separately as well: `tests/test_io.py` asserts that the exit code is 1 and that `could not read nosuch.csv` is in `result.stderr`.\n\n**Why the exit code.** 0 means success, anything else failure, and `&&`, scripts and CI all read that number. Session 5: a program that prints an error and exits 0 is a program that lies.",
+   "key_points": [
+    "Core raises, never prints an error. Shell catches, writes to stderr, exits non-zero.",
+    "`typer.echo(..., err=True)` plus `raise typer.Exit(code=1)`: session 5's exit code with the reason attached.",
+    "stdout is the program's output; stderr is for the person. Redirect or pipe stdout and errors still reach the screen.",
+    "A program that prints an error and exits 0 is a program that lies.",
+    "v0.2 still printed and exited inside `report.py`; v0.3 moved that to the edge."
+   ],
+   "exam_note_md": "Expect a transcript with `>` or a pipe, or the v0.2 → v0.3 diff: say where the message went, why, and what the exit code tells a script.",
+   "source_ref": "S7 slide 19; S5 slide 9; labs/01-scaffold.md; expense-tracker 15836e1; tests/test_io.py (v0.4); runs on v0.2 and v0.3; ruff B904 (run)",
+   "check": [
+    "core-shell-failing-q27",
+    "core-shell-failing-q28",
+    "core-shell-failing-q30"
+   ]
+  },
+  {
+   "id": "core-shell-failing-s8",
+   "heading": "print is not logging",
+   "body_md": "Some messages are neither the program's output nor an error: \"skipped malformed row 3\", \"read 420 rows\", \"entering the discount rules\". They are the program's diary: useful when you are hunting a problem, noise the rest of the time. Slide 20 says they belong in **logging**, not `print`:\n\n```python\nimport logging\nlogger = logging.getLogger(__name__)\nlogger.warning(\"skipped malformed row %d in %s\", line_number, path)\n```\n\nWhat logging gives you that `print` does not:\n\n- **A level** on every message: `debug`, `info`, `warning`, `error`, from chatty to serious.\n- **Control without editing the code**: messages can be silenced, filtered by level or sent to a file by changing the configuration, without touching the dozens of lines that log.\n- **A separate channel**: `print` is for the program's output; logging is for its diary.\n\n**Configure once, in the shell**: `logging.basicConfig(level=logging.INFO)`, for example in the CLI's typer callback. Modules only ask for a logger with `logging.getLogger(__name__)` and log; they never decide where messages go.\n\nWe added the slide's warning to `read_expenses`, plus an `info` line counting the rows read, and put `logging.basicConfig(level=logging.WARNING)` in `cli.py`. On a file with one broken row, with the report sent to a file:\n\n```console\n$ uv run expenses report small.csv > report.txt\nWARNING:expense_tracker.report:skipped malformed row 3 in small.csv\n```\n\nThe report went into `report.txt` untouched, and the warning still reached the screen, because `basicConfig` writes to stderr unless told otherwise. The `info` line stayed silent at level `WARNING`; changing the level to `INFO` in that one place made it appear. Nothing else in the code changed.\n\nCompare that with the `print(\"DEBUG ...\")` lines a teammate leaves behind while hunting a bug. They land in the report, in anything piped from it and in every test's output, and the only way to turn them off is to find and delete each one.",
+   "key_points": [
+    "`print` is for the program's output; logging is for its diary.",
+    "Levels: debug, info, warning, error. Silence, filter or send to a file without editing the code.",
+    "Configure once, in the shell: `logging.basicConfig(level=logging.INFO)`.",
+    "Modules log through `logging.getLogger(__name__)`; only the shell decides where messages go."
+   ],
+   "exam_note_md": "Expect a scenario ('the team wants to know how many rows are skipped each night') and a choice between `print`, raising, stderr and logging, or a question on where logging is configured.",
+   "source_ref": "S7 slide 20; runs on a logging variant of v0.3",
+   "check": [
+    "core-shell-failing-q39",
+    "core-shell-failing-q41",
+    "core-shell-failing-q44"
+   ]
+  }
+ ],
+ "terms": [
+  {
+   "term": "Functional core",
+   "definition_md": "The inner layer of a program: pure functions that take values and return values. No `open`, no `print`, no `sys.exit`.",
+   "section_ref": "core-shell-failing-s1"
+  },
+  {
+   "term": "Imperative shell",
+   "definition_md": "The thin outer layer and the only place that touches the world: it reads files, prints, and sets the exit code. In the demo, the commands in `cli.py`.",
+   "section_ref": "core-shell-failing-s1"
+  },
+  {
+   "term": "Pure function",
+   "definition_md": "A function whose result depends only on its arguments and which touches nothing outside itself: data in, data out. `total_by_category` is one.",
+   "section_ref": "core-shell-failing-s1"
+  },
+  {
+   "term": "Separate I/O from logic",
+   "definition_md": "The refactoring move that pulls the decision out of a function that reads and prints, leaving a pure function and a thin wrapper. The demo's `run()` split into read, compute, format.",
+   "section_ref": "core-shell-failing-s4"
+  },
+  {
+   "term": "Structure criterion",
+   "definition_md": "Partial-submission rubric criterion: 3 means computation in functions that take and return plain data, reading and printing in a thin outer layer, and no module doing both.",
+   "section_ref": "core-shell-failing-s4"
+  },
+  {
+   "term": "Exception",
+   "definition_md": "An object a function raises when it cannot carry on. It travels up through the callers until one catches it, or the program stops with a traceback.",
+   "section_ref": "core-shell-failing-s5"
+  },
+  {
+   "term": "Return code (`-1`)",
+   "definition_md": "A special value returned to mean failure. It looks like data and adds up silently: \"Do not return -1 and hope somebody checks.\"",
+   "section_ref": "core-shell-failing-s5"
+  },
+  {
+   "term": "Bare except",
+   "definition_md": "`except:` with no exception named. It catches everything raised inside its `try`, so a typo, a missing import or Ctrl-C all produce the same handler's message.",
+   "section_ref": "core-shell-failing-s6"
+  },
+  {
+   "term": "`OSError`",
+   "definition_md": "The family of operating-system failures: file not found (`FileNotFoundError`), permission denied, a folder where a file was expected.",
+   "section_ref": "core-shell-failing-s6"
+  },
+  {
+   "term": "`ValueError`",
+   "definition_md": "Raised when a value has the right type but unusable content, such as `float(\"forty\")`.",
+   "section_ref": "core-shell-failing-s6"
+  },
+  {
+   "term": "`KeyboardInterrupt`",
+   "definition_md": "What Ctrl-C raises inside a Python program. It is not an `Exception`, but a bare `except:` still catches it.",
+   "section_ref": "core-shell-failing-s6"
+  },
+  {
+   "term": "Traceback",
+   "definition_md": "Python's report of an uncaught exception: the chain of calls with files and lines, and the exception's name and message at the bottom.",
+   "section_ref": "core-shell-failing-s6"
+  },
+  {
+   "term": "The boundary",
+   "definition_md": "Where the core meets the shell and the outside world: the place where exceptions are caught and turned into a message on stderr and a non-zero exit code.",
+   "section_ref": "core-shell-failing-s7"
+  },
+  {
+   "term": "stdout",
+   "definition_md": "Standard output: the stream for the program's output, such as the report. `>` and pipes send it elsewhere.",
+   "section_ref": "core-shell-failing-s7"
+  },
+  {
+   "term": "stderr",
+   "definition_md": "Standard error: the stream for messages to the person. It still reaches the screen when stdout is redirected or piped.",
+   "section_ref": "core-shell-failing-s7"
+  },
+  {
+   "term": "Exit code",
+   "definition_md": "The number a program ends with: 0 means success, anything else failure. The shell, `&&` and CI read it.",
+   "section_ref": "core-shell-failing-s7"
+  },
+  {
+   "term": "`typer.echo(..., err=True)`",
+   "definition_md": "typer's print, sent to stderr. With `raise typer.Exit(code=1)` it is how the course's shell reports a failure.",
+   "section_ref": "core-shell-failing-s7"
+  },
+  {
+   "term": "Logging level",
+   "definition_md": "The seriousness of a log message: debug, info, warning, error. The configured level is a threshold; less serious messages are hidden.",
+   "section_ref": "core-shell-failing-s8"
+  },
+  {
+   "term": "`logging.basicConfig`",
+   "definition_md": "Sets up logging (level, destination) in one call. Called once, in the shell; modules only use `logging.getLogger(__name__)`.",
+   "section_ref": "core-shell-failing-s8"
+  }
+ ],
+ "traps": [
+  "`read_expenses` lives in `report.py`, so it is part of the core. **Wrong:** it opens a file, and slide 14 labels it shell. Core or shell is decided by what a function does, not by the file it is in.",
+  "A function that prints its result is fine as long as it also returns it. **Wrong:** it still mixes computation with output, so every caller and every test gets the printing too, and a web page cannot reuse it cleanly. Return the value; print in the shell.",
+  "A bare `except:` is the safe choice, because the program never crashes. **Wrong:** it hides every bug raised inside its `try` (a typo, a missing import, even Ctrl-C) behind one misleading message, and code after the `try` still crashes. Catch only what you can handle.",
+  "`except Exception:` fixes a bare except. **Wrong:** ruff's `E722` goes quiet, but a typo or an `IndexError` is an `Exception` too and is still disguised. Name the failures you expect: `(OSError, ValueError)`.",
+  "Returning `-1`, `0` or `[]` on failure is a simple way to report errors. **Wrong:** these look like data and flow into totals unnoticed, and mypy cannot help. Raise when the caller can't carry on; use `None` with `| None` in the type for a normal \"no result\".",
+  "If the error message is printed, the exit code does not matter. **Wrong:** `&&`, scripts and CI read the exit code, not the text. A program that prints an error and exits 0 is a program that lies.",
+  "Writing to stderr makes the exit code non-zero. **Wrong:** they are separate. `typer.echo(..., err=True)` decides where the message goes; `raise typer.Exit(code=1)` decides how the program ends. Failing well needs both.",
+  "The core should catch its own errors and print a friendly message. **Wrong:** the core does not know who is calling. It raises; each shell (CLI, web page, test) decides how to show the failure.",
+  "A traceback always means the error handling failed. **Wrong:** for a bug, a traceback that names the line is what the developer needs. The rubric's \"not a traceback\" is about bad input, which gets a clear message.",
+  "Logging is `print` with a prefix. **Wrong:** messages have levels, can be silenced, filtered or sent to a file without editing the code, and go to stderr by default, away from the program's output."
+ ],
+ "flashcards": [
+  {
+   "id": "core-shell-failing-f01",
+   "front_md": "What does the functional core do, and what does it never do?",
+   "back_md": "Takes values, returns values. Never `open`, `print` or `sys.exit`.",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s1"
+  },
+  {
+   "id": "core-shell-failing-f02",
+   "front_md": "What is the imperative shell?",
+   "back_md": "The only place that touches the world: it reads files, prints, and sets the exit code. It should be thin.",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s1"
+  },
+  {
+   "id": "core-shell-failing-f03",
+   "front_md": "Lab 07's checklist: what counts as your project's I/O?",
+   "back_md": "Every place that reads or writes a file, calls `print`, or calls `sys.exit`. `typer.echo` and `raise typer.Exit` count too.",
+   "kind": "recall",
+   "section_ref": "core-shell-failing-s1"
+  },
+  {
+   "id": "core-shell-failing-f04",
+   "front_md": "`expenses = read_expenses(path)`: core or shell?",
+   "back_md": "Shell: it touches a file (slide 14), even though it lives in `report.py` and returns a value.",
+   "kind": "reading",
+   "section_ref": "core-shell-failing-s2"
+  },
+  {
+   "id": "core-shell-failing-f05",
+   "front_md": "`totals = total_by_category(expenses, category, minimum)`: core or shell?",
+   "back_md": "Core: pure. It does not know that a CSV exists; give it a list and it works.",
+   "kind": "reading",
+   "section_ref": "core-shell-failing-s2"
+  },
+  {
+   "id": "core-shell-failing-f06",
+   "front_md": "What did the commit \"Move printing and exiting out of the report module\" (between v0.2 and v0.3) change?",
+   "back_md": "The reading, error handling and printing moved from `run()` in `report.py` to the `report` command in `cli.py`, and the error now goes to stderr. Since then `report.py` has no `print` and no `sys.exit`. The next commit added pytest and strict mypy; the tag v0.3 sits on that one.",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s2"
+  },
+  {
+   "id": "core-shell-failing-f07",
+   "front_md": "Slide 15's three reasons for a functional core?",
+   "back_md": "Testable (pass a list, check the answer), reusable (CLI today, web page later), replaceable (session 17's database only changes the shell).",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s3"
+  },
+  {
+   "id": "core-shell-failing-f08",
+   "front_md": "Why can't you test a function that prints its result?",
+   "back_md": "It returns `None`; you cannot assert on a `print`. Make it return, and print in the shell.",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s3"
+  },
+  {
+   "id": "core-shell-failing-f09",
+   "front_md": "Session 8's 2×2: Algorithms vs Coordinators?",
+   "back_md": "Algorithms: high benefit, low cost to test (pure logic). Coordinators: low benefit, high cost (code that only wires parts together, like the shell).",
+   "kind": "distinction",
+   "section_ref": "core-shell-failing-s3"
+  },
+  {
+   "id": "core-shell-failing-f10",
+   "front_md": "Partial rubric, Structure 3?",
+   "back_md": "`src/` layout; computation in functions that take and return plain data; reading files and printing in a thin outer layer; no module does both.",
+   "kind": "recall",
+   "section_ref": "core-shell-failing-s4"
+  },
+  {
+   "id": "core-shell-failing-f11",
+   "front_md": "Structure 2 vs Structure 1?",
+   "back_md": "2: one function still mixes computing with reading or printing. 1: logic is mostly inside the command functions.",
+   "kind": "distinction",
+   "section_ref": "core-shell-failing-s4"
+  },
+  {
+   "id": "core-shell-failing-f12",
+   "front_md": "First refactoring for a function that reads, computes and prints?",
+   "back_md": "Move the decision into a function that takes values and returns the answer; leave reading and printing in a thin wrapper; check the output is unchanged; then test the new function.",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s4"
+  },
+  {
+   "id": "core-shell-failing-f13",
+   "front_md": "Slide 17's table: three situations and what to do.",
+   "back_md": "Caller can't carry on: raise. A normal \"no result\": return `None` or empty. Crossing to the shell: translate to an exit code.",
+   "kind": "recall",
+   "section_ref": "core-shell-failing-s5"
+  },
+  {
+   "id": "core-shell-failing-f14",
+   "front_md": "Why not return `-1` on failure?",
+   "back_md": "It looks like a number, so it flows into totals silently, and mypy cannot see it. \"Do not return -1 and hope somebody checks.\"",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s5"
+  },
+  {
+   "id": "core-shell-failing-f15",
+   "front_md": "`return None` vs `raise`?",
+   "back_md": "`None`: nothing is a normal answer (largest of an empty list, a plate not in the car park). Raise: going on would be nonsense (a missing file, an amount of `forty`).",
+   "kind": "distinction",
+   "section_ref": "core-shell-failing-s5"
+  },
+  {
+   "id": "core-shell-failing-f16",
+   "front_md": "What does a bare `except:` hide?",
+   "back_md": "Every error raised inside its `try`: a typo, a missing import, even Ctrl-C. All become \"could not read\".",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s6"
+  },
+  {
+   "id": "core-shell-failing-f17",
+   "front_md": "Which exceptions does v0.2 catch, and what does each mean?",
+   "back_md": "`OSError`: the file is missing or unreadable. `ValueError`: an amount is not a number.",
+   "kind": "recall",
+   "section_ref": "core-shell-failing-s6"
+  },
+  {
+   "id": "core-shell-failing-f18",
+   "front_md": "Bad input vs a bug: what should each produce?",
+   "back_md": "Bad input: a clear message on stderr and a non-zero exit code. A bug: a traceback naming the line, for the developer.",
+   "kind": "distinction",
+   "section_ref": "core-shell-failing-s6"
+  },
+  {
+   "id": "core-shell-failing-f19",
+   "front_md": "ruff says `E722 Do not use bare except`. Is `except Exception:` the fix?",
+   "back_md": "No. Ruff passes, but bugs such as `NameError` or `IndexError` are still `Exception`s and still disguised. Name `(OSError, ValueError)`.",
+   "kind": "reading",
+   "section_ref": "core-shell-failing-s6"
+  },
+  {
+   "id": "core-shell-failing-f20",
+   "front_md": "Fail loudly at the boundary: who does what?",
+   "back_md": "Core: raises on bad input, never prints an error. Shell: catches it, prints to stderr, exits non-zero.",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s7"
+  },
+  {
+   "id": "core-shell-failing-f21",
+   "front_md": "`typer.echo(msg, err=True)` and `raise typer.Exit(code=1)`: what does each do?",
+   "back_md": "The first writes the message to stderr; the second ends the command with exit code 1.",
+   "kind": "reading",
+   "section_ref": "core-shell-failing-s7"
+  },
+  {
+   "id": "core-shell-failing-f22",
+   "front_md": "Why do errors go to stderr?",
+   "back_md": "Redirecting or piping stdout leaves stderr on screen, so the person still sees the error; and tests can check `result.stderr` separately.",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s7"
+  },
+  {
+   "id": "core-shell-failing-f23",
+   "front_md": "Complete session 5's line: \"A program that prints an error and exits 0...\"",
+   "back_md": "\"...is a program that lies.\" `&&`, scripts and CI trust the exit code.",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s7"
+  },
+  {
+   "id": "core-shell-failing-f24",
+   "front_md": "`print` vs logging?",
+   "back_md": "`print` is for the program's output; logging is for its diary, with levels and control without editing the code.",
+   "kind": "distinction",
+   "section_ref": "core-shell-failing-s8"
+  },
+  {
+   "id": "core-shell-failing-f25",
+   "front_md": "The logging levels, from chatty to serious?",
+   "back_md": "debug, info, warning, error.",
+   "kind": "recall",
+   "section_ref": "core-shell-failing-s8"
+  },
+  {
+   "id": "core-shell-failing-f26",
+   "front_md": "Where and how is logging configured?",
+   "back_md": "Once, in the shell: `logging.basicConfig(level=logging.INFO)`. Modules only call `logging.getLogger(__name__)` and log.",
+   "kind": "concept",
+   "section_ref": "core-shell-failing-s8"
+  }
+ ],
+ "questions": [
+  {
+   "id": "core-shell-failing-q01",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Session 7 draws the functional core inside the imperative shell. Which description of the **core** matches the slides?",
+   "explanation_md": "Slide 13: \"Core: takes values, returns values. No `open`, no `print`, no `sys.exit`. Shell: the only place that touches the world.\" What makes a function core is what it does; its size, its file and its place in the call chain do not matter. Reading the CSV and the typer commands both touch the world, so they belong to the shell that wraps the core. The core is what is left when every read, print and exit has been pushed outwards: plain computation from arguments to a returned result.",
+   "section_ref": "core-shell-failing-s1",
+   "source_ref": "S7 slide 13",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "Functions that open the CSV file and turn each row into an `Expense`",
+     "correct": false,
+     "why_md": "Opening a file is touching the world. Slide 14 labels `read_expenses` \"shell: touches a file\", even though it returns a value."
+    },
+    {
+     "text_md": "Functions that take values and return values, with no `open`, `print` or `sys.exit`",
+     "correct": true,
+     "why_md": "Slide 13 word for word: data in, data out. Such a function can be called from a test, a CLI or a web page."
+    },
+    {
+     "text_md": "The typer commands, because they are what the user runs first and they call the rest",
+     "correct": false,
+     "why_md": "The commands in `cli.py` are the shell: they read, print and exit. Being the entry point makes them the outer layer."
+    },
+    {
+     "text_md": "Any function short enough to read on one screen, since a short function has one job",
+     "correct": false,
+     "why_md": "Length is a clean-code concern (one function, one job). A three-line function that calls `print` is still shell."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q02",
+   "type": "sort",
+   "level": "exam",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "A parking-lot group lists some functions from their project. Put each one where it belongs **as it is written now**. \"Mixed\" means the function does both kinds of work and needs splitting before its logic can be tested with plain data.",
+   "explanation_md": "The test is the slide's: does the function take values and return values with no `open`, `print` or `sys.exit`? Then it is core, whatever file it sits in. Does it only touch the world and call the core (read, write, echo, exit)? Then it is shell, and it should stay thin. Does it do both? Then it is mixed, and the first refactoring is to pull the decision out into a pure function and leave the I/O in a thin wrapper. Returning a value is not enough to be core: `busiest_hour` returns an `int` but still opens a file.",
+   "section_ref": "core-shell-failing-s1",
+   "source_ref": "S7 slides 13–14; labs/07-refactor.md Part 2; project brief (parking lot)",
+   "origin": "slides",
+   "verified_by": "reasoning",
+   "categories": [
+    {
+     "id": "core",
+     "label": "Core: takes values, returns values"
+    },
+    {
+     "id": "shell",
+     "label": "Shell: touches the world, little logic"
+    },
+    {
+     "id": "mixed",
+     "label": "Mixed: needs splitting"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "`fee(minutes: int) -> float` applies the pricing bands to a number of minutes and returns the fee",
+     "category": "core",
+     "why_md": "Number in, number out. A test calls `fee(45)` or `fee(125)` and checks the answer; no file, no terminal."
+    },
+    {
+     "text_md": "`load_tickets(path: str) -> list[Ticket]` opens `tickets.json` and builds a `Ticket` for each entry",
+     "category": "shell",
+     "why_md": "It opens a file. Like `read_expenses`, it is shell work even though it returns a value."
+    },
+    {
+     "text_md": "`find_ticket(tickets: list[Ticket], plate: str) -> Ticket | None` returns the ticket for a plate, or `None`",
+     "category": "core",
+     "why_md": "It searches a list it was given. `None` is the normal \"no result\"."
+    },
+    {
+     "text_md": "`free_spaces(tickets: list[Ticket], capacity: int) -> int`",
+     "category": "core",
+     "why_md": "Computes from its arguments and returns a number."
+    },
+    {
+     "text_md": "`receipt_lines(ticket: Ticket, amount: float) -> list[str]` builds the receipt's lines and returns them",
+     "category": "core",
+     "why_md": "Like `format_report`: it builds text and returns it. Printing is the shell's job."
+    },
+    {
+     "text_md": "The typer command `leave(plate: str)` calls `load_tickets`, `find_ticket`, `fee` and `receipt_lines`, echoes the lines, and raises `typer.Exit(code=1)` for an unknown plate",
+     "category": "shell",
+     "why_md": "It reads, prints and sets the exit code, and leaves every decision to the core: the shape of v0.3's `report` command."
+    },
+    {
+     "text_md": "`save_ticket(path: str, ticket: Ticket) -> None` appends a ticket to `tickets.json`",
+     "category": "shell",
+     "why_md": "Writing a file is touching the world."
+    },
+    {
+     "text_md": "`charge(path: str, plate: str) -> None` opens `tickets.json`, works out the fee with its own `if`/`elif` bands and prints the amount",
+     "category": "mixed",
+     "why_md": "Reading, the pricing rules and printing in one function: the rules cannot be tested without a file, and the result can only be looked at."
+    },
+    {
+     "text_md": "`busiest_hour(log_path: str) -> int` reads the entry log and returns the hour with the most arrivals",
+     "category": "mixed",
+     "why_md": "It returns a value, but it opens a file to get its data. Split the counting (a list of arrival times in, an hour out) from the reading."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q03",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "read-code"
+   ],
+   "stem_md": "This is the expense-tracker's `report` command at v0.3, slightly simplified:\n\n```python\nexpenses = read_expenses(path)\ntotals = total_by_category(expenses, category, minimum)\nlargest = largest_expense(expenses)\nlines = format_report(path, category, minimum, totals, largest)\nfor line in lines:\n    print(line)\n```\n\nWhich parts touch the world?",
+   "explanation_md": "Slide 14 annotates these lines: `read_expenses` is \"shell: touches a file\", `total_by_category` and `format_report` are \"core: pure\", and the loop is \"shell: prints\". `largest_expense` is pure too. This is the shape of every well-split command: the shell gets data from the world, passes plain values through the core, then shows the result. Reading counts as touching the world just as much as printing does.",
+   "section_ref": "core-shell-failing-s2",
+   "source_ref": "S7 slide 14",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "The first line and the `for` loop at the end",
+     "correct": true,
+     "why_md": "`read_expenses` opens the CSV and the loop prints. Everything in between takes values and returns values."
+    },
+    {
+     "text_md": "The calls to `total_by_category`, `largest_expense` and `format_report`",
+     "correct": false,
+     "why_md": "These are the core: slide 14 labels them \"core: pure\". They receive a list and return lists or an `Expense`."
+    },
+    {
+     "text_md": "Only the `for` loop, because it is the only line that prints",
+     "correct": false,
+     "why_md": "Printing is one way to touch the world; reading a file is another. `read_expenses` is \"shell: touches a file\"."
+    },
+    {
+     "text_md": "Only the first line, because `format_report` already printed the report",
+     "correct": false,
+     "why_md": "`format_report` returns a list of strings and prints nothing. Computation is not output (session 6)."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q04",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Slide 14 says: \"`total_by_category` does not know that a CSV exists. Give it a list and it works.\" What does this mean in practice?",
+   "explanation_md": "The function's parameters are a `list[Expense]`, a category and a minimum; it returns a list of pairs. Nothing in it opens, reads or parses. That is why session 8's first test builds three `Expense` objects by hand and checks the result, and why session 17's database will not touch this function. A function that knows nothing about where its data came from can be fed from anywhere, including a test.",
+   "section_ref": "core-shell-failing-s2",
+   "source_ref": "S7 slide 14; S8 slides 6, 19",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "It can read any file format, so CSV, JSON and Excel files all work without changes",
+     "correct": false,
+     "why_md": "It reads no file at all, so the file format never reaches it."
+    },
+    {
+     "text_md": "It skips malformed CSV rows, so a broken file cannot make it fail",
+     "correct": false,
+     "why_md": "Skipping rows that are not four fields is `read_expenses`'s job. `total_by_category` never sees a row, only `Expense` objects."
+    },
+    {
+     "text_md": "A test can pass it a few `Expense` objects built by hand, with no file anywhere",
+     "correct": true,
+     "why_md": "That is what session 8's first test does: pass a list, check the answer. No setup, no clean-up."
+    },
+    {
+     "text_md": "It has to be called after `read_expenses`, so that the CSV is already open",
+     "correct": false,
+     "why_md": "It needs a list, and the list can come from a CSV, a database or a test."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q05",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "In session 17 the expense-tracker will keep its expenses in a database instead of `expenses.csv`. If the v0.3 split is kept, what has to change?",
+   "explanation_md": "The core's contract is a `list[Expense]` in and plain values out. Swap the CSV reader for a database query that returns the same list, and `total_by_category`, `largest_expense`, `format_report` and all their plain-list tests are untouched. Without the split, the database change would mean rewriting the one big function that reads, computes and prints, and every test that went through it.",
+   "section_ref": "core-shell-failing-s3",
+   "source_ref": "S7 slide 15",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "`total_by_category` and `format_report`, which must learn to read database rows",
+     "correct": false,
+     "why_md": "They never read anything: they take a `list[Expense]`. That is why they survive the change."
+    },
+    {
+     "text_md": "Every test in `tests/test_report.py`, because the data no longer comes from a file",
+     "correct": false,
+     "why_md": "Those tests build their lists by hand and never touched a file, so they keep passing untouched."
+    },
+    {
+     "text_md": "Nothing at all, because a functional core makes a program independent of its storage",
+     "correct": false,
+     "why_md": "Something still has to fetch the data. Replaceable means only the shell changes."
+    },
+    {
+     "text_md": "Only the reading at the edge: a database query that still returns a `list[Expense]`",
+     "correct": true,
+     "why_md": "Slide 15: \"Replaceable: session 17's database only changes the shell.\""
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q06",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "Later in the course the team wants a small web page that shows the same expense report. Which v0.3 code can the web page reuse unchanged?",
+   "explanation_md": "\"Reusable: the same core can serve a CLI today and a web page later\" (slide 15). The core functions take values and return values, so any shell can call them: the CLI's `report` command prints the lines and sets an exit code; a web page would read its input from a form and put the lines on a page. What cannot be reused is the CLI's own shell, because `typer.echo` and `typer.Exit` only make sense in a terminal. It is also why the core must never print or exit: a `sys.exit` inside a reused function would end whatever program called it.",
+   "section_ref": "core-shell-failing-s3",
+   "source_ref": "S7 slide 15",
+   "origin": "slides",
+   "verified_by": "reasoning",
+   "options": [
+    {
+     "text_md": "The `report` command in `cli.py`, because it already produces the whole report from start to end",
+     "correct": false,
+     "why_md": "That command is the CLI's shell: it echoes to a terminal and ends with exit codes. A web page needs its own way to show results and errors."
+    },
+    {
+     "text_md": "`total_by_category`, `largest_expense` and `format_report`, called from the web page's own shell",
+     "correct": true,
+     "why_md": "Slide 15: the same core can serve a CLI today and a web page later. Only the shell is new."
+    },
+    {
+     "text_md": "None of it, because a web page needs its own version of every function in the project",
+     "correct": false,
+     "why_md": "That is the situation the split avoids. The computations do not depend on how the result is shown."
+    },
+    {
+     "text_md": "Only `read_expenses`, because a report is computed differently on a web page than in a terminal",
+     "correct": false,
+     "why_md": "Backwards: the computation is the same everywhere; the I/O around it is what differs between a terminal and a page."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q07",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output"
+   ],
+   "stem_md": "A gradebook teammate writes a first test for this function:\n\n```python\ndef print_final_grade(marks: list[float], weights: list[float]) -> None:\n    grade = sum(mark * weight for mark, weight in zip(marks, weights, strict=True))\n    print(f\"Final grade: {grade:.1f}\")\n```\n\n```python\ndef test_final_grade_is_the_weighted_average() -> None:\n    assert print_final_grade([80.0, 60.0], [0.5, 0.5]) == 70.0\n```\n\n`uv run pytest` shows (trimmed):\n\n```text\n    def test_final_grade_is_the_weighted_average() -> None:\n>       assert print_final_grade([80.0, 60.0], [0.5, 0.5]) == 70.0\nE       assert None == 70.0\nE        +  where None = print_final_grade([80.0, 60.0], [0.5, 0.5])\n\ntests/test_grades.py:5: AssertionError\n----------------------------- Captured stdout call -----------------------------\nFinal grade: 70.0\n=========================== short test summary info ============================\nFAILED tests/test_grades.py::test_final_grade_is_the_weighted_average - asser...\n1 failed in 0.01s\n```\n\nWhat can you conclude?",
+   "explanation_md": "pytest shows both sides of the assert: the left side is `None`, and the \"Captured stdout call\" section shows that the function printed `Final grade: 70.0`. The rule is right, but its result went to the screen instead of back to the caller. This is session 6's \"computation is not output\" and session 8's \"the function prints\" trap. The fix is a refactoring: a function that returns the grade, tested with plain lists, and a shell that prints it. (`mypy --strict` flags the test as well: `\"print_final_grade\" does not return a value (it only ever returns None)  [func-returns-value]`.)",
+   "section_ref": "core-shell-failing-s3",
+   "source_ref": "S8 slides 19, 28; S6 slide 20",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The calculation is wrong, because the function produced `None` instead of 70.0",
+     "correct": false,
+     "why_md": "The captured output shows `Final grade: 70.0`: the arithmetic is right. `None` is what any function without a `return` gives back."
+    },
+    {
+     "text_md": "The test needs `pytest.approx`, because a float such as 70.0 cannot be compared with `==`",
+     "correct": false,
+     "why_md": "A tolerance helps when two floats are nearly equal. Here one side is `None`, which no tolerance turns into 70.0."
+    },
+    {
+     "text_md": "The test should use `tmp_path`, so that the function has a real file to work with",
+     "correct": false,
+     "why_md": "The function reads no file. `tmp_path` is for the one place you read or write a file."
+    },
+    {
+     "text_md": "The sum is right, but the function prints it and returns `None`: return it, print in the shell",
+     "correct": true,
+     "why_md": "Session 8: you cannot assert on a `print`. Make it return, and print in the shell."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q08",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "concept",
+    "judgement"
+   ],
+   "stem_md": "Session 8's 2×2 diagram rates code by the benefit of unit-testing it (how non-obvious the code is) against the cost (how many dependencies it has). Where does the v0.3 `report` command in `cli.py` belong?",
+   "explanation_md": "The diagram's corners map onto the core/shell split. Pure core functions are Algorithms: worth testing and cheap to test with a plain list. The shell is a Coordinator: it wires the core to the file and the terminal, so its tests need `CliRunner` or `tmp_path`, and each one checks little logic. A function that mixes both is Overcomplicated code: valuable logic locked behind expensive dependencies, which is why session 8 says to split the file reading out first. Hence Checkpoint 2's rule: most tests on pure functions, one or two I/O tests on purpose.",
+   "section_ref": "core-shell-failing-s3",
+   "source_ref": "S8 slide 18 (2×2 diagram, image-only-slides.md); S8 slides 19, 23",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "Algorithms: high benefit, low cost",
+     "correct": false,
+     "why_md": "That is `total_by_category`: real decisions, no dependencies. The command decides almost nothing itself."
+    },
+    {
+     "text_md": "Trivial code: low benefit, low cost",
+     "correct": false,
+     "why_md": "Its cost is not low: it depends on a file, the terminal and the exit code, so testing it needs `CliRunner` and a real or temporary file."
+    },
+    {
+     "text_md": "Coordinators: low benefit, high cost",
+     "correct": true,
+     "why_md": "It only calls the core and does I/O around it: little to get wrong, much to set up. One or two `CliRunner` tests, on purpose."
+    },
+    {
+     "text_md": "Overcomplicated code – needs refactoring: high benefit, high cost",
+     "correct": false,
+     "why_md": "That was v0.1's `run()`, which mixed the decisions with the I/O. After the split, the command holds no logic worth that cost."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q09",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Before v0.3 existed, a teammate tried to test the missing-file path by calling v0.2's `run()` directly:\n\n```python\nfrom expense_tracker.report import run\n\n\ndef test_a_missing_file_is_reported() -> None:\n    run(\"nosuch.csv\", \"\", 0.0)\n```\n\n`uv run pytest` shows (trimmed):\n\n```text\n    def run(path: str, category: str, minimum: float) -> None:\n        try:\n            expenses = read_expenses(path)\n        except (OSError, ValueError):\n            print(f\"could not read {path}\")\n>           sys.exit(1)\nE           SystemExit: 1\n\nsrc/expense_tracker/report.py:100: SystemExit\n----------------------------- Captured stdout call -----------------------------\ncould not read nosuch.csv\n=========================== short test summary info ============================\nFAILED tests/test_run.py::test_a_missing_file_is_reported - SystemExit: 1\n1 failed in 0.01s\n```\n\nWhat does this show about v0.2's `report.py`?",
+   "explanation_md": "The failure is `SystemExit: 1`, raised by `sys.exit(1)` inside `report.py`. At v0.2 the module still decided how the program ends, so any caller (a test, a web page, another command) is ended by it, and its message went to stdout with `print`. Slide 19: \"v0.2 still prints and exits inside `report.py`. Moving this to the edge is v0.3.\" After `15836e1` there is no `run()`: the `FileNotFoundError` from `read_expenses` goes straight up to the `report` command in `cli.py`, which translates it. The missing-file behaviour is then tested where it belongs, at the command line with `CliRunner`, as `tests/test_io.py` does.",
+   "section_ref": "core-shell-failing-s3",
+   "source_ref": "S7 slide 19; expense-tracker v0.2 report.py (run)",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The test is flaky: nothing in it changed, so rerun it a few times until it passes",
+     "correct": false,
+     "why_md": "Nothing random happened: the file does not exist, and `run()` ends with `sys.exit(1)` every time."
+    },
+    {
+     "text_md": "`sys.exit` inside `report.py` ends whatever calls `run()`, a test or another front end",
+     "correct": true,
+     "why_md": "pytest caught the `SystemExit`; a caller that does not catch it, such as a script or a web page, is ended by it. v0.3 moves the exit to the CLI."
+    },
+    {
+     "text_md": "pytest cannot run functions that print, so the `print` must be removed before testing",
+     "correct": false,
+     "why_md": "pytest captured the print without trouble (\"Captured stdout call\"). The failure is the `SystemExit`; the print did no harm."
+    },
+    {
+     "text_md": "`nosuch.csv` is missing from the repo, and adding it to `tests/` would make the test pass",
+     "correct": false,
+     "why_md": "The test is about a missing file. Creating the file would stop testing that case at all."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q10",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "A gradebook group has this function (`grades.csv` has the columns `student,assignment,mark,weight`):\n\n```python\ndef report_final_grade(path: str, student: str) -> None:\n    with open(path) as handle:\n        rows = list(csv.reader(handle))\n    grade = 0.0\n    for row in rows[1:]:\n        if row[0] == student:\n            grade += float(row[2]) * float(row[3])\n    print(f\"{student}: {grade:.1f}\")\n```\n\nYou want to test the weighted-average rule. What should the first change be?",
+   "explanation_md": "The rule you want to test is buried between an `open` and a `print`. The refactoring move is \"separate I/O from logic\" (slide 5): extract the decision into a pure function (rows, or marks and weights, in; the grade out) and keep a thin shell that reads the file, calls it and prints. The output must not change. Then the first tests are plain-list tests, for example marks of 80 and 60 with weights of 0.5 give 70.0. Lab 08 in one line: if your logic is tangled up with `print` or `open`, split it first.",
+   "section_ref": "core-shell-failing-s4",
+   "source_ref": "S7 slide 5; labs/08-tdd.md step 1; S8 slide 27",
+   "origin": "slides",
+   "verified_by": "reasoning",
+   "options": [
+    {
+     "text_md": "Write a test that runs it on `data/grades.csv` and compares what it prints with the grade you expect",
+     "correct": false,
+     "why_md": "A test that needs your laptop's file passes only on your machine, and you cannot assert on a print."
+    },
+    {
+     "text_md": "Add a comment above the loop that explains, step by step, how the weighted average is calculated",
+     "correct": false,
+     "why_md": "Comments are for why, and a comment makes nothing testable."
+    },
+    {
+     "text_md": "Add `return grade` and a `float` return type, and keep the `open` and the `print` where they are",
+     "correct": false,
+     "why_md": "A half-step: the result can now be asserted, but every test must still create a CSV, and the function still prints. It still mixes computing with reading and printing."
+    },
+    {
+     "text_md": "Move the loop into a function that takes the rows and returns the grade; keep the I/O outside it",
+     "correct": true,
+     "why_md": "Separate I/O from logic: the new function takes values and returns a value, so a test passes a list and checks the answer."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q11",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "A parking-lot group's repository at its `v0.5` tag (the group's partial submission, not one of the demo's tags). Everything is under `src/parking_lot/`. `pricing.py` holds `fee(minutes)`, `find_ticket(tickets, plate)` and `free_spaces(tickets, capacity)`, which take and return plain data. `cli.py` holds the typer commands, each a few lines that read `tickets.json`, call `pricing.py` and echo the result. One exception: `pricing.py` also contains `print_receipt(path, plate)`, which opens `tickets.json`, works out the fee and prints the receipt.\n\nWhich **Structure** score from the partial-submission rubric fits best?",
+   "explanation_md": "Read the rubric's levels against the facts. Layout: right. Computation: in functions that take and return plain data, except `print_receipt`, which reads, computes and prints. That is \"one function still mixes computing with reading or printing\": a 2. To reach 3, the usual refactoring: `print_receipt` becomes a pure `receipt_lines(ticket, amount)` in `pricing.py`, and the reading and printing move into the command that calls it. Then no module does both.",
+   "section_ref": "core-shell-failing-s4",
+   "source_ref": "partial-rubric.txt (Structure)",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "3: the layout is right and nearly all of the computation is in pure functions",
+     "correct": false,
+     "why_md": "3 requires \"No module does both\". `pricing.py` now reads a file and prints, so it does both."
+    },
+    {
+     "text_md": "2: the layout is right, but one function still mixes computing with I/O",
+     "correct": true,
+     "why_md": "The rubric's 2: one function still mixes computing with reading or printing, and `print_receipt` is that function."
+    },
+    {
+     "text_md": "1: the commands in `cli.py` read `tickets.json` and print, so logic is in the commands",
+     "correct": false,
+     "why_md": "Reading and printing in the commands is what the thin outer layer is for. 1 is when the logic itself sits in the commands."
+    },
+    {
+     "text_md": "0: a module inside `src/` that reads files breaks the layout the rubric asks for",
+     "correct": false,
+     "why_md": "0 means a script, or code outside `src/`. The shell lives in `src/` too."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q12",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "A group's test suite has nine tests. Each one writes a CSV with `tmp_path`, runs a command with `CliRunner` and checks the printed output. All pass and CI is green. Which requirement does this suite go against?",
+   "explanation_md": "Checkpoint 2's third item, and the partial rubric's Tests criterion (a suite where \"most of them go through the file system or the command line\" scores at most 2), ask for the opposite balance. Nine I/O tests usually mean the logic sits inside the commands, where nothing else can reach it. The remedy is structural: split the computation into pure functions (\"the code your tests call has no print and no file I/O\"), test those with plain lists, and keep one or two `CliRunner` or `tmp_path` tests for the edge.",
+   "section_ref": "core-shell-failing-s4",
+   "source_ref": "S8 slides 23, 29; labs/08-tdd.md step 3; partial-rubric.txt (Tests)",
+   "origin": "lab",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "Checkpoint 2, item 3: most tests should call pure functions with plain data",
+     "correct": true,
+     "why_md": "Session 8: \"Eight tests that all need a file is the opposite of what we practised.\""
+    },
+    {
+     "text_md": "Checkpoint 2, item 1, because `CliRunner` tests do not count towards the eight tests required",
+     "correct": false,
+     "why_md": "They do count towards the eight (lab 08 says so). They count against \"mostly pure\"."
+    },
+    {
+     "text_md": "No requirement: a green CI run shows that the suite meets every checkpoint item",
+     "correct": false,
+     "why_md": "CI checks that the tests pass; it does not check what kind of tests they are. It is the referee, not the judge."
+    },
+    {
+     "text_md": "Checkpoint 2, item 2, because tests that build their own CSV cannot count as edge cases",
+     "correct": false,
+     "why_md": "Item 2 asks for tests aimed at edge cases, and a test that builds its own CSV can be one. The problem is that all nine are I/O tests."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q13",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "A gradebook group's function, from their repository. `grades.csv` has the columns `student,assignment,mark,weight`.\n\n```python\ndef show_final_grade(path, student):\n    try:\n        rows = list(csv.reader(open(path)))\n    except:\n        print(\"error\")\n        return -1\n    total = 0\n    for row in rows[1:]:\n        if row[0] == student:\n            total += float(row[2]) * float(row[3])\n    if total >= 50:\n        print(student, \"PASS\", round(total, 1))\n    else:\n        print(student, \"FAIL\", round(total, 1))\n    return total\n```",
+   "explanation_md": "A full answer reads the function the way session 7 does: what touches the world (`open`, `print`) and what decides (the weighted sum, the 50 threshold), then how it fails (bare except, `-1`, `error` on stdout). Read where the `try` ends: it covers only the reading line, so a short row or a mark such as `sixty` fails inside the loop and still crashes with a traceback. We ran it: a missing file printed `error` and returned -1; a short row stopped with `IndexError`. The split is the refactoring \"separate I/O from logic\": pure functions for the total and the verdict, a thin shell for the file and the screen, and failure translated at the boundary. The tests you name must be plain-data tests, because that is what the split makes possible.",
+   "section_ref": "core-shell-failing-s4",
+   "source_ref": "S7 slides 13, 15, 17, 18; sample Q7 shape",
+   "origin": "slides",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "In one sentence, what does this function do?",
+     "marks": 1,
+     "model_answer_md": "It reads the file, sums one student's marks times weights, prints PASS (50 or more) or FAIL and returns the total; if reading fails, it prints `error` and returns -1.",
+     "rubric": [
+      "Says it reads the file and computes the student's weighted total (mark times weight, summed)",
+      "Mentions that it prints PASS or FAIL against 50 and returns the total (or -1 when the file cannot be read)"
+     ],
+     "weak_answers_md": "\"It calculates the final grade\" misses that the same function also reads the file and prints the verdict. The one-sentence summary should make the several jobs visible, because part 2 is about them. Leaving out the `-1` path loses the detail part 2 needs. \"On any error it returns -1\" overstates it: only the reading line is inside the `try`."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Name two problems a teammate would face when testing or changing it, using session 7's ideas.",
+     "marks": 2,
+     "model_answer_md": "It mixes reading, computing and printing, so the rule cannot be tested without a CSV. The bare except turns any failure on the reading line (missing file, typo, Ctrl-C) into `error`, and -1 can be averaged like a grade.",
+     "rubric": [
+      "The mix of I/O and logic (it opens the file and prints inside the calculation), with the consequence: the rule cannot be tested with plain data, or you cannot assert on a print",
+      "The bare `except:` around the reading line: any failure there (a missing file, a typo or a missing `import csv`, Ctrl-C) becomes the same `error`, with no reason given",
+      "The `-1` return: a caller can add or average it as if it were a grade, and nothing forces anyone to check",
+      "The error goes to stdout as a bare `error`, with no reason and no non-zero exit code, so neither the user nor a script learns what failed"
+     ],
+     "weak_answers_md": "Naming a problem without its consequence (\"it prints\") scores less than \"it prints instead of returning, so a test cannot check the PASS/FAIL\". Session 6 points (the name `show_final_grade`, the magic number 50, missing type hints) are true but are not what this question asks for. Two points about the same issue (\"it prints\" and \"it does not return\") count once. Saying the bare except also hides a short row's `IndexError` or a mark of `sixty` misreads the code: the loop is outside the `try`, so those stop with a traceback."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Describe, in words, how you would split it, and name two tests that become possible.",
+     "marks": 3,
+     "model_answer_md": "One pure function takes marks and weights and returns the total; another turns a total into PASS or FAIL. A thin shell reads the file, catches only `OSError` and `ValueError` (stderr, non-zero exit) and prints. Tests: 80 and 60 weighted 0.5 give 70; a total of 50 passes.",
+     "rubric": [
+      "Describes a pure function that takes values (rows, or marks and weights) and returns the total, with no `open` and no `print`",
+      "Leaves reading and printing in a thin outer function (the shell) that calls it",
+      "Replaces the bare except and the -1: specific exceptions caught in the shell, a message on stderr and a non-zero exit code",
+      "Names a concrete plain-data test, such as two marks with weights 0.5 giving their average",
+      "Names an edge-case test, such as a total of exactly 50 passing, or a student with no rows"
+     ],
+     "weak_answers_md": "\"Split it into smaller functions\" without saying which part takes values and returns a value, or where the printing goes, earns little: the marker wants the core/shell line drawn. \"Test it on the real `grades.csv`\" is a test that needs your laptop. Writing code instead of words loses time and is not asked for."
+    }
+   ],
+   "lines": "6–8"
+  },
+  {
+   "id": "core-shell-failing-q14",
+   "type": "open",
+   "level": "hard",
+   "skills": [
+    "judgement",
+    "compare"
+   ],
+   "stem_md": "A parking-lot group's repository at its `v0.5` tag (the group's partial submission, not one of the demo's tags). Everything is under `src/parking_lot/`. `pricing.py` holds `fee(minutes)`, `find_ticket(tickets, plate)` and `minutes_parked(ticket, now)`, all taking and returning plain data, and every command in `cli.py` is a few lines that read `tickets.json`, call `pricing.py` and echo the result.\n\nExcept one. The `leave` command is 30 lines: it opens `tickets.json`, loops to find the plate, works out the minutes, applies the pricing bands with its own `if`/`elif` chain (it never calls `fee`), prints the receipt, and calls `sys.exit(1)` when the plate is unknown.\n\nTheir tests: eight `CliRunner` tests, each of which writes a `tickets.json` with `tmp_path` and runs `leave`.",
+   "explanation_md": "This question reads the partial rubric the way a marker does. Structure: one function mixing computing with reading and printing is the definition of a 2. The route to 3 is the course's refactoring, which here mostly means deleting duplicated logic and calling the core that already exists. The payoff is in the Tests criterion and Checkpoint 2: once the decisions are pure, most tests become plain-data tests, and the eight expensive coordinator tests shrink to the one or two that check the edge on purpose.",
+   "section_ref": "core-shell-failing-s4",
+   "source_ref": "partial-rubric.txt (Structure, Tests); S8 slides 23, 29",
+   "origin": "slides",
+   "verified_by": "reasoning",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Which score would you expect on the rubric's **Structure** criterion, and why?",
+     "marks": 2,
+     "model_answer_md": "2. The layout is right and most computation is pure, but one function, `leave`, still mixes computing (the ticket search, the minutes, its own pricing bands) with reading and printing. A 3 needs every command thin.",
+     "rubric": [
+      "Gives 2",
+      "Justifies it with the rubric's words: layout right, but one function still mixes computing with reading or printing (and names `leave`)",
+      "Explains why not 3 (the outer layer is not thin, or `pricing.py`'s rules are duplicated inside `leave`) or why not 1 (most logic is in pure functions, not in the commands)"
+     ],
+     "weak_answers_md": "\"1, because the logic is in the commands\" misreads the facts: only one command holds logic. \"3, because `pricing.py` is pure\" ignores that `leave` re-implements the bands and reads, computes and prints. A score with no reason earns at most one mark."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Describe, in words, the change that would reach a 3.",
+     "marks": 2,
+     "model_answer_md": "Make `leave` call the existing `fee`, `find_ticket` and `minutes_parked` and delete its own bands. What remains is shell: read, call, echo the receipt, and for an unknown plate a stderr message and `typer.Exit(code=1)`. Receipts must not change.",
+     "rubric": [
+      "Has `leave` call the existing pure functions (removing the duplicated pricing rules)",
+      "Leaves `leave` as a thin shell: read, call, print, and an unknown plate becomes a stderr message and a non-zero exit (rather than `sys.exit` buried in the logic)",
+      "Says it is a refactoring: the receipts and exit codes stay the same, checked by running it or by the existing tests"
+     ],
+     "weak_answers_md": "\"Clean up `leave`\" or \"make it shorter\" says nothing about what moves where. Moving all 30 lines into `pricing.py` unchanged just moves the mix into another module, which is still \"a module that does both\"."
+    },
+    {
+     "label": "3",
+     "prompt_md": "How does that change help with the **Tests** criterion and Checkpoint 2's item 3?",
+     "marks": 2,
+     "model_answer_md": "Today all eight tests go through a file and the command line, which CP2 item 3 rejects and the Tests criterion caps at 2. After the split most tests call pure functions, such as `fee(125)`, with one or two `CliRunner` tests kept on purpose.",
+     "rubric": [
+      "Notes that the current suite is all I/O tests (`CliRunner` plus `tmp_path`), which CP2 item 3 and the Tests criterion count against",
+      "Explains that after the split most tests call pure functions with plain data, with a concrete example",
+      "Keeps one or two `CliRunner` tests on purpose, for example the unknown plate's exit code"
+     ],
+     "weak_answers_md": "\"More tests\" misses the point: the number is fine, their kind is wrong. Saying \"use `tmp_path` less\" without saying what replaces it (plain-data tests of the pure functions) is half an answer."
+    }
+   ],
+   "lines": "6–8"
+  },
+  {
+   "id": "core-shell-failing-q15",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "`largest_expense` is declared `-> Expense | None` and returns `None` when it is given an empty list. Which row of slide 17's table does this follow?",
+   "explanation_md": "Slide 17's middle row: a normal \"no result\" means return `None` or empty. The largest of nothing does not exist, and that is not a failure. The design is safe because of the type: `-> Expense | None` tells mypy, and `mypy --strict` reports `Item \"None\" of \"Expense | None\" has no attribute \"amount\"` wherever a caller uses the result without checking (slide 8). Returning `-1` or a fake `Expense` would hide the case; raising would treat a normal situation as an error.",
+   "section_ref": "core-shell-failing-s5",
+   "source_ref": "S7 slides 17, 8",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "The caller can't carry on, so raise an exception",
+     "correct": false,
+     "why_md": "An empty month is not an error. Raising would force every caller to wrap a normal case in `try`/`except`."
+    },
+    {
+     "text_md": "Crossing to the shell, so translate to an exit code",
+     "correct": false,
+     "why_md": "`largest_expense` is core and crosses nothing, and an empty file is not a failure that deserves exit code 1."
+    },
+    {
+     "text_md": "A normal \"no result\", so return `None` or empty",
+     "correct": true,
+     "why_md": "There is no largest of nothing, and that is not a failure. `| None` in the type makes mypy insist that callers check."
+    },
+    {
+     "text_md": "It breaks the table's advice, since returning `None` is as risky as returning `-1`",
+     "correct": false,
+     "why_md": "The difference is that `None` is in the type: mypy forces every caller to check, and `None` cannot quietly be added to a total."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q16",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "A meal-planner group prices a shopping list:\n\n```python\nPRICES = {\"rice\": 1.20, \"tomatoes\": 2.10, \"olive oil\": 6.50}\n\n\ndef price_of(item: str) -> float:\n    if item not in PRICES:\n        return -1\n    return PRICES[item]\n\n\ndef shopping_total(items: list[str]) -> float:\n    total = 0.0\n    for item in items:\n        total += price_of(item)\n    return total\n\n\nprint(f\"{shopping_total(['rice', 'tomatoes', 'saffron']):.2f}\")\n```\n\n```console\n$ uv run python prices.py\n2.30\n$ uv run mypy --strict prices.py\nSuccess: no issues found in 1 source file\n```\n\nSaffron is not in `PRICES`. What is the best fix?",
+   "explanation_md": "Slide 17: \"Do not return -1 and hope somebody checks.\" The run shows why: 1.20 + 2.10 − 1 = 2.30, a believable number, and mypy is satisfied because `-1` is acceptable where a `float` is promised. With `-> float | None` the missing case is in the type, so mypy rejects the addition until the caller decides what a missing price means: skip it and report it, or raise because a total without a price is meaningless. Either way the decision is made on purpose, in one place, instead of by accident in a sum.",
+   "section_ref": "core-shell-failing-s5",
+   "source_ref": "S7 slide 17",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Keep `-1` and add a comment above `price_of` asking callers to check for it",
+     "correct": false,
+     "why_md": "What slide 17 warns against: \"Do not return -1 and hope somebody checks.\" A comment does not stop the addition."
+    },
+    {
+     "text_md": "Return `0.0` for unknown items, so the total is never pulled below the real amount",
+     "correct": false,
+     "why_md": "Saffron becomes free. The total is still wrong, and now nothing anywhere shows it."
+    },
+    {
+     "text_md": "Print `unknown item` inside `price_of` and still return `-1`, so that the user is at least warned",
+     "correct": false,
+     "why_md": "The core now prints, the message lands in the program's output, and the total is still 1 too low."
+    },
+    {
+     "text_md": "Declare `-> float | None` and return `None`, so mypy makes callers handle a missing price",
+     "correct": true,
+     "why_md": "The missing case becomes part of the contract, and mypy refuses `total += price_of(item)` until the caller decides."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q17",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-tool-output"
+   ],
+   "stem_md": "The meal-planner group changes `price_of` to `-> float | None` and returns `None` for unknown items. `shopping_total` is unchanged, and `uv run mypy --strict prices.py` now reports:\n\n```text\nprices.py:13: error: Unsupported operand types for + (\"float\" and \"None\")  [operator]\nprices.py:13: note: Right operand is of type \"float | None\"\nFound 1 error in 1 file (checked 1 source file)\n```\n\nLine 13 is `total += price_of(item)`. What should you do?",
+   "explanation_md": "This is the \"None not handled\" kind of mypy error from session 7: \"this can be missing; check it, or change the type\". The error names the file, the line and the reason: a value that may be `None` is being added to a `float`. Running the program confirms it: with saffron in the list it now stops with `TypeError: unsupported operand type(s) for +=: 'float' and 'NoneType'` instead of printing a wrong total. The right move is to handle the case where it occurs, which is what returning `-1` let everyone forget.",
+   "section_ref": "core-shell-failing-s5",
+   "source_ref": "S7 slides 8–10, 17; sample Q3 shape",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Nothing yet: unknown items are rare, so the warning can wait until a user complains",
+     "correct": false,
+     "why_md": "Saffron is already in the list, and with `None` the program now crashes with a `TypeError`. Waiting for a complaint is the -1 strategy again."
+    },
+    {
+     "text_md": "Decide in `shopping_total` what a missing price means (skip and report it, or raise)",
+     "correct": true,
+     "why_md": "mypy has found the exact place where the missing case must be handled. That is the point of the change."
+    },
+    {
+     "text_md": "Add `# type: ignore` to line 13, because the program ran without errors before the change",
+     "correct": false,
+     "why_md": "It ran and printed a wrong total. Silencing the checker brings back the bug in a new form: a crash on `None` instead of a quiet `-1`."
+    },
+    {
+     "text_md": "Change `price_of` back to returning `-1`, since that version passed `mypy --strict` cleanly",
+     "correct": false,
+     "why_md": "It passed because the checker could not see the problem. The new error is the point of the change."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q18",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "A teammate makes `read_expenses` \"friendlier\":\n\n```python\ndef read_expenses(path: str) -> list[Expense]:\n    expenses: list[Expense] = []\n    if not os.path.exists(path):\n        return []\n    with open(path) as handle:\n        ...\n```\n\nA user then mistypes the file name:\n\n```console\n$ uv run expenses report expnses.csv\nExpense report for expnses.csv\n----------------------------------------\n----------------------------------------\nTOTAL                     0.00\n$ echo $?\n0\n```\n\nWhat is the main problem with this change?",
+   "explanation_md": "The teammate turned a failure into a normal \"no result\". Slide 17 keeps those apart: an empty list is right when there is genuinely nothing (a category nobody used); a missing file means the report cannot be produced at all. Our run shows the damage: a mistyped name gives a tidy report with `TOTAL 0.00` and exit code 0, so the user may believe they spent nothing, and `&&` or CI would carry on. In the real v0.3, `open` raises `FileNotFoundError`, the `report` command catches it as an `OSError`, writes `could not read expnses.csv` to stderr and exits with 1.",
+   "section_ref": "core-shell-failing-s5",
+   "source_ref": "S7 slides 17, 19; run on a variant of v0.3",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The header still names `expnses.csv`, which is confusing for a reader when the file does not exist",
+     "correct": false,
+     "why_md": "Cosmetic. The real problem is that a failed run looks like a successful one."
+    },
+    {
+     "text_md": "Nothing serious: an empty list is slide 17's normal \"no result\", so returning `[]` follows the table",
+     "correct": false,
+     "why_md": "That row is for a genuine nothing, such as a category nobody used. A missing file means no report can be built: the caller can't carry on, so the exception should go up."
+    },
+    {
+     "text_md": "The function now has two `return` statements, which breaks the rule of one function, one job",
+     "correct": false,
+     "why_md": "Early returns are fine (guard clauses, session 6). The problem is what this one returns."
+    },
+    {
+     "text_md": "A missing file now looks like an empty month: no message, exit code 0, nobody can tell it failed",
+     "correct": true,
+     "why_md": "Slide 17: the caller can't carry on, so the exception should go up and the shell should translate it."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q19",
+   "type": "sort",
+   "level": "exam",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "For each situation, which row of slide 17's table applies?",
+   "explanation_md": "Ask two questions. Is \"nothing\" a normal answer here (a search with no match, an empty list, an unused category)? Then return `None` or empty and let the type tell the caller. Would carrying on produce nonsense (a negative duration, inconsistent weights, a file that is not there)? Then raise. And where the program meets the user, every failure becomes a message on stderr and a non-zero exit code. The same exception can sit in two rows: `read_expenses` raises, and the `report` command translates.",
+   "section_ref": "core-shell-failing-s5",
+   "source_ref": "S7 slide 17; S5 slide 9; S8 slide 11",
+   "origin": "slides",
+   "verified_by": "reasoning",
+   "categories": [
+    {
+     "id": "raise",
+     "label": "Raise: the caller can't carry on"
+    },
+    {
+     "id": "none",
+     "label": "Return None or empty: a normal \"no result\""
+    },
+    {
+     "id": "exit",
+     "label": "Exit code: crossing to the shell"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "`find_ticket(tickets, plate)` is asked for a plate that is not in the car park",
+     "category": "none",
+     "why_md": "A search that finds nothing is a normal answer. `-> Ticket | None` makes the caller check."
+    },
+    {
+     "text_md": "`fee(minutes)` is called with `-30` minutes",
+     "category": "raise",
+     "why_md": "Negative parking time is nonsense; any fee computed from it would be wrong. Raise `ValueError`."
+    },
+    {
+     "text_md": "`total_by_category(expenses, \"pets\", 0.0)` when nobody has a `pets` expense",
+     "category": "none",
+     "why_md": "Session 8's \"missing\" edge case: a category nobody used gives `[]`, and the demo's tests check that case."
+    },
+    {
+     "text_md": "`read_expenses(\"nosuch.csv\")` when the file does not exist",
+     "category": "raise",
+     "why_md": "No report can be built. `open` raises `FileNotFoundError`; let it go up rather than returning `[]`."
+    },
+    {
+     "text_md": "The `report` command receives that `OSError` from `read_expenses`",
+     "category": "exit",
+     "why_md": "The boundary: write `could not read nosuch.csv` to stderr and raise `typer.Exit(code=1)`."
+    },
+    {
+     "text_md": "`largest_expense([])`",
+     "category": "none",
+     "why_md": "There is no largest of nothing; the demo returns `None`."
+    },
+    {
+     "text_md": "`weighted_average(marks, weights)` receives weights that add up to 1.3",
+     "category": "raise",
+     "why_md": "The input is inconsistent, so any average would be meaningless. The caller cannot carry on."
+    },
+    {
+     "text_md": "A user types `expenses add \"Bar Ramon\" 0` at the terminal",
+     "category": "exit",
+     "why_md": "Session 5's example: the shell prints `amount must be positive` and the exit code is 1."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q20",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "A library group computes overdue fines (`FINE_PER_DAY = 0.20`). The library charges a fine only when a book comes back:\n\n```python\n@dataclass(frozen=True)\nclass Loan:\n    title: str\n    due: date\n    returned: date | None\n\n\ndef days_late(loan: Loan) -> int:\n    if loan.returned is None:\n        return -1\n    return max(0, (loan.returned - loan.due).days)\n\n\ndef total_fines(loans: list[Loan]) -> float:\n    return sum(days_late(loan) * FINE_PER_DAY for loan in loans)\n```\n\nWith two loans, Dune (due 1 October, returned 11 October) and Emma (due 5 October, still on loan), the program prints `1.80`, and `uv run mypy --strict fines.py` says `Success: no issues found in 1 source file`.",
+   "explanation_md": "The table in slide 17 decides each case by asking whether the caller can carry on. A book still on loan is ordinary, so `None` (with the type saying so) is right, and mypy then makes `total_fines` choose what to do. A broken input file is not ordinary, so it raises and the shell translates. Returning -1 mixes the two: it is neither a value nor an error, and it adds up silently, which our run shows as a fine of 1.80 instead of 2.00.",
+   "section_ref": "core-shell-failing-s5",
+   "source_ref": "S7 slide 17; S7 slides 8–10",
+   "origin": "slides",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Explain what went wrong, and why neither mypy nor a quick look at the output caught it.",
+     "marks": 2,
+     "model_answer_md": "Emma is still on loan, so `days_late` returns -1, and `total_fines` multiplies it by 0.20 like any number: Dune's 2.00 becomes 1.80. mypy accepts it because -1 is a valid `int`, and 1.80 looks believable, so nothing signals the mistake.",
+     "rubric": [
+      "Traces the -1 into the sum: -1 times 0.20 takes 0.20 off Dune's 2.00, giving 1.80",
+      "Explains that mypy cannot see it, because -1 is a valid `int` that matches the declared type",
+      "Notes that the wrong total looks plausible, so nobody notices: the \"hope somebody checks\" problem"
+     ],
+     "weak_answers_md": "\"The -1 is a bug\" without showing how it reaches the total misses the mark the question gives for tracing it. Saying \"mypy is wrong\" misreads the tool: it checks types, and -1 is the right type. Blaming the date arithmetic or the `max` is looking in the wrong place."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Using session 7's table, what should `days_late` do for a book that is still on loan, and why?",
+     "marks": 2,
+     "model_answer_md": "Return `None`, declared `int | None`: a book still on loan is a normal \"no result\", so raising would be wrong. mypy then rejects `total_fines` until it decides what to do with loans still out, for example skip them.",
+     "rubric": [
+      "Chooses return `None` (or another explicit \"no result\") and justifies it as a normal situation, not a failure",
+      "Says the return type becomes `int | None`, so mypy forces every caller, such as `total_fines`, to handle the case",
+      "Explains why raising does not fit: a book on loan is not something the caller cannot carry on from"
+     ],
+     "weak_answers_md": "\"Return 0\" fixes this total but hides the case again: a book on loan and a book returned on time become indistinguishable. \"Raise an exception\" treats the most ordinary state of a library book as an error, so every caller needs a `try`. An answer that names `None` but never mentions the type or mypy misses why `None` is safer than -1."
+    },
+    {
+     "label": "3",
+     "prompt_md": "When *would* raising be the right choice in this program? Give one example.",
+     "marks": 1,
+     "model_answer_md": "When the program cannot carry on: for example, the loans file holds a date like `2026-02-30`. Parsing it raises `ValueError`, which goes up to the shell; the shell writes the reason to stderr and exits non-zero.",
+     "rubric": [
+      "Gives a case where the caller can't carry on (an unreadable or missing loans file, an impossible date, a negative fine rate) and says the exception goes up to the shell, which turns it into a message and an exit code"
+     ],
+     "weak_answers_md": "\"When the book is late\" is the normal business of the function, not a failure. An example without saying who handles the exception (the shell, with a message and an exit code) is incomplete."
+    }
+   ],
+   "lines": "5–7"
+  },
+  {
+   "id": "core-shell-failing-q21",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Slide 18 shows v0.1's error handling, an `except:` with nothing after it. What is the problem with this bare except?",
+   "explanation_md": "An `except:` with nothing after it matches any exception. In v0.1 that meant one message for every possible problem: a missing file (fair enough), but also a misspelt name inside the `try`, a forgotten import, or the user pressing Ctrl-C. The message blames the file every time, so the developer never sees the bug and the user is misled. v0.2 replaced it with `except (OSError, ValueError):`, the two failures the code expects, and ruff's `E722` (Do not use bare `except`) flags the bare form.",
+   "section_ref": "core-shell-failing-s6",
+   "source_ref": "S7 slide 18",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "It is a syntax error in Python 3, so the program will not even start",
+     "correct": false,
+     "why_md": "It is valid Python, and v0.1 runs. That is what makes it dangerous: nothing stops you writing it."
+    },
+    {
+     "text_md": "It only catches `OSError`, so a bad amount still crashes the report",
+     "correct": false,
+     "why_md": "The opposite: it catches everything, including errors it has no business handling."
+    },
+    {
+     "text_md": "It makes the program slower, because Python has to check every kind of exception it might meet",
+     "correct": false,
+     "why_md": "Speed is not the issue. The issue is what the user is told and what the developer never sees."
+    },
+    {
+     "text_md": "It catches everything, so a typo, a missing import or Ctrl-C all say \"could not read\"",
+     "correct": true,
+     "why_md": "Slide 18: a bare except hides every bug."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q22",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "predict-output",
+    "read-code"
+   ],
+   "stem_md": "Someone edits v0.1's reading code and misspells `float`:\n\n```python\ndef run(path, cat, minimum):\n    rows = []\n    try:\n        f = open(path)\n        reader = csv.reader(f)\n        next(reader)\n        for row in reader:\n            # skip rows that do not have all four fields\n            if len(row) == 4:\n                rows.append((row[0], row[1], row[2], flaot(row[3])))\n        f.close()\n    except:\n        print(\"could not read \" + path)\n        sys.exit(1)\n    ...\n```\n\n`expenses.csv` exists and every row is well formed. What happens when you run `uv run expenses report expenses.csv`?",
+   "explanation_md": "We ran this code. The first data row reaches `flaot(row[3])`, Python raises `NameError`, and the bare `except:` catches it: `could not read expenses.csv`, exit code 1. The file is fine, the code is broken, and the message blames the file. With v0.2's `except (OSError, ValueError):` the `NameError` is not caught, so the program stops with a traceback that points at the line and ends `NameError: name 'flaot' is not defined`. That is slide 18's point: a bare except turns a typo into \"could not read\".",
+   "section_ref": "core-shell-failing-s6",
+   "source_ref": "S7 slide 18; expense-tracker v0.1 report.py (run with a typo)",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "It stops with a traceback ending in `NameError: name 'flaot' is not defined`",
+     "correct": false,
+     "why_md": "That is what v0.2 shows with the same typo. Here the bare except catches the `NameError` before any traceback appears."
+    },
+    {
+     "text_md": "It prints the full report, because rows that raise an error are skipped",
+     "correct": false,
+     "why_md": "Python does not skip lines that fail. The very first data row raises, and the whole `try` is abandoned."
+    },
+    {
+     "text_md": "It prints `could not read expenses.csv` and exits with code 1",
+     "correct": true,
+     "why_md": "The `NameError` from `flaot` is raised inside the `try`, and the bare except catches it like any other exception."
+    },
+    {
+     "text_md": "It prints nothing and exits with code 0, because the error was handled",
+     "correct": false,
+     "why_md": "The handler prints a message and calls `sys.exit(1)`. Handled is not the same as hidden."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q23",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "concept"
+   ],
+   "stem_md": "On v0.1 you start a report on a large file, change your mind while it is still reading, and press Ctrl-C. The program prints:\n\n```text\ncould not read big.csv\n```\n\nand `echo $?` shows `1`. The file is fine. What happened?",
+   "explanation_md": "Ctrl-C makes Python raise `KeyboardInterrupt` wherever the program happens to be. v0.1 was inside its `try`, so the bare `except:` caught it, printed \"could not read\" and exited with 1, as it would for a broken file. We reproduced it on v0.1: `could not read big.csv`, exit code 1. From v0.2, `except (OSError, ValueError)` no longer catches the interrupt, and the program stops (our run ended with exit status 130, the usual status for an interrupted program). A user who presses Ctrl-C should see the program stop, with no false claim about their file.",
+   "section_ref": "core-shell-failing-s6",
+   "source_ref": "S7 slide 18; expense-tracker v0.1 (run with a simulated Ctrl-C)",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Ctrl-C cut the file short partway through, so the rest of it really could not be read",
+     "correct": false,
+     "why_md": "Ctrl-C does not touch files. It interrupts the running program."
+    },
+    {
+     "text_md": "Ctrl-C raised `KeyboardInterrupt` inside the `try`, and the bare except caught it",
+     "correct": true,
+     "why_md": "Slide 18 lists Ctrl-C among the things a bare except hides."
+    },
+    {
+     "text_md": "The terminal printed the message itself, as it does for every interrupted program",
+     "correct": false,
+     "why_md": "No terminal prints such a message: those words come from v0.1's own `print` in its `except`."
+    },
+    {
+     "text_md": "The file was still open, so the operating system refused to read it and raised `OSError`",
+     "correct": false,
+     "why_md": "Nothing tried to read the file twice. The exception came from the keyboard."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q24",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "ruff flags a teammate's loader:\n\n```text\nE722 Do not use bare `except`\n  --> loader.py:11:5\n   |\n 9 |             next(reader)\n10 |             return [float(row[4]) for row in reader]\n11 |     except:\n   |     ^^^^^^\n12 |         print(\"could not read \" + path)\n13 |         sys.exit(1)\n   |\n\nFound 1 error.\n```\n\nThe teammate changes line 11 to `except Exception:`, and `uv run ruff check loader.py` now says `All checks passed!`. The code also has a bug ruff cannot see: in this CSV the amount is in `row[3]`, not `row[4]`.\n\nWhat does `uv run python loader.py` print on a good `expenses.csv`, and why?",
+   "explanation_md": "We ran both versions: with `except:` and with `except Exception:` the program prints `could not read expenses.csv` and exits 1, although the file is fine. Ruff's `E722` is satisfied by the new spelling, but the judgement behind it (catch only what you can handle) is not. The course's fix is to name the failures you expect, `except (OSError, ValueError):`. With that, our run stopped with a traceback ending `IndexError: list index out of range` at `float(row[4])`: the bug is visible and fixable. Ruff is the referee for its rules; it does not judge your error handling for you.",
+   "section_ref": "core-shell-failing-s6",
+   "source_ref": "S7 slide 18; ruff E722 (run)",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`could not read expenses.csv`, because the `IndexError` from `row[4]` is an `Exception` and is still caught",
+     "correct": true,
+     "why_md": "Nearly every error a bug can cause is an `Exception`; of the slide's three examples, only Ctrl-C escapes."
+    },
+    {
+     "text_md": "A traceback ending in `IndexError`, because `except Exception` only catches operating-system errors",
+     "correct": false,
+     "why_md": "That would be `except OSError`. `Exception` is the parent of almost every error, `IndexError` included."
+    },
+    {
+     "text_md": "The sum of the amounts, because code that passes ruff no longer swallows errors",
+     "correct": false,
+     "why_md": "Ruff checked the rule it knows (no bare except). It cannot know which column holds the amount, or what the handler hides."
+    },
+    {
+     "text_md": "`could not read expenses.csv`, because `except Exception` catches everything a bare except did, Ctrl-C included",
+     "correct": false,
+     "why_md": "Right output, wrong reason: `KeyboardInterrupt` is not an `Exception`, so Ctrl-C now escapes. The `IndexError` is caught because it is an `Exception`."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q25",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "judgement",
+    "compare"
+   ],
+   "stem_md": "With the `flaot` typo, v0.1 printed a tidy `could not read expenses.csv`; v0.2 stops with a traceback ending in `NameError: name 'flaot' is not defined`. A teammate says v0.2 is worse, because the partial-submission rubric says: \"Bad input gives a clear message and a non-zero exit code, not a traceback.\" Which reply is best?",
+   "explanation_md": "Two kinds of failure, two audiences. Bad input (a missing file, an amount that is not a number) is the user's to fix, so it gets a clear message and a non-zero exit code: that is the rubric's Functionality criterion, and v0.2 still does it for `OSError` and `ValueError`. A typo is the developer's to fix: a traceback pointing at the line is the fastest route to the fix, and running the program or the tests should surface it long before a user does. v0.1's tidy message helped nobody: the user was told the file was broken, and the developer was told nothing. (At v0.2, ruff's `F821` would flag `flaot` before anyone ran it; the point stands for bugs no tool sees.)",
+   "section_ref": "core-shell-failing-s6",
+   "source_ref": "S7 slide 18; partial-rubric.txt (Functionality); runs on v0.1 and v0.2 with a typo",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Agree, and wrap the whole command in a bare except again so that users never see any traceback",
+     "correct": false,
+     "why_md": "That brings back v0.1's problem: every bug disguised as a reading error."
+    },
+    {
+     "text_md": "The rubric only applies to the partial submission at `v0.5`, so a traceback is acceptable at `v0.2`",
+     "correct": false,
+     "why_md": "Dodges the question. The difference between bugs and bad input holds at every tag."
+    },
+    {
+     "text_md": "Bad input still gets a clear message; a typo is a bug, and its traceback points to the line to fix",
+     "correct": true,
+     "why_md": "Catch only what you can handle: input problems get a message, bugs are not disguised."
+    },
+    {
+     "text_md": "A traceback carries more detail than a message, so v0.2 should show one for a missing file too",
+     "correct": false,
+     "why_md": "A missing file or a bad amount is the user's input, and the rubric wants a clear message and exit code for those. v0.2 does that."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q26",
+   "type": "open",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "A user of your group's gradebook reports: \"I run `uv run gradebook report grades.csv` and it says `could not read grades.csv`, but the file opens fine in Excel.\" The reading code on `main`:\n\n```python\ndef read_marks(path: str) -> list[Mark]:\n    try:\n        with open(path) as handle:\n            reader = csv.reader(handle)\n            next(reader)\n            return [Mark(row[0], row[1], float(row[2]), float(row[4])) for row in reader]\n    except:\n        print(\"could not read \" + path)\n        sys.exit(1)\n```\n\n`grades.csv` has four columns: `student,assignment,mark,weight`. `uv run ruff check src` reports:\n\n```text\nE722 Do not use bare `except`\n  --> src/gradebook/marks.py:20:5\n   |\n18 |             next(reader)\n19 |             return [Mark(row[0], row[1], float(row[2]), float(row[4])) for row in reader]\n20 |     except:\n   |     ^^^^^^\n21 |         print(\"could not read \" + path)\n22 |         sys.exit(1)\n   |\n\nFound 1 error.\n```",
+   "explanation_md": "This mirrors the sample paper's tool-output question: read the output, connect it to a real failure, and refuse a fix that only silences the tool. The bare except turns `row[4]`'s `IndexError` into a false \"could not read\". Naming `OSError` and `ValueError` handles the input problems the user can fix and leaves the bug to crash where the developer will see it, and moving the message to stderr and the exit to the CLI is v0.3's \"fail loudly, at the boundary\". `except Exception:` passes ruff and fixes nothing.",
+   "section_ref": "core-shell-failing-s6",
+   "source_ref": "S7 slides 18–19; ruff E722 (run); sample Q9 shape",
+   "origin": "slides",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "How are the user's report and ruff's `E722` connected? What is most likely happening?",
+     "marks": 2,
+     "model_answer_md": "The file is fine; the code is not. `row[4]` does not exist in a four-column file, so every row raises `IndexError`, and the bare except that ruff flags turns that bug into \"could not read\".",
+     "rubric": [
+      "Identifies the real bug: `row[4]` is out of range in a four-column file (an `IndexError`), not a problem with the file",
+      "Connects it to `E722`: the bare except catches that bug and disguises it as \"could not read\""
+     ],
+     "weak_answers_md": "\"The file is corrupted\" or \"Excel saved it wrongly\" believes the misleading message, which is the trap. \"Ruff found a style problem\" misses that this style rule exists because of this kind of bug."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Which exceptions should the handler name, why those, and where should the message and the exit happen?",
+     "marks": 2,
+     "model_answer_md": "`OSError` (missing or unreadable file) and `ValueError` (a mark that is not a number): input problems the user can fix. `read_marks` just raises; the CLI command catches those two, writes the reason to stderr and raises `typer.Exit(code=1)`.",
+     "rubric": [
+      "Names `OSError` and `ValueError` and links each to a real input problem (missing or unreadable file; a value that is not a number)",
+      "Moves the message and exit to the shell: the core raises, the command catches, writes to stderr and exits non-zero"
+     ],
+     "weak_answers_md": "Naming `IndexError` as an exception to catch would hide this very bug again. Keeping `print` and `sys.exit` inside `read_marks` repeats v0.2's mistake, which v0.3 fixed by moving them to the edge. Naming only one of the two exceptions leaves the other input problem unhandled."
+    },
+    {
+     "label": "3",
+     "prompt_md": "A teammate proposes `except Exception:` \"because ruff accepts it\". Do you accept? Give your reasoning.",
+     "marks": 2,
+     "model_answer_md": "No. Ruff would pass, but `IndexError` is an `Exception`, so the bug would still print \"could not read\". A green ruff is not the goal; with the two named exceptions the `IndexError` surfaces as a traceback at `row[4]` and gets fixed.",
+     "rubric": [
+      "Rejects it and explains that `except Exception` still catches the `IndexError` (or any bug), so the message stays misleading",
+      "Argues that passing the tool is not the goal: ruff is the referee for its rule, not for whether the error handling is right"
+     ],
+     "weak_answers_md": "\"Yes, CI will be green\" is the sample paper's `# type: ignore` trap in another form. \"No, because ruff will still complain\" is factually wrong: ruff accepts `except Exception:`. The mark is for the reason."
+    }
+   ],
+   "lines": "6–8"
+  },
+  {
+   "id": "core-shell-failing-q27",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "A user runs the report on a file that does not exist. According to slide 19, how should the work be divided between the core and the shell?",
+   "explanation_md": "Slide 19 splits failing well between the layers. The core knows something went wrong but not who is asking, so it raises (or passes `open`'s `FileNotFoundError` up). The shell knows it is a terminal program, so it catches the expected exceptions, writes a message with the reason to stderr (`typer.echo(..., err=True)`) and ends with `raise typer.Exit(code=1)`. Each of the other options puts I/O in the core, hides the failure, or lies with exit code 0.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "S7 slide 19",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "The core raises; the shell catches it, writes the message to stderr and exits with a non-zero code",
+     "correct": true,
+     "why_md": "Slide 19: core raises on bad input, never prints an error; shell catches it, prints to stderr, exits non-zero."
+    },
+    {
+     "text_md": "The core catches it, prints a friendly message and returns an empty list so the report still appears",
+     "correct": false,
+     "why_md": "The user gets a report of nothing and exit code 0. A failure has been dressed up as a normal \"no result\"."
+    },
+    {
+     "text_md": "The core writes the message to stderr and calls `sys.exit(1)`, so the shell can stay short",
+     "correct": false,
+     "why_md": "Close to v0.2, which printed and exited inside `report.py` (with `print` and `sys.exit(1)`); v0.3 undid it, because a core that prints and exits cannot be tested or reused."
+    },
+    {
+     "text_md": "The shell prints the message and ends the program normally, so the user is not alarmed by an error code",
+     "correct": false,
+     "why_md": "Exit code 0 after a failure lies to `&&`, scripts and CI."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q28",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Why does the course send error messages to stderr rather than stdout?",
+   "explanation_md": "A program has two output streams. stdout carries the program's output: the report, which a user may send to a file with `>` or into another program with a pipe. stderr carries messages meant for the person at the terminal, and it is not redirected along with stdout. So when the file is missing, the user still sees `could not read nosuch.csv` on screen while `report.txt` stays clean. Tests benefit too: `CliRunner` gives `result.stdout` and `result.stderr` separately, and the demo's `test_io.py` asserts the message is in `result.stderr`.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "S7 slide 19; tests/test_io.py; runs on v0.2 and v0.3",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "Writing a message to stderr is what makes the program end with a non-zero exit code",
+     "correct": false,
+     "why_md": "They are independent: `err=True` decides where the message goes, `typer.Exit(code=1)` decides the exit code. You need both."
+    },
+    {
+     "text_md": "Errors still reach the screen when output is redirected or piped, and tests can check them",
+     "correct": true,
+     "why_md": "stdout is the program's output; stderr is for the person. `tests/test_io.py` checks `result.stderr`."
+    },
+    {
+     "text_md": "stderr is copied to a log file automatically by the system, so an error message is never lost",
+     "correct": false,
+     "why_md": "Nothing is saved automatically. stderr goes to the terminal unless someone redirects it."
+    },
+    {
+     "text_md": "stdout is reserved for logging messages, so errors need a stream of their own",
+     "correct": false,
+     "why_md": "Backwards: stdout carries the program's output, such as the report."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q29",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "In v0.3, `read_expenses` can raise `OSError` (missing file) or `ValueError` (an amount that is not a number). Where should the `try`/`except` that turns these into a message live?",
+   "explanation_md": "The exception should travel from where it happens (`open` or `float` inside `read_expenses`) to the first place that knows what to do about it. That is the shell's `report` command: it knows this is a terminal program, so it can write `could not read nosuch.csv` to stderr and end with exit code 1. Commit `15836e1` put the `try`/`except` there. Catching it lower down forces `report.py` to print or to fake a result; catching it higher up with a bare except hides bugs along with input problems.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "S7 slides 18–19; expense-tracker 15836e1",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "Inside `read_expenses` itself, which prints the message for the user and then returns `[]`",
+     "correct": false,
+     "why_md": "Printing inside the reading function (v0.3 took every `print` out of `report.py`), and a failure disguised as an empty list: the report shows `TOTAL 0.00` and exits 0."
+    },
+    {
+     "text_md": "Inside `total_by_category`, since that is the function where the amounts are finally added up",
+     "correct": false,
+     "why_md": "`total_by_category` never sees a bad amount: `float()` fails while reading, before any `Expense` exists."
+    },
+    {
+     "text_md": "Around the whole program in `__main__.py`, as one bare except that prints a general apology such as `something went wrong`",
+     "correct": false,
+     "why_md": "A bare except hides every bug, and \"something went wrong\" tells the user nothing."
+    },
+    {
+     "text_md": "In the `report` command in `cli.py`, around the call to `read_expenses`: the shell picks the message and exit code",
+     "correct": true,
+     "why_md": "That is v0.3: catch only what you can handle, at the boundary."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q30",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "predict-output",
+    "read-tool-output"
+   ],
+   "stem_md": "At v0.2, a user saves a report to a file but mistypes the input's name. Nothing appears on the screen:\n\n```console\n$ uv run expenses report nosuch.csv > report.txt\n$ cat report.txt\ncould not read nosuch.csv\n```\n\nWhy did the error end up in `report.txt`, and what changes at v0.3?",
+   "explanation_md": "We ran both tags. At v0.2, `run()` in `report.py` handled the failure with `print(f\"could not read {path}\")`, and `print` writes to stdout. `> report.txt` sends stdout to the file, so the user sees nothing and the \"report\" they saved is an error message. At v0.3, commit `15836e1` moved the handling to the CLI and used `typer.echo(..., err=True)`: the same command shows `could not read nosuch.csv` on screen and leaves `report.txt` empty. In both versions the exit code is 1; what changed is which stream the message uses.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "S7 slide 19; runs on v0.2 and v0.3",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "v0.2's `print` writes to stdout, which `>` sends to the file; v0.3 writes the error to stderr",
+     "correct": true,
+     "why_md": "Only stdout is redirected by `>`. At v0.3 the error stays on screen and `report.txt` is empty."
+    },
+    {
+     "text_md": "`>` sends everything a program writes into the file, so no version can show the error on screen while redirecting",
+     "correct": false,
+     "why_md": "`>` redirects stdout only. stderr still goes to the terminal, which is the whole reason v0.3 uses it."
+    },
+    {
+     "text_md": "The exit code was 0, so the shell treated the message as normal output; v0.3 fixes this by exiting with 1",
+     "correct": false,
+     "why_md": "v0.2 already exited with 1 (`sys.exit(1)`). The exit code does not decide where text goes."
+    },
+    {
+     "text_md": "Because `nosuch.csv` did not exist, `>` created it and wrote the error into it; v0.3 checks the path first",
+     "correct": false,
+     "why_md": "`>` created `report.txt`, the output file, not the input. v0.3 does not check paths; it changes the stream."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q31",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "read-diff"
+   ],
+   "stem_md": "This is commit `15836e1`, \"Move printing and exiting out of the report module\" (trimmed):\n\n```diff\n--- a/src/expense_tracker/cli.py\n+++ b/src/expense_tracker/cli.py\n@@ -22,7 +27,16 @@ def report(\n     minimum: float = typer.Option(0.0, \"--minimum\", \"--min\", help=\"Ignore amounts below this.\"),\n ) -> None:\n-    run(path, category, minimum)\n+    try:\n+        expenses = read_expenses(path)\n+    except (OSError, ValueError):\n+        typer.echo(f\"could not read {path}\", err=True)\n+        raise typer.Exit(1) from None\n+\n+    totals = total_by_category(expenses, category, minimum)\n+    largest = largest_expense(expenses)\n+    for line in format_report(path, category, minimum, totals, largest):\n+        typer.echo(line)\n--- a/src/expense_tracker/report.py\n+++ b/src/expense_tracker/report.py\n@@ -1,5 +1,4 @@\n import csv\n-import sys\n from dataclasses import dataclass\n@@ -90,16 +89,3 @@ def format_report(\n     return lines\n-\n-\n-def run(path: str, category: str, minimum: float) -> None:\n-    try:\n-        expenses = read_expenses(path)\n-    except (OSError, ValueError):\n-        print(f\"could not read {path}\")\n-        sys.exit(1)\n-\n-    totals = total_by_category(expenses, category, minimum)\n-    largest = largest_expense(expenses)\n-    for line in format_report(path, category, minimum, totals, largest):\n-        print(line)\n```\n\nWhich description of the commit is accurate?",
+   "explanation_md": "Read the diff file by file. In `report.py`, `run()` and `import sys` are deleted: the module now has no `print` and no `sys.exit`. In `cli.py`, the `report` command stops calling `run()` and does its work itself: `try` around `read_expenses`, catch the two expected exceptions, `typer.echo(..., err=True)` and `raise typer.Exit(1)`, then the same calls to the pure functions and a loop of `typer.echo(line)`. Nothing about the calculation changes. This is slide 19's \"Moving this to the edge is v0.3\" in one commit.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "expense-tracker 15836e1; S7 slide 19",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "It changes how `total_by_category` works, so the report for a valid file changes",
+     "correct": false,
+     "why_md": "No line of `total_by_category` appears in the diff. For a valid file the output is the same."
+    },
+    {
+     "text_md": "It adds error handling for missing files, which v0.2 did not have at all",
+     "correct": false,
+     "why_md": "v0.2 already caught `(OSError, ValueError)` inside `run()`. The commit moves that handling; it does not invent it."
+    },
+    {
+     "text_md": "It moves reading, printing and exiting from `report.py` to the `report` command, with errors on stderr",
+     "correct": true,
+     "why_md": "`run()` and `import sys` disappear from `report.py`; the same steps reappear in `cli.py`, with `typer.echo(..., err=True)` for the error."
+    },
+    {
+     "text_md": "It removes the `try`/`except`, so a missing file now ends the whole program with a traceback",
+     "correct": false,
+     "why_md": "The `try`/`except` is still there, now in `cli.py`. A missing file still gives a message and exit code 1."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q32",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "predict-output",
+    "judgement"
+   ],
+   "stem_md": "A teammate changes the `report` command's error handling to:\n\n```python\n    except (OSError, ValueError):\n        typer.echo(f\"could not read {path}\", err=True)\n        return\n```\n\n\"so users do not see an error code\". A script then runs:\n\n```console\n$ uv run expenses report nosuch.csv && echo \"report ready\"\ncould not read nosuch.csv\nreport ready\n```\n\nWhat has gone wrong?",
+   "explanation_md": "We ran this variant: the message still goes to stderr, but `return` ends the command normally, so the exit code is 0 and `&&` runs `echo \"report ready\"`. In a check script or in CI the next step would run on bad data, and the run would show green. The real v0.3 ends with `raise typer.Exit(1)`, and the same line prints only the error. A clear message for the person and a non-zero exit code for the machines are two separate jobs, and failing well needs both.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "S5 slide 9; S7 slide 19; run on a variant of v0.3",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "`&&` always runs the second command, so the script should have used `;` between the two",
+     "correct": false,
+     "why_md": "`&&` runs the second command only when the first exits with 0. It did its job; the exit code was the lie."
+    },
+    {
+     "text_md": "The message should have gone to stdout, so that the script could read it and stop",
+     "correct": false,
+     "why_md": "Scripts decide by the exit code; they do not read the text. On stdout the error would also pollute the output."
+    },
+    {
+     "text_md": "The command now exits with 0 after failing, so `&&`, scripts and CI think it worked",
+     "correct": true,
+     "why_md": "Session 5: a program that prints an error and exits 0 is a program that lies."
+    },
+    {
+     "text_md": "typer prints `report ready` by itself whenever a command returns early without an error",
+     "correct": false,
+     "why_md": "`report ready` comes from the `echo` after `&&`, which ran because the exit code was 0."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q33",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "read-diff"
+   ],
+   "stem_md": "On the v0.4 demo, a teammate makes this change and runs the tests:\n\n```diff\n     except (OSError, ValueError):\n-        typer.echo(f\"could not read {path}\", err=True)\n+        print(f\"could not read {path}\")\n         raise typer.Exit(1) from None\n```\n\n```text\n>       assert \"could not read nosuch.csv\" in result.stderr\nE       AssertionError: assert 'could not read nosuch.csv' in ''\nE        +  where '' = <Result SystemExit(1)>.stderr\n\ntests/test_io.py:29: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_io.py::test_report_on_a_missing_file_exits_with_one_and_explains_on_stderr\n1 failed, 23 passed in 0.06s\n```\n\nWhat can you conclude?",
+   "explanation_md": "pytest shows the comparison: the expected text was searched for in `''`, the captured stderr. The exit code assertion passed (it came first), so only the stream changed. We checked: with `print`, the message is in `result.stdout` and `result.stderr` is empty. The test exists to pin slide 19's rule that the shell prints errors to stderr, and it did its job. Rewriting the test to match the change is the careless move; reverting to `typer.echo(..., err=True)` is the fix.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "expense-tracker tests/test_io.py (v0.4); S7 slide 19; S8 slide 21",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The test is flaky: `CliRunner` sometimes misses output, so rerun it until it passes",
+     "correct": false,
+     "why_md": "The failure is deterministic: stderr is empty every time, because nothing writes to it any more."
+    },
+    {
+     "text_md": "The message now goes to stdout, so `result.stderr` is empty: put `err=True` back",
+     "correct": true,
+     "why_md": "The test encodes the requirement that errors go to stderr, and it caught the regression."
+    },
+    {
+     "text_md": "`CliRunner` cannot capture `print`, so the command must use `typer.echo` everywhere",
+     "correct": false,
+     "why_md": "`CliRunner` captures `print` fine: the message is in `result.stdout`. The problem is which stream it went to."
+    },
+    {
+     "text_md": "The test should look in `result.stdout` instead, since the message is still printed",
+     "correct": false,
+     "why_md": "Editing the test to match the new behaviour throws away the requirement: a user who redirects the report would lose the error."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q34",
+   "type": "mcq",
+   "level": "hard",
+   "skills": [
+    "predict-output"
+   ],
+   "stem_md": "A script counts the lines of a report with `uv run expenses report nosuch.csv | wc -l`. The file does not exist. What do v0.2 and v0.3 show?",
+   "explanation_md": "A pipe connects the first program's stdout to the second program's input, just as `>` connects it to a file. We ran both tags: at v0.2 the error is printed with `print`, so `wc -l` counts it and prints `1`, as if the report had one line. At v0.3 the error goes to stderr: it appears on the screen, nothing enters the pipe, and `wc -l` prints `0`. A script that trusted the count would be fooled by v0.2; the person at the terminal is only told the truth by v0.3.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "S7 slide 19; sample Q6 (pipes); runs on v0.2 and v0.3",
+   "origin": "history",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "v0.2 prints `1`; v0.3 shows `could not read nosuch.csv` on screen, then `0`",
+     "correct": true,
+     "why_md": "Only stdout goes into the pipe. v0.2's error is on stdout and is counted; v0.3's is on stderr and is not."
+    },
+    {
+     "text_md": "Both print `1`, because the error message is a single line of text in both versions",
+     "correct": false,
+     "why_md": "Same text, different stream. v0.3's message never enters the pipe."
+    },
+    {
+     "text_md": "Both print `0`, because a failing command stops the whole pipe before `wc` can run",
+     "correct": false,
+     "why_md": "`wc` runs whatever the first command does, and counts what arrives on its input."
+    },
+    {
+     "text_md": "v0.2 prints `0` and v0.3 prints `1`, because only stderr is sent into a pipe by the shell",
+     "correct": false,
+     "why_md": "Backwards: a pipe carries stdout. stderr goes straight to the screen."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q35",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "compare",
+    "read-tool-output"
+   ],
+   "stem_md": "The repo's `report` command catches the error with `except (OSError, ValueError):` and prints `could not read {path}`. Slide 19's version is `except (OSError, ValueError) as error:` and prints `could not read {path}: {error}`. On a file whose second row has the amount `forty`:\n\n```console\n$ uv run expenses report bad.csv\ncould not read bad.csv\n```\n\nwith the repo's version, and with the slide's:\n\n```console\n$ uv run expenses report bad.csv\ncould not read bad.csv: could not convert string to float: 'forty'\n```\n\nWhat does the user gain from the slide's version?",
+   "explanation_md": "`as error` keeps the caught exception, and `{error}` puts its message into the line. For a missing file that reads `[Errno 2] No such file or directory: 'nosuch.csv'`; for a bad amount, `could not convert string to float: 'forty'`. Both runs exit with 1, so scripts behave the same, but the person now knows whether to check the file name or the amount `forty`. Failing loudly includes saying why something failed, and it costs one variable.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "S7 slide 19; runs on v0.3 and the slide's variant",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The reason: they can tell a missing file from a bad amount, and they see which value to fix",
+     "correct": true,
+     "why_md": "Slide 19: \"Session 5's exit code, with the reason attached.\""
+    },
+    {
+     "text_md": "A different exit code for each kind of error, so scripts can tell them apart",
+     "correct": false,
+     "why_md": "Both versions end with exit code 1. Only the text differs."
+    },
+    {
+     "text_md": "A traceback, which names the file and line where the error happened and so is more precise",
+     "correct": false,
+     "why_md": "There is no traceback: `{error}` is the exception's own one-line message, written to stderr."
+    },
+    {
+     "text_md": "Nothing useful: the message is longer, but it tells the user the same thing",
+     "correct": false,
+     "why_md": "The repo's message is identical for a missing file and a bad amount. The slide's names the cause and the value."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q36",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "read-diff",
+    "compare",
+    "judgement"
+   ],
+   "stem_md": "A library group's commit changes how the book list is loaded. `overdue_report(books, today)` returns `[\"No overdue books.\"]` when it gets an empty list.\n\nIn `src/library/books.py`:\n\n```diff\n-def load_books(path):\n-    try:\n-        with open(path) as handle:\n-            return [parse_book(line) for line in handle]\n-    except:\n-        print(\"Library file is broken\")\n-        return []\n+def load_books(path: str) -> list[Book]:\n+    with open(path) as handle:\n+        return [parse_book(line) for line in handle]\n```\n\nIn `src/library/cli.py`:\n\n```diff\n @app.command()\n def overdue(path: str = typer.Argument(\"books.csv\")) -> None:\n-    books = load_books(path)\n+    try:\n+        books = load_books(path)\n+    except (OSError, ValueError) as error:\n+        typer.echo(f\"could not read {path}: {error}\", err=True)\n+        raise typer.Exit(code=1) from None\n     for line in overdue_report(books, date.today()):\n         typer.echo(line)\n```",
+   "explanation_md": "This is the course's failing-well review in miniature. The old `load_books` combined a bare except, a message on stdout and a disguised failure (`return []`), so a misspelt file name produced a cheerful \"No overdue books.\" with exit code 0; we ran it. In the new version `load_books` raises and the command catches only `OSError` and `ValueError`, writes the reason to stderr and exits with 1. The better commit message names that behaviour change, which is what someone searching the history later needs. The test to add is one of the course's \"one or two I/O tests on purpose\": `CliRunner` checking the exit code and `result.stderr`.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "S7 slides 18–19; sample Q8 shape",
+   "origin": "slides",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "What does this change do?",
+     "marks": 1,
+     "model_answer_md": "It moves the error handling out of `load_books`, which now just reads, into the `overdue` command: an unreadable file or a bad line now gives the reason on stderr and exit code 1.",
+     "rubric": [
+      "Says the handling moves out of `load_books` (which now only reads and lets `OSError` or `ValueError` go up) into the `overdue` command at the boundary, with only those two caught, a stderr message and exit code 1"
+     ],
+     "weak_answers_md": "\"It improves error handling\" is too vague to mark. Describing only one file (\"it deletes the try in `load_books`\") misses that the handling reappears in `cli.py`, so nothing is lost: it has moved from the reading function to the command at the boundary, and a full answer names both ends of the move."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Name one situation the old version handled badly, and say what the librarian would have seen.",
+     "marks": 2,
+     "model_answer_md": "A mistyped file name: it printed \"Library file is broken\", returned an empty list, and the report said \"No overdue books.\" with exit code 0, a false all-clear.",
+     "rubric": [
+      "Names a concrete case (missing file, misspelt name, a bad date in a line, or a bug in `parse_book`) and says it was reported as \"Library file is broken\"",
+      "Explains the consequence of `return []`: the program carries on and reports \"No overdue books.\" with exit code 0, a wrong answer that looks right"
+     ],
+     "weak_answers_md": "Stopping at \"it prints a vague message\" misses the worse half: `return []` makes the program carry on with a false all-clear. Answers that only say \"bare except is bad\" without a situation and what the user sees do not answer the question asked."
+    },
+    {
+     "label": "3",
+     "prompt_md": "The author offers two commit messages: A `Fix error handling` and B `Exit with an error when the books file cannot be read`. Which is better for someone reading the history six months later, and why?",
+     "marks": 2,
+     "model_answer_md": "B. It names what changed: an unreadable books file now ends in an error instead of a false all-clear. A reader finds the commit from the log line alone; A fits almost any commit.",
+     "rubric": [
+      "Chooses B and says it names the behaviour that changed (an unreadable file now fails with an error instead of an empty report)",
+      "Explains why A fails a later reader: it is too vague to find in the log or to understand without opening the diff"
+     ],
+     "weak_answers_md": "\"B, because it is longer\" gives no reason a marker can credit. \"A, because short messages are better\" ignores the reader six months later, who cannot tell from `Fix error handling` what was broken or what changed. Judging grammar or length misses the question: what the message lets a future reader find and understand."
+    },
+    {
+     "label": "4",
+     "prompt_md": "Name one test you would add for this change, in words.",
+     "marks": 1,
+     "model_answer_md": "With `CliRunner`, run `overdue` on a missing file and check for exit code 1 and `could not read` in `result.stderr`.",
+     "rubric": [
+      "A concrete test of the boundary: a missing (or malformed, via `tmp_path`) file gives exit code 1 and a message on stderr"
+     ],
+     "weak_answers_md": "\"Test that it works\" is not a test. A test that reads the group's real `books.csv` passes only on one laptop; build the bad file with `tmp_path` or use a name that does not exist."
+    }
+   ],
+   "lines": "6–8"
+  },
+  {
+   "id": "core-shell-failing-q37",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "read-diff",
+    "compare"
+   ],
+   "stem_md": "This is the expense-tracker's commit `9d6c607`, \"Separate reading and printing from the calculation\", from the work between v0.1 and v0.2 (trimmed: the new `format_report` is not shown; it builds the same report as before, but returns it as a list of lines instead of printing each line):\n\n```diff\n--- a/src/expense_tracker/report.py\n+++ b/src/expense_tracker/report.py\n@@ -12,6 +12,17 @@ AMOUNT_WIDTH = 10\n RULE_WIDTH = 40\n\n\n+def read_expenses(path):\n+    expenses = []\n+    with open(path) as handle:\n+        reader = csv.reader(handle)\n+        next(reader)\n+        for row in reader:\n+            if len(row) == FIELDS_PER_ROW:\n+                expenses.append((row[DATE], row[MERCHANT], row[CATEGORY], float(row[AMOUNT])))\n+    return expenses\n+\n+\n def total_by_category(expenses, category, minimum):\n     totals = {}\n     for expense in expenses:\n@@ -29,45 +40,33 @@ def total_by_category(expenses, category, minimum):\n     return ordered\n\n\n-def run(path, category, minimum):\n-    expenses = []\n-    try:\n-        f = open(path)\n-        reader = csv.reader(f)\n-        next(reader)\n-        for row in reader:\n-            if len(row) == FIELDS_PER_ROW:\n-                expenses.append((row[DATE], row[MERCHANT], row[CATEGORY], float(row[AMOUNT])))\n-        f.close()\n-    except:\n-        print(\"could not read \" + path)\n-        sys.exit(1)\n+def largest_expense(expenses):\n+    largest = None\n+    for expense in expenses:\n+        if largest is None or expense[AMOUNT] > largest[AMOUNT]:\n+            largest = expense\n+    return largest\n\n@@ -76,3 +75,17 @@ def run(path, category, minimum):\n             + \" for \"\n             + (\"%.2f\" % largest[AMOUNT])\n         )\n+    return lines\n+\n+\n+def run(path, category, minimum):\n+    try:\n+        expenses = read_expenses(path)\n+    except:\n+        print(\"could not read \" + path)\n+        sys.exit(1)\n+\n+    totals = total_by_category(expenses, category, minimum)\n+    largest = largest_expense(expenses)\n+    for line in format_report(path, category, minimum, totals, largest):\n+        print(line)\n```",
+   "explanation_md": "Reading a diff means saying what moved and what is still wrong. The structure moved: reading, searching and formatting left `run()`. What stayed is the part that touches the world, `print` and `sys.exit`, which is why v0.2 is not yet the finished shape (slide 19: \"v0.2 still prints and exits inside report.py\"). The next commit, `15836e1`, moves them to `cli.py`. The payoff of this commit is already testable: functions that take and return plain data can be called with a plain list.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "expense-tracker 9d6c607; S7 slides 15, 19; S8 slide 13",
+   "origin": "history",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "What does this commit do to `run()`, and what stays the same?",
+     "marks": 2,
+     "model_answer_md": "It gives each job its own function: `read_expenses` reads the file, `largest_expense` finds the biggest expense, `format_report` builds the lines. `run()` now only calls them in order, and the report is the same.",
+     "rubric": [
+      "Names at least two of the new functions with their jobs (reading, finding the largest, building the report lines)",
+      "Says `run()` now just calls them in order, and that the behaviour for the user is unchanged"
+     ],
+     "weak_answers_md": "\"It adds functions\" names no jobs and no direction. \"It fixes the error handling\" misreads the diff: the `try` and the `sys.exit(1)` are still in `run()`, only the reading moved out of it."
+    },
+    {
+     "label": "2",
+     "prompt_md": "`run()` still has a problem that makes it hard to test. Which, and where should that part go?",
+     "marks": 2,
+     "model_answer_md": "It still prints and ends the program with `sys.exit(1)`, so a test would have to capture output and catch the exit. Those belong to the shell, the command in `cli.py`; `report.py` should keep only functions that take and return data.",
+     "rubric": [
+      "Identifies `print` and `sys.exit` still inside `run()` in `report.py`",
+      "Says they belong in the outer layer (the command in `cli.py`, the shell) so that the module is left with pure functions"
+     ],
+     "weak_answers_md": "\"`run()` is too long\" is a symptom, not the problem the course names. \"It needs more functions\" repeats what this commit already did. The marks are for the two calls that touch the world and for where they should live."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Describe in words one test that this commit makes possible and that `run()` alone did not.",
+     "marks": 2,
+     "model_answer_md": "Call `format_report` with a small list of totals and assert on the lines it returns, or call `largest_expense` with an empty list and assert that it returns `None`. Neither needs a file on disk or captured output.",
+     "rubric": [
+      "A test of `format_report` or `largest_expense` (or `read_expenses` with a small file) that uses plain data",
+      "States what it no longer needs: no captured printing, no exit to catch"
+     ],
+     "weak_answers_md": "\"Test that the program still works\" is not a test of the new structure. A test that calls `run()` still has to capture `print` and catch `SystemExit`, so it gains nothing from this commit."
+    }
+   ],
+   "lines": "6–8"
+  },
+  {
+   "id": "core-shell-failing-q38",
+   "type": "open",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "predict-output"
+   ],
+   "stem_md": "The same commands, run on the v0.2 and the v0.3 tags of the demo. `nosuch.csv` does not exist.\n\nv0.2:\n\n```console\n$ uv run expenses report nosuch.csv > report.txt\n$ cat report.txt\ncould not read nosuch.csv\n$ uv run expenses report nosuch.csv | wc -l\n1\n$ uv run expenses report nosuch.csv; echo $?\ncould not read nosuch.csv\n1\n```\n\nv0.3:\n\n```console\n$ uv run expenses report nosuch.csv > report.txt\ncould not read nosuch.csv\n$ cat report.txt\n$ uv run expenses report nosuch.csv | wc -l\ncould not read nosuch.csv\n0\n$ uv run expenses report nosuch.csv; echo $?\ncould not read nosuch.csv\n1\n```",
+   "explanation_md": "These transcripts are real runs of the two tags. The lesson is in the two streams: v0.2's `print` put the error on stdout, so redirection hid it in the file and a pipe counted it as data; v0.3's `typer.echo(..., err=True)` keeps it on stderr, where it always reaches the person. The exit code, which machines read, was already right in v0.2. Failing well needs both: the message on stderr for people, a non-zero exit code for programs.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "S7 slide 19; S5 slide 9; runs on v0.2 and v0.3",
+   "origin": "history",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Explain why the v0.2 user saw nothing on the screen after the first command, and why `wc -l` printed `1`.",
+     "marks": 2,
+     "model_answer_md": "v0.2 prints the error with `print`, which writes to stdout. `>` sent stdout into `report.txt`, so the message went into the file; the pipe sent it into `wc -l`, which counted it as a line of report.",
+     "rubric": [
+      "v0.2's message is on stdout (via `print`)",
+      "Both `>` and the pipe take stdout, so the error went into the file and was counted by `wc -l`"
+     ],
+     "weak_answers_md": "\"The program crashed silently\" is wrong: it wrote the message, just into the file. \"The file was not found, so nothing was printed\" also misses that the message exists. Explaining only one of the two commands (the file or the count) earns one mark."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Explain what v0.3 does differently, using the words stdout and stderr.",
+     "marks": 2,
+     "model_answer_md": "v0.3 writes the error to stderr and keeps stdout for the report. Redirection and pipes take only stdout, so the message appears on screen, `report.txt` stays empty and `wc -l` counts 0.",
+     "rubric": [
+      "v0.3 writes the error to stderr (`typer.echo(..., err=True)`) and keeps stdout for the report",
+      "Explains the transcript: stderr is not redirected or piped, so the message reaches the screen, the file stays empty and `wc -l` counts 0"
+     ],
+     "weak_answers_md": "Saying \"v0.3 shows the error\" without the two stream names misses what the part asks. \"stderr is for errors and stdout for output\" is the rule; the marks are for applying it to these lines."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Both versions print `1` for `echo $?`. Why does that number matter to a script, and did v0.3 change it?",
+     "marks": 2,
+     "model_answer_md": "The exit code is how scripts, `&&` and CI know the command failed: with 1, a following `&& echo saved` would not run. v0.2 already exited with 1 via `sys.exit(1)`; v0.3 keeps it with `typer.Exit`. What v0.3 fixed was where the message goes.",
+     "rubric": [
+      "Explains that scripts, `&&` and CI decide by the exit code (non-zero means failure)",
+      "Notes that the exit code was already 1 in v0.2: the improvement in v0.3 is the stream, not the code"
+     ],
+     "weak_answers_md": "\"1 means there was one error\" misreads the number: it is a status, not a count. Claiming v0.3 introduced the non-zero exit code misreads the transcripts, where both show `1`."
+    }
+   ],
+   "lines": "6–8"
+  },
+  {
+   "id": "core-shell-failing-q39",
+   "type": "mcq",
+   "level": "core",
+   "skills": [
+    "concept"
+   ],
+   "stem_md": "Slide 20 says \"print is not logging\". Which is a reason it gives for using `logging` for a message like \"skipped malformed row 3\"?",
+   "explanation_md": "Slide 20 lists what logging has and `print` lacks: a level (debug, info, warning, error), and control without editing the code (silence it, filter it, send it to a file). It also separates two kinds of text: \"print is for the program's output; logging is for its diary.\" A skipped malformed row is diary: worth knowing when you investigate, noise inside the report.",
+   "section_ref": "core-shell-failing-s8",
+   "source_ref": "S7 slide 20",
+   "origin": "slides",
+   "verified_by": "source",
+   "options": [
+    {
+     "text_md": "Logged messages become part of the program's output, so the user sees them inside the saved report",
+     "correct": false,
+     "why_md": "The opposite: `print` is for the program's output; logging is for its diary."
+    },
+    {
+     "text_md": "`logging` calls are checked by mypy and ruff, while `print` calls are ignored by both",
+     "correct": false,
+     "why_md": "mypy and ruff check both calls the same way; neither tool decides between them."
+    },
+    {
+     "text_md": "Each message has a level and can be silenced, filtered or sent to a file without code edits",
+     "correct": true,
+     "why_md": "Slide 20: \"Can be silenced, filtered, sent to a file: without editing the code.\" Changing one line of configuration changes what you see."
+    },
+    {
+     "text_md": "`logging` stops the program when a warning is logged, so problems cannot be ignored",
+     "correct": false,
+     "why_md": "Logging never stops anything. Stopping is what raising an exception does."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q40",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "`read_expenses` silently skips rows that do not have four fields. The team wants to know how many rows are skipped when the nightly report runs, without changing the report itself and without editing code to turn the messages on and off. Which change fits?",
+   "explanation_md": "The requirements are three: record the skipped rows, leave the report unchanged, and switch the messages on or off without touching code. `print` fails the second and third; raising fails the second (the report would stop); `typer.echo` inside the module fails the third and drags I/O back into the core's module. A logger call at `warning` level, with the configuration done once in the shell, meets all three: the warning goes to stderr, the report on stdout is untouched, and changing the level in `basicConfig` controls what appears.",
+   "section_ref": "core-shell-failing-s8",
+   "source_ref": "S7 slide 20; S6 slide 14",
+   "origin": "slides",
+   "verified_by": "reasoning",
+   "options": [
+    {
+     "text_md": "`logger.warning(...)` for each skipped row, with `logging.basicConfig` once in the shell",
+     "correct": true,
+     "why_md": "Slide 20's own example. The level decides what is shown, set in one place."
+    },
+    {
+     "text_md": "Raise `ValueError` on the first malformed row, so nobody can miss it",
+     "correct": false,
+     "why_md": "That changes the behaviour: one bad row would stop the whole report. Session 6's comment explains the skipping is deliberate (a bank export's summary row)."
+    },
+    {
+     "text_md": "Add `print(f\"skipped row {line_number}\")` in `read_expenses` for each skipped row",
+     "correct": false,
+     "why_md": "The diary ends up inside the report and anything piped from it, and turning it off means editing the code."
+    },
+    {
+     "text_md": "Call `typer.echo(..., err=True)` inside `read_expenses`, so each message goes to stderr instead",
+     "correct": false,
+     "why_md": "stderr is right for errors, but this puts terminal I/O back into `report.py`, which v0.3 removed, and it cannot be silenced without editing."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q41",
+   "type": "mcq",
+   "level": "exam",
+   "skills": [
+    "predict-output",
+    "read-code"
+   ],
+   "stem_md": "A team adds logging to the demo. In `report.py`:\n\n```python\nlogger = logging.getLogger(__name__)\n...\n        for line_number, row in enumerate(reader, start=2):\n            if len(row) != FIELDS_PER_ROW:\n                logger.warning(\"skipped malformed row %d in %s\", line_number, path)\n                continue\n            ...\n    logger.info(\"read %d expenses from %s\", len(expenses), path)\n```\n\nIn `cli.py`, the typer callback:\n\n```python\n@app.callback()\ndef main() -> None:\n    logging.basicConfig(level=logging.WARNING)\n```\n\n`small.csv` has a header, two good rows and one broken row (`broken`, on line 3). Besides the report itself, which log messages appear when you run `uv run expenses report small.csv`?",
+   "explanation_md": "The level in `basicConfig` is a threshold: messages at that level or more serious pass, the rest are dropped. We ran it: at `WARNING` the only log line is `WARNING:expense_tracker.report:skipped malformed row 3 in small.csv`. Changing the callback to `level=logging.INFO` added `INFO:expense_tracker.report:read 2 expenses from small.csv`, with no change to `report.py`. That is slide 20's point: what you see is controlled in one place, in the shell.",
+   "section_ref": "core-shell-failing-s8",
+   "source_ref": "S7 slide 20; run on a logging variant of v0.3",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "Only the warning about row 3",
+     "correct": true,
+     "why_md": "Level `WARNING` shows warnings and errors and hides `info` and `debug`."
+    },
+    {
+     "text_md": "The warning about row 3 and the line saying two expenses were read",
+     "correct": false,
+     "why_md": "The second one is `info`, which is below `WARNING`, so it is filtered out."
+    },
+    {
+     "text_md": "None, because logging writes to a log file, not to the terminal",
+     "correct": false,
+     "why_md": "`basicConfig` without a file name writes to the terminal (stderr). Sending logs to a file is an option you have to ask for."
+    },
+    {
+     "text_md": "Only the line saying two expenses were read, because `basicConfig` shows messages up to the level given",
+     "correct": false,
+     "why_md": "Backwards: the level is a minimum. Messages at that level and above are shown."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q42",
+   "type": "mcq",
+   "level": "beyond",
+   "skills": [
+    "predict-output",
+    "concept"
+   ],
+   "stem_md": "The demo now logs `skipped malformed row ...` as a warning from `read_expenses`, and the shell calls `logging.basicConfig(level=logging.WARNING)` with nothing else configured. A user runs:\n\n```console\n$ uv run expenses report small.csv > report.txt\n```\n\n`small.csv` has one broken row. Where does the warning end up?",
+   "explanation_md": "This is one step past the slide. We ran it: the terminal showed `WARNING:expense_tracker.report:skipped malformed row 3 in small.csv`, and `report.txt` held the clean report. `basicConfig` sets up a handler that writes to stderr by default, so the diary follows the same rule as error messages: it reaches the person, and it never pollutes the program's output. Had the team used `print` for the warning, it would be sitting in the middle of `report.txt`.",
+   "section_ref": "core-shell-failing-s8",
+   "source_ref": "S7 slides 19–20; run on a logging variant of v0.3",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "In `report.txt`, above the report, because `>` captures everything the program writes",
+     "correct": false,
+     "why_md": "`>` captures stdout only. The log handler writes to stderr."
+    },
+    {
+     "text_md": "Nowhere, because logging is switched off while the output is redirected",
+     "correct": false,
+     "why_md": "Redirection changes where stdout goes; it does not switch logging on or off."
+    },
+    {
+     "text_md": "In a file named after the logger, `expense_tracker.report`, because each module logs to its own file",
+     "correct": false,
+     "why_md": "`getLogger(__name__)` names the logger; it does not create files. Without a file name, `basicConfig` writes to stderr."
+    },
+    {
+     "text_md": "On the screen, because `basicConfig` writes to stderr unless told otherwise",
+     "correct": true,
+     "why_md": "Log messages and the report travel on different streams, so redirecting one leaves the other alone."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q43",
+   "type": "mcq",
+   "level": "beyond",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "The team wants a `--verbose` option that also shows `info` messages such as \"read 420 expenses from expenses.csv\". The core modules already log with `logging.getLogger(__name__)`. Where does the change belong?",
+   "explanation_md": "Slide 20: configure once, in the shell. A command-line option is shell business anyway, so the callback reads it and sets the level: `logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)`. We tried it on a copy of the demo: without the option only the warning appears; with `expenses --verbose report small.csv` the `info` line appears too, and `report.py` was not touched. Every alternative pushes knowledge of the terminal into the core, which is what the split exists to prevent.",
+   "section_ref": "core-shell-failing-s8",
+   "source_ref": "S7 slide 20; S5 slides 7–8 (options); run on a variant of v0.3",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "In the core: wrap every `logger.info(...)` call in `if verbose:`",
+     "correct": false,
+     "why_md": "Every core function would need to know about a command-line option, and the level mechanism already does this filtering."
+    },
+    {
+     "text_md": "In the core: add a `verbose: bool` parameter to every function that logs, and pass it down",
+     "correct": false,
+     "why_md": "That threads a terminal concern through pure functions and changes every call and every test."
+    },
+    {
+     "text_md": "In the shell: the typer callback reads `--verbose` and sets the level in `basicConfig`",
+     "correct": true,
+     "why_md": "Configure once, in the shell. The modules keep logging as before; only the threshold moves."
+    },
+    {
+     "text_md": "In the shell: each command takes `--verbose` and, when it is set, prints the row counts itself",
+     "correct": false,
+     "why_md": "That repeats in every command what one logging level already does, and turns diary messages into program output, which slide 20 says to avoid."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q44",
+   "type": "sort",
+   "level": "hard",
+   "skills": [
+    "judgement"
+   ],
+   "stem_md": "For each message from an expense-tracker run, where should it go?",
+   "explanation_md": "Three channels, three readers. stdout is the program's output, what the user asked for and may send into a file or a pipe. stderr is for messages the person must see about a failure, and it travels with a non-zero exit code. Logging is the diary for whoever investigates, with levels that decide what is shown. The test for each message: would it corrupt a saved report (then not stdout), is the run a failure (then stderr), is it only useful when investigating (then logging)?",
+   "section_ref": "core-shell-failing-s8",
+   "source_ref": "S7 slides 19–20; S5 slide 9; expense-tracker cli.py; labs/01-scaffold.md",
+   "origin": "slides",
+   "verified_by": "reasoning",
+   "categories": [
+    {
+     "id": "stdout",
+     "label": "stdout: the program's output"
+    },
+    {
+     "id": "stderr",
+     "label": "stderr: an error for the person"
+    },
+    {
+     "id": "log",
+     "label": "logging: the program's diary"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "The report's line `TOTAL                    50.00`",
+     "category": "stdout",
+     "why_md": "It is the result the user asked for: the program's output, which they may redirect to a file."
+    },
+    {
+     "text_md": "`could not read nosuch.csv`",
+     "category": "stderr",
+     "why_md": "A failure the person must see even when the output is redirected. Paired with exit code 1."
+    },
+    {
+     "text_md": "`skipped malformed row 3 in small.csv`",
+     "category": "log",
+     "why_md": "Slide 20's own example: diary, at warning level."
+    },
+    {
+     "text_md": "`amount must be positive`, after `expenses add \"Bar Ramon\" 0`",
+     "category": "stderr",
+     "why_md": "Session 5's bad-input message: an error for the person, with exit code 1."
+    },
+    {
+     "text_md": "`read 420 rows in 0.03 s`",
+     "category": "log",
+     "why_md": "Useful when investigating, noise otherwise: `info` or `debug`."
+    },
+    {
+     "text_md": "`added Bar Ramon (dining) 12.50 to data/expenses.csv`, after a successful `add`",
+     "category": "stdout",
+     "why_md": "The confirmation is what the command produces when it succeeds; the demo's `add` and lab 01's example print it to stdout."
+    },
+    {
+     "text_md": "`entering total_by_category with 414 expenses`",
+     "category": "log",
+     "why_md": "A developer's trace: `debug`, off unless you are hunting a problem."
+    },
+    {
+     "text_md": "The CSV lines an `export` command writes for the user to save with `>`",
+     "category": "stdout",
+     "why_md": "That is the output itself; anything else on stdout would corrupt the exported file."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q45",
+   "type": "open",
+   "level": "exam",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "While hunting a pricing bug, a parking-lot teammate added these lines and pushed them:\n\n```python\ndef fee(minutes: int) -> float:\n    print(\"DEBUG fee called with\", minutes)\n    band = band_for(minutes)\n    print(\"DEBUG band chosen:\", band)\n    return band.price_per_hour * hours_charged(minutes)\n```\n\nSince then the `report` command's output starts with dozens of `DEBUG` lines, and a `CliRunner` test that compares the command's output has started failing.",
+   "explanation_md": "Slide 20 in a real situation. The `print` lines broke two rules at once: computation is not output (the core now prints), and print is for the program's output, not its diary. The fix keeps the messages but moves them to a channel with levels: `logger.debug` in the module, `basicConfig` in the shell. The report and the receipts stay on stdout, which is what the `CliRunner` test was checking all along.",
+   "section_ref": "core-shell-failing-s8",
+   "source_ref": "S7 slide 20; S8 slide 28",
+   "origin": "slides",
+   "verified_by": "reasoning",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "Name two problems these `print` lines cause.",
+     "marks": 2,
+     "model_answer_md": "They put diary messages into the program's output: the report, any file or pipe it is sent to, and the output the `CliRunner` test compares. They also make `fee`, a core function, touch the world, and the only way to turn them off is to find and delete each one.",
+     "rubric": [
+      "Debug text is mixed into the program's output (the report, redirected files or pipes, tests that compare output)",
+      "A core function now does I/O, breaking the core rule (it is noisy everywhere it is called, including every test)",
+      "They cannot be switched off or filtered without editing the code"
+     ],
+     "weak_answers_md": "\"Prints are ugly\" names no consequence, so it earns nothing. Two points that say the same thing (\"the report is messy\" and \"the output has extra lines\") count once. The strongest answers name one effect on the output or the tests and one on how the messages are controlled."
+    },
+    {
+     "label": "2",
+     "prompt_md": "What should the teammate use instead, and where is it configured?",
+     "marks": 2,
+     "model_answer_md": "A module logger, `logging.getLogger(__name__)`, with `logger.debug(...)` for these messages. Logging is configured once, in the shell (for example the typer callback) with `logging.basicConfig`: normally at `WARNING`, lowered to `DEBUG` only while hunting the bug.",
+     "rubric": [
+      "`logging.getLogger(__name__)` and `logger.debug` (a debug level) for the messages",
+      "Configured once, in the shell, with `logging.basicConfig`",
+      "Explains that the level hides the debug messages normally and shows them when lowered, without editing `fee`"
+     ],
+     "weak_answers_md": "\"Use logging\" without a level or a place to configure it is half an answer. Configuring logging inside `fee` or in every module repeats the mistake in a new form. Swapping `print` for `typer.echo(..., err=True)` moves the noise to stderr but still puts terminal I/O in the core and still cannot be switched off."
+    },
+    {
+     "label": "3",
+     "prompt_md": "Which output of this program should still go through `print` or `typer.echo`?",
+     "marks": 1,
+     "model_answer_md": "The program's real output: the report lines and receipts, printed by the shell. Diary messages go to logging, and errors to stderr.",
+     "rubric": [
+      "The program's output (the report lines, the receipt) printed by the shell, as distinct from diary messages and errors"
+     ],
+     "weak_answers_md": "\"Nothing should use print\" goes too far: the program still has to show its result to the user. \"Everything except DEBUG\" misses that errors belong on stderr, not on stdout with the report."
+    }
+   ],
+   "lines": "5–7"
+  },
+  {
+   "id": "core-shell-failing-q46",
+   "type": "mcq",
+   "level": "beyond",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "Suppose the v0.4 demo's missing-file test were slide 21's version, which checks only the exit code:\n\n```python\ndef test_missing_file_exits_with_one() -> None:\n    result = runner.invoke(app, [\"report\", \"nosuch.csv\"])\n    assert result.exit_code == 1\n```\n\nA teammate changes the error line in `report` from `typer.echo(f\"could not read {path}\", err=True)` to `print(f\"could not read {path}\")`, keeping `raise typer.Exit(1) from None`. Then:\n\n```console\n$ uv run ruff check . && uv run mypy src tests && uv run pytest -q\nAll checks passed!\nSuccess: no issues found in 6 source files\n........................                                                 [100%]\n24 passed in 0.05s\n```\n\nWhat can you conclude?",
+   "explanation_md": "We ran this on a copy of the v0.4 demo, with the error line changed to `print` and the missing-file test cut down to slide 21's exit-code check: ruff, mypy and all 24 tests passed, while `uv run expenses report nosuch.csv > report.txt` hid the error inside `report.txt`. A test protects only what it asserts. Session 8's warning about coverage applies: the error path ran, and nothing checked where its message went. The repo's real `test_io.py` adds `assert \"could not read nosuch.csv\" in result.stderr`, the line that pins slide 19's rule that errors go to stderr.",
+   "section_ref": "core-shell-failing-s7",
+   "source_ref": "S8 slides 21, 24; S7 slide 19; expense-tracker tests/test_io.py (v0.4); run on a variant of v0.4",
+   "origin": "slides",
+   "verified_by": "run",
+   "options": [
+    {
+     "text_md": "The change is safe: ruff, mypy and pytest are all green, so the behaviour of `report` is unchanged",
+     "correct": false,
+     "why_md": "CI is the referee, not the judge: it reports what the tests check. Nothing here checks which stream the message uses, so green says nothing about it."
+    },
+    {
+     "text_md": "The change is safe, because scripts and `&&` read the exit code, and the exit code is still 1 after the change",
+     "correct": false,
+     "why_md": "Scripts read the exit code, but people read the message. With `print`, `> report.txt` hides the error inside the file and a pipe counts it as data."
+    },
+    {
+     "text_md": "The checks missed it because `CliRunner` does not capture text that a command writes with `print`",
+     "correct": false,
+     "why_md": "`CliRunner` captures `print` without trouble: the message is in `result.stdout`. The test never looks at either stream."
+    },
+    {
+     "text_md": "A regression got through: the test checks the exit code but not the stream; check `result.stderr` too",
+     "correct": true,
+     "why_md": "The test runs the error path but asserts only `exit_code == 1`, so moving the message to stdout passes. The repo's `test_io.py` also asserts that the message is in `result.stderr`, and that line would have failed."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q47",
+   "type": "mcq",
+   "level": "beyond",
+   "skills": [
+    "read-code",
+    "judgement"
+   ],
+   "stem_md": "A library group's core function:\n\n```python\ndef overdue_books(books: list[Book], today: date) -> list[Book]:\n    return [book for book in books if book.due < today]\n```\n\nThe `overdue` command calls it as `overdue_books(books, date.today())`. A teammate proposes dropping the `today` parameter and calling `date.today()` inside the function, \"so callers have one less argument to pass\". The function would still have no `open`, no `print` and no `sys.exit`. What is the strongest objection?",
+   "explanation_md": "Slide 13's core is data in, data out: the same values always give the same answer. `open`, `print` and `sys.exit` are the obvious ways to touch the world, and lab 08 adds the network, but the clock is one too. With `today` as a parameter, the shell reads the clock once, as the demo's `add` command does in `cli.py` with `datetime.date.today()`, and a test passes a fixed date and checks a fixed list. With `date.today()` inside, a test that passes today can fail next week unless it fakes the date: the expensive kind of test the split exists to avoid.",
+   "section_ref": "core-shell-failing-s1",
+   "source_ref": "S7 slides 13, 15; labs/08-tdd.md step 1; expense-tracker cli.py (`add` reads the clock in the shell)",
+   "origin": "slides",
+   "verified_by": "reasoning",
+   "options": [
+    {
+     "text_md": "None: with no `open`, `print` or `sys.exit` it is still core, and a shorter call is cleaner",
+     "correct": false,
+     "why_md": "The slide's list names the usual ways to touch the world, but the rule behind it is data in, data out. A function that reads the clock answers differently tomorrow for the same arguments."
+    },
+    {
+     "text_md": "Reading the clock touches the world: the same books give a different answer tomorrow",
+     "correct": true,
+     "why_md": "Today's date is input from outside, like a file. Passed in, a test can use `date(2026, 10, 22)` and know the answer; read inside, the expected result changes as the calendar moves."
+    },
+    {
+     "text_md": "`date.today()` is slow, so calling it inside a function that runs in a loop wastes time on every call",
+     "correct": false,
+     "why_md": "Speed is not the issue; a call to the clock is cheap. The issue is that the result no longer depends only on the arguments."
+    },
+    {
+     "text_md": "mypy cannot check `date.today()`, so the function's return type would no longer be verified at all",
+     "correct": false,
+     "why_md": "`date.today()` is fully typed, and mypy checks it like any other call. Types do not change here; testability does."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q48",
+   "type": "sort",
+   "level": "hard",
+   "skills": [
+    "read-code",
+    "predict-output"
+   ],
+   "stem_md": "This is v0.1's `run()` (shortened; the rest prints the report):\n\n```python\ndef run(path, cat, minimum):\n    rows = []\n    try:\n        f = open(path)\n        reader = csv.reader(f)\n        next(reader)\n        for row in reader:\n            # skip rows that do not have all four fields\n            if len(row) == 4:\n                rows.append((row[0], row[1], row[2], float(row[3])))\n        f.close()\n    except:\n        print(\"could not read \" + path)\n        sys.exit(1)\n\n    print(\"Expense report for \" + path)\n    ...\n    totals = calculate_totals(rows, cat, minimum)\n    ...\n```\n\nEach line below is one change to a working v0.1, or one event, taken on its own. What does the user get from `uv run expenses report`?",
+   "explanation_md": "A bare `except:` catches everything raised inside its `try`, and nothing outside it. In v0.1 the `try` covers opening and parsing the file, so real input problems (a missing file, `forty`), bugs that surface on those lines (a missing `import csv`, `flaot`) and even Ctrl-C all end in the same `could not read` and exit code 1. The header `print` and the call to `calculate_totals` come after the `try`, so a typo there escapes as a traceback. We ran every case on v0.1. Reading where a `try` starts and ends is part of judging what a handler hides.",
+   "section_ref": "core-shell-failing-s6",
+   "source_ref": "S7 slide 18; expense-tracker v0.1 report.py (run with each change)",
+   "origin": "history",
+   "verified_by": "run",
+   "categories": [
+    {
+     "id": "message",
+     "label": "`could not read ...` and exit code 1"
+    },
+    {
+     "id": "traceback",
+     "label": "A traceback that names the bug"
+    },
+    {
+     "id": "report",
+     "label": "A normal report and exit code 0"
+    }
+   ],
+   "items": [
+    {
+     "text_md": "The file name is misspelt, so the file does not exist",
+     "category": "message",
+     "why_md": "`open` raises `FileNotFoundError` inside the `try`. This is the case the handler was written for, and the message is fair."
+    },
+    {
+     "text_md": "An amount in the file reads `forty`",
+     "category": "message",
+     "why_md": "`float(\"forty\")` raises `ValueError` inside the `try`: bad input, reported as a reading problem."
+    },
+    {
+     "text_md": "Someone deletes `import csv` from the top of `report.py`",
+     "category": "message",
+     "why_md": "`csv.reader` raises `NameError` inside the `try`, and the bare except reports a missing import as a problem with the file."
+    },
+    {
+     "text_md": "Someone mistypes `float` as `flaot` in the reading loop",
+     "category": "message",
+     "why_md": "Another `NameError` inside the `try`, disguised the same way: the file is fine and the message blames it."
+    },
+    {
+     "text_md": "The user presses Ctrl-C while a large file is still being read",
+     "category": "message",
+     "why_md": "`KeyboardInterrupt` is raised inside the `try`, and a bare except catches even that."
+    },
+    {
+     "text_md": "Someone mistypes `path` as `pth` in the `Expense report for` line",
+     "category": "traceback",
+     "why_md": "That line runs after the `try` has finished, so nothing catches the `NameError`: the program stops with a traceback naming the line."
+    },
+    {
+     "text_md": "Someone mistypes `calculate_totals` as `calculate_total`",
+     "category": "traceback",
+     "why_md": "The call is after the `try`, so the `NameError` escapes as a traceback, after the header has already been printed."
+    },
+    {
+     "text_md": "One row in the file has only three fields",
+     "category": "report",
+     "why_md": "Not an error at all: the length check skips the row and the report covers the others."
+    },
+    {
+     "text_md": "The file has its header line and no expenses",
+     "category": "report",
+     "why_md": "`next(reader)` reads the header, the loop has nothing to do, and the report shows `TOTAL 0.00` with exit code 0."
+    }
+   ]
+  },
+  {
+   "id": "core-shell-failing-q49",
+   "type": "open",
+   "level": "hard",
+   "skills": [
+    "read-tool-output",
+    "judgement"
+   ],
+   "stem_md": "After a change to the reading code, CI prints this (trimmed: the long path and the list of available fixtures are shortened):\n\n```text\ntests/test_amounts.py FFE.                                               [ 80%]\ntests/test_extra.py .                                                    [100%]\n\n==================================== ERRORS ====================================\n_____________________ ERROR at setup of test_reads_a_file ______________________\nfile tests/test_amounts.py, line 17\n  def test_reads_a_file(tmp_pth: Path) -> None:\nE       fixture 'tmp_pth' not found\n>       available fixtures: capfd, caplog, capsys, monkeypatch, tmp_path, tmp_path_factory, ...\n=================================== FAILURES ===================================\n________________________ test_a_bad_amount_is_rejected _________________________\n\n    def test_a_bad_amount_is_rejected() -> None:\n>       with pytest.raises(ValueError):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE ValueError\n\ntests/test_amounts.py:9: Failed\n___________________________ test_largest_of_nothing ____________________________\n\n    def test_largest_of_nothing() -> None:\n>       assert largest_expense([]) == 0\nE       assert None == 0\nE        +  where None = largest_expense([])\n\ntests/test_amounts.py:14: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_amounts.py::test_a_bad_amount_is_rejected - Failed: DID NOT...\nFAILED tests/test_amounts.py::test_largest_of_nothing - assert None == 0\nERROR tests/test_amounts.py::test_reads_a_file\n===================== 2 failed, 2 passed, 1 error in 0.01s =====================\n```\n\nIn the code, `parse_amount` wraps `float(text)` in a bare `except:` that returns `0.0`, and `largest_expense` returns `None` for an empty list, as the course's table says for \"no result\".",
+   "explanation_md": "Sample Q9's shape on pytest output instead of mypy. Read the last line first: 2 failed, 1 error. The error is a setup problem, the test body never ran. The two failures differ in who is wrong. `DID NOT RAISE` points at the code, which is the bare `except` of session 7: it hides a bad amount and replaces it with a number. `assert None == 0` points at the test, which disagrees with the course's table (nothing found: return `None`). The order of work follows from who can be hurt, and skipping tests to get green is the same shortcut as ignoring a type error.",
+   "section_ref": "core-shell-failing-s6",
+   "source_ref": "S7 slides 17-18; S8 slides 7, 9, 20",
+   "origin": "slides",
+   "verified_by": "run",
+   "parts": [
+    {
+     "label": "1",
+     "prompt_md": "For each of the three problems, say whether the test, the code or the setup is at fault, in one phrase each.",
+     "marks": 3,
+     "model_answer_md": "`test_a_bad_amount_is_rejected`: the code is at fault, because the bare `except` swallows the bad amount and returns `0.0`. `test_largest_of_nothing`: the test is wrong, because an empty list should give `None`, not `0`. `test_reads_a_file`: the setup, because the test asks for a fixture called `tmp_pth` that does not exist.",
+     "rubric": [
+      "DID NOT RAISE: the code is at fault, since the bare `except` hides the bad input",
+      "assert None == 0: the test is wrong, since `None` is the right answer for no result",
+      "fixture 'tmp_pth' not found: a setup error, the test never ran (the fixture name is wrong)"
+     ],
+     "weak_answers_md": "\"Three failing tests\" misses that the summary line says 2 failed and 1 error: an error at setup means the test body never ran. Blaming the code for `None == 0` ignores the course's table, where \"no result\" is `None` rather than a made-up number."
+    },
+    {
+     "label": "2",
+     "prompt_md": "Which one do you fix first, and why?",
+     "marks": 2,
+     "model_answer_md": "The swallowed error in `parse_amount`. It is the only fault in the program itself: a user who types `twelve` gets `0.0` and no message. The other two are mistakes in the tests, which cannot hurt anyone.",
+     "rubric": [
+      "Chooses the bare `except` in the code (or the setup error, with the reason that a test which never ran proves nothing)",
+      "Gives a reason in terms of the user or of what the evidence shows"
+     ],
+     "weak_answers_md": "\"The first one in the list\" is an order with no reason. \"Fix whichever is quickest\" is a plan for a green run, not for the program. A good order says which failure can hurt a user."
+    },
+    {
+     "label": "3",
+     "prompt_md": "A teammate marks the two failing tests with `skip` so that CI turns green. Do you accept that?",
+     "marks": 1,
+     "model_answer_md": "No. Skipping hides the evidence: one of them is a real bug in the code, and the other should be corrected, not removed. CI would be green and the bug would still be there.",
+     "rubric": [
+      "Refuses, because skipping hides a real failure instead of fixing the cause (the referee, not the judge)"
+     ],
+     "weak_answers_md": "\"Yes, because the tests are probably wrong\" accepts a green run without reading the failures. The course answer for tests is the same as for `# type: ignore`: a quiet check means nothing if the fault is still there."
+    }
+   ],
+   "lines": "6–8"
+  }
+ ]
+}

@@ -1,0 +1,400 @@
+
+===== [Software Development for Business - Syllabus 2026-27.pdf] page 1 =====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Syllabus 
+ 
+ 
+ 
+  
+ 
+ 
+ 
+ 
+ 
+Software Development for Business 
+Double Degree in Business Administration + Artificial 
+Intelligence for Business 
+UGRA_016269 · 6 ECTS · Autumn 2026 
+ 
+ 
+Barcelona, 2026-2027 
+
+===== [Software Development for Business - Syllabus 2026-27.pdf] page 2 =====
+Syllabus  
+ 
+ 
+1 
+ 
+ 
+ 
+ 
+Table of contents 
+ 
+ 
+1 
+Course description / Introduction to the 
+course 
+2 
+Learning objectives and competencies 
+3 
+Course format and methodological approach 
+4 
+Course content 
+5 
+Assessment 
+6 
+Materials 
+7 
+Academic integrity 
+8 
+Faculty leading the course 
+9 
+Timetable and sections 
+ 
+ 
+
+===== [Software Development for Business - Syllabus 2026-27.pdf] page 3 =====
+Syllabus  
+ 
+ 
+2 
+ 
+ 
+ 
+ 
+1. Course description / Introduction to the course 
+ 
+ 
+This course is the foundational component of the System Architecture module in the BBA 
+and BAIB programmes. It is about taking software from an idea to something that runs, 
+installs and can be maintained — software design, version control, containerization and 
+deployment — and it is the basis for later courses in Database Management and Design, 
+Cloud Solutions and DevOps Management. It connects the technical disciplines of the 
+degree to their use in a business context. 
+This is not a programming course. It builds on prior programming experience and is 
+concerned with what happens to code once other people work on it: within a team, 
+deploying on an unfamiliar machine, and under a deadline. Students gain hands-on 
+experience with tools used by professional teams on a daily basis, such as Git and 
+Docker. 
+Prerequisites: some prior programming experience in Python and a personal laptop the 
+student can install software on. A little familiarity with running code and using a terminal 
+is useful but not required. 
+ 
+ 
+2. Learning objectives and competencies 
+ 
+ 
+The course pursues four goals: 
+• Mastery of software development fundamentals — software design principles, patterns 
+and best practices for maintainable code. 
+• Proficiency in essential tools and technologies — terminal usage, Git and version 
+control, Docker and containerization, and server access and usage. 
+• Development of practical skills — transferable skills built through hands-on exercises 
+and a term-long project. 
+• Preparation for effective collaboration — version control with Git and GitHub, and 
+working in server and container environments. 
+By the end of the course, students will be able to: 
+1. Take an idea to a working, installable, tested Python program. 
+2. Read code and say what is wrong with it. 
+3. Work in the terminal fluently. 
+4. Collaborate on a shared codebase through branches, pull requests and review, and 
+explain why a team’s branching model follows from how often it ships. 
+
+===== [Software Development for Business - Syllabus 2026-27.pdf] page 4 =====
+Syllabus  
+ 
+ 
+3 
+ 
+ 
+ 
+ 
+5. Hand someone a container that runs their program anywhere, and explain why that 
+matters commercially. 
+ 
+ 
+3. Course format and methodological approach 
+ 
+ 
+The course meets twice a week (see section 9).  
+- 
+Tuesday sessions lean theoretical — explanation and live coding, then a guided 
+exercise 
+- 
+Friday sessions lean practical — a short input, then a lab. Each topic is introduced 
+through a worked example — a piece of code, a terminal transcript or a diff — 
+then the concept, then practice; one worked example runs through the whole 
+term.  
+- 
+Four Practice sessions and Demo Day are given over to the group project. 
+Working environment. The recommended setup either of: 
+- 
+WSL2 with Ubuntu on Windows 
+- 
+The native shell on macOS and Linux 
+On either case, we recommend using VS Code and Docker. The toolchain used and 
+assessed throughout is fixed: uv, ruff, mypy, pytest, typer, Git and GitHub, Docker 
+and Docker Compose. A different editor or setup is allowed provided the automated 
+checks pass; no support will be provided off the recommended path. 
+Workload. Nineteen sessions of 2.5 hours (47.5 contact hours) and approximately 50 
+further hours of autonomous work, most of it on the group project. 
+In class. Attendance is recorded every session (section 5). Laptops and tablets are for 
+academic use only. Disruptive behaviour is referred to programme management. Class 
+materials are published on Moodle a few days before each session. 
+ 
+4. Course content 
+ 
+ 
+The course follows the software development lifecycle across five modules. 
+• M1 — Starting a software project: the development lifecycle, Waterfall versus Agile, 
+Scrum, and the anatomy of an installable Python project. 
+• M2 — Clean code and testing: writing a program rather than a script, naming and 
+structure, type checking, and test-driven development. 
+
+===== [Software Development for Business - Syllabus 2026-27.pdf] page 5 =====
+Syllabus  
+ 
+ 
+4 
+ 
+ 
+ 
+ 
+• M3 — Terminal and shell: the filesystem, pipes and redirection, text-processing tools, 
+and Bash scripting. 
+• M4 — Git and version control: the commit model, branching and merging, conflicts 
+and remotes, and pull-request review with continuous integration. 
+• M5 — Docker, and server usage and access: images and containers, Dockerfiles, 
+Compose, registries, image security, and what deployment to a remote host means. 
+• Demo Day (session 19): each group demonstrates its program. 
+The group project. A command-line program in Python, built by a group of four (two 
+groups of five) over the term, one topic per group from a set menu. It is delivered in 
+stages (see section 5) and worked on in the Practice sessions. A separate project brief 
+on Moodle gives the full requirements. 
+ 
+5. Assessment 
+ 
+ 
+The course grade combines three components: 
+Component 
+Weight 
+Continuous assessment (group project) 
+30% 
+Mid-term exam 
+30% 
+Final exam 
+40% 
+ 
+•  A minimum of 4/10 on the final exam is required to pass the course. 
+•  Submission of every assignment is mandatory; late submissions score 0. 
+• Retake: retake exam 70% + continuous assessment 30%. The continuous-assessment 
+mark carries over unchanged; a minimum of 4/10 on the retake is required to pass. 
+Continuous assessment. The 30% is the group project, delivered in stages. The 
+weights below are shares of that 30%. 
+Stage 
+Session Date 
+Weight Graded by 
+CP1 — scaffold and CLI 
+5 
+Fri 25 Sep 
+5% 
+checklist 
+CP2 — tests 
+8 
+Fri 9 Oct 
+5% 
+checklist 
+Partial submission 
+10 
+Fri 16 Oct 
+30% 
+rubric 
+CP3 — branches 
+12 
+Fri 30 Oct 
+5% 
+checklist 
+CP4 — review and pull 
+requests 
+14 
+Fri 6 Nov 
+5% 
+checklist 
+Final submission and 
+demo 
+18–19 
+20 & 27 
+Nov 
+50% 
+rubric 
+Exams. Both exams are written — multiple-choice, code-reading, and short on-paper 
+coding and refactoring tasks. 
+
+===== [Software Development for Business - Syllabus 2026-27.pdf] page 6 =====
+Syllabus  
+ 
+ 
+5 
+ 
+ 
+ 
+ 
+• Mid-term: 1 hour, Thursday 22 October at 14:00; room announced on Moodle. 
+• Final — 2 hours. Date, time and room are set by the Registrar’s Office. Minimum 4/10 
+to pass. 
+Attendance. Attendance is recorded every session and carries no marks. A delay of 
+more than 15 minutes is recorded as an absence. A student whose absences exceed 
+20% of the course — 4 of the 19 sessions — must sit the retake exam, regardless of 
+their continuous-assessment mark. Justified absences (with documentation, submitted 
+within one week) are handled by programme management. 
+ 
+ 
+6. Materials 
+ 
+ 
+•  Moodle: this syllabus, the project brief and topic menu, deadlines, announcements, 
+and the slides for each session. 
+•  Public GitHub repositories, linked from Moodle: the course repository, the worked-
+example project, and the group-project template. 
+•  Required software, installed in session 3: a Unix-like shell (WSL2 with Ubuntu on 
+Windows), VS Code, uv, Git with a GitHub account, Docker and Docker Compose. 
+ 
+ 
+ 
+7. Academic integrity 
+ 
+ 
+This course is strictly ruled by Esade’s Honor Code 
+ 
+ 
+ 
+Academic integrity and learning honor code 
+ 
+At Esade, we uphold the highest standards of academic integrity. As members of this 
+learning community, we are all responsible for fostering an environment founded on 
+trust, respect, and intellectual honesty. Esade’s Disciplinary Regulations (available on 
+the program’s website) govern all aspects of academic conduct, both inside and 
+outside the classroom. These regulations serve to safeguard the value of your 
+education and the integrity of our institution. 
+ 
+Your commitment to academic integrity means that you must: 
+ 
+
+===== [Software Development for Business - Syllabus 2026-27.pdf] page 7 =====
+Syllabus  
+ 
+ 
+6 
+ 
+ 
+ 
+ 
+•Do your own work: All assignments, exams, and projects must be completed 
+individually unless otherwise specified. Collaboration is encouraged but only when 
+explicitly permitted. 
+•Cite sources accurately: Always acknowledge others’ ideas, words, and 
+contributions using proper citation methods. Plagiarism —presenting someone else’s 
+work as your own— is strictly prohibited. 
+•Follow exam and assessment activity rules: During exams and other assessable 
+activities, only use the duly authorized materials and follow all instructions. Any form 
+of copying, unauthorized collaboration, or use of prohibited devices will be treated as 
+a serious violation of those rules. 
+•Disclose the use of artificial intelligence: If you use any AI tools to assist you with 
+your work, you must clearly indicate said use and comply with Esade guidelines 
+regarding the use of AI when completing academic assignments (these guidelines are 
+available on the program’s website). 
+•Respect the learning environment: Disruptive behavior, disrespect toward others, 
+or any other action that undermines the dignity or safety of our community will not be 
+tolerated. 
+ 
+Consequences of Violations 
+ 
+Violating these principles is subject to disciplinary procedures as outlined in Esade’s 
+Disciplinary Regulations. Penalties for academic misconduct may include, but are not 
+limited to, failing the specific assignment or subject, suspension, or even expulsion 
+from the university. 
+ 
+A plea for honor 
+ 
+We believe that true learning is achieved through honorable effort and mutual respect. 
+By committing to these standards, you will help instill a culture of excellence and 
+integrity that benefits everyone in our community.  
+ 
+If you have any questions about what constitutes academic integrity or the appropriate 
+use of resources, please consult your instructor or refer to the university’s honor code 
+and Disciplinary Regulations. 
+ 
+ 
+
+===== [Software Development for Business - Syllabus 2026-27.pdf] page 8 =====
+Syllabus  
+ 
+ 
+7 
+ 
+ 
+ 
+ 
+ 
+8. Faculty leading the course 
+ 
+Lecturer: Alberto Cámara — alberto.camara@esade.edu. 
+Alberto Cámara holds a PhD in Mathematics and has been leading multidisciplinar 
+teams in the Software Industry for the last ten years, where he has had first-hand 
+experience of what works and what does not work when it comes to reliably 
+delivering a software product. He specializes in Machine Learning and Artificial 
+Intelligence. He currently works as a freelance consultant and part-time teacher.  
+Office hours: get in touch by email. 
+ 
+ 
+9. Timetable and sections  
+The course meets twice a week, from 8 September to 27 November 2026, in Room 
+108: 
+•  Tuesdays, 08:00–10:30 
+•  Fridays, 10:45–13:15 
+Non-teaching days:  
+- 
+Friday, September 11th (Diada) 
+- 
+The mid-term week of October 19th to 23rd 
+- 
+Friday, October 2nd 
+- 
+Tuesday, November 24th 
+There is one section of 62 students, taught as a single group and organised into 15 
+project groups (13 of four students and 2 of five). 
+ 
+ 
+ 
+ 
+ 
+ 
+
+===== [Software Development for Business - Syllabus 2026-27.pdf] page 9 =====
+Syllabus  
+ 
+ 
+8 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

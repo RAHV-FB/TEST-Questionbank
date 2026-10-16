@@ -1,0 +1,154 @@
+
+===== [midterm-sample-questions.pdf] page 1 =====
+Software Development for Business
+Mid-term: sample questions
+Mid-term: sample questions
+These questions show the kind of question on the mid-term. They are not the exam, and the
+exam does not reuse them. The topics are not a full list of what is covered.
+The real paper is 1 hour, closed book, pen and paper. It has multiple-choice questions (no
+penalty for a wrong answer) and short open questions answered in 5–8 lines. You will not be
+asked to write code.
+Multiple choice
+Q1
+You run uv sync in a fresh clone of your group’s repo and see:
+$ uv sync
+Using CPython 3.13.1
+error: Failed to parse `pyproject.toml`
+TOML parse error at line 7, column 12
+What should you do next?
+•
+a) Delete .venv and run uv sync again
+•
+b) Open pyproject.toml at line 7 and look for the syntax mistake
+•
+c) Run uv sync --upgrade to refresh the packages
+•
+d) Reinstall uv
+Q2
+Which of these changes is a refactoring?
+•
+a) Adding a --month option to the report command
+•
+b) Fixing a bug where the last expense in the file was skipped
+•
+c) Renaming variables and splitting one long function into two, with every test still
+passing unchanged
+•
+d) Replacing the CSV file with a JSON file
+Q3
+mypy --strict reports this error on the code below:
+def find_expense(expenses: list[Expense], expense_id: int) -> Expense | None: ...
+expense = find_expense(expenses, 3)
+total += expense.amount
+error: Item "None" of "Expense | None" has no attribute "amount"
+[union-attr]
+Which fix is most appropriate?
+1
+
+===== [midterm-sample-questions.pdf] page 2 =====
+Software Development for Business
+Mid-term: sample questions
+•
+a) Add # type: ignore to the line
+•
+b) Handle the None case before using expense.amount
+•
+c) Change the return type of find_expense to Any
+•
+d) Delete the type annotations from the function
+Q4
+A test fails after a teammate changed apply_discount:
+FAILED tests/test_totals.py::test_total_with_discount - assert 90.0 == 95.0
+The test expects 95.0. The function now returns 90.0. What can you conclude?
+•
+a) The function is wrong, because the test was written first
+•
+b) The test is wrong, because the function was changed more recently
+•
+c) The test is flaky and should be rerun until it passes
+•
+d) You can’t tell yet: check which of the two matches what the discount is supposed
+to be
+Q5
+A function called process(rows) reads a file, validates each row, calculates totals and prints a
+report. Which clean-code problem does this describe best?
+•
+a) The function name is too long
+•
+b) The function does several jobs at once, so it is hard to test and to change
+•
+c) The function repeats the same code in several places
+•
+d) The function uses too many type hints
+Q6
+expenses.csv has one expense per line, and each line includes its category. What does this
+command print?
+grep "food" expenses.csv | wc -l
+•
+a) The number of lines that contain the word food
+•
+b) The number of times food appears in the whole file
+•
+c) Every line that contains food
+•
+d) The number of words in the file
+2
+
+===== [midterm-sample-questions.pdf] page 3 =====
+Software Development for Business
+Mid-term: sample questions
+Short open questions
+Q7read code and say what is wrong
+def process(rows):
+total = 0
+for r in rows:
+if r[2] == "food":
+total += float(r[1])
+print("Food total:", total)
+return total
+1. In one sentence, what does this function do?
+2. Name two problems a teammate would face when reading, testing or changing it.
+3. Describe (in words, do not write code) how you would change it, and which of the two
+problems each change solves.
+Q8compare
+A teammate shows you this diff from the expense-tracker history:
+def load_expenses(path):
+with open(path) as file:
+rows = list(csv.reader(file))
+-
+return [Expense(row[0], float(row[1])) for row in rows]
++
+expenses = [Expense(row[0], float(row[1])) for row in rows]
++
+if any(expense.amount < 0 for expense in expenses):
++
+raise ValueError("Negative amount in " + path)
++
+return expenses
+Two candidate commit messages:
+• AFix stuff in loader
+• BReject negative amounts when loading expenses
+1. What does this change do?
+2. Which message is better, and why? Answer from the point of view of someone reading
+the history six months later.
+3. Name one test you would add for this change, in words.
+Q9read tool output (harder)
+You run uv run mypy --strict src on a teammate’s branch:
+src/report.py:8: error: Function is missing a type annotation
+[no-untyped-def]
+src/report.py:15: error: Item "None" of "Expense | None" has no attribute "category"
+[union-attr]
+↪
+src/report.py:22: error: Returning Any from function declared to return "float"
+[no-any-return]
+↪
+1. Sort the three errors into the kinds we discussed in session 7.
+3
+
+===== [midterm-sample-questions.pdf] page 4 =====
+Software Development for Business
+Mid-term: sample questions
+2. Which one points to a bug that could crash the program for a real user, and why?
+3. Your teammate proposes silencing all three with # type: ignore “to get CI green”. Do you
+accept? Give your reasoning.
+4
