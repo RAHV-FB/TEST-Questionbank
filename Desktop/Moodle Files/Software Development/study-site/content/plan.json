@@ -35,10 +35,10 @@
    "label": "Fri 16 Oct",
    "when": "Class, then evening",
    "title": "Session 10, then clean code",
-   "note_md": "Session 10 is in class: pipes, text wrangling and bash scripts. The pipes and bash module was written before its slides existed, so re-check it against what was taught.",
+   "note_md": "Session 10 is in class: pipes, text wrangling and bash scripts. The pipes and bash module follows that session's slides and labs, so read it again in the evening while the class is fresh.",
    "items": [
     {"id": "fri-16-pipes-skim", "label": "Before class: skim the pipes and bash module", "link": "#learn.pipes-bash"},
-    {"id": "fri-16-pipes-recheck", "label": "After class: re-check the pipes and bash module against the slides (done: it now follows them)", "link": "#learn.pipes-bash"},
+    {"id": "fri-16-pipes-recheck", "label": "After class: read the pipes and bash module again", "link": "#learn.pipes-bash"},
     {"id": "fri-16-clean", "label": "Learn the clean code module", "link": "#learn.clean-code"},
     {"id": "fri-16-clean-10", "label": "Practice: Next 10 on clean code", "link": "#practice.next10.clean-code"},
     {"id": "fri-16-refactor", "label": "Learn the refactoring and types module", "link": "#learn.refactor-types"},

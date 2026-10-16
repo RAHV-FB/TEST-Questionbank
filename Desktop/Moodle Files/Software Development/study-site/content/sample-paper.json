@@ -188,7 +188,7 @@
     "Night before: the sample on paper, the history, the tables. No flags.",
     "The sample never asks about the lifecycle, Agile, Scrum, or paths and permissions; they are still examined."
    ],
-   "exam_note_md": "Session 10 (Friday 16 October) is the last session in scope; re-check pipes and bash scripts after it.",
+   "exam_note_md": "Session 10 (Friday 16 October) is the last session in scope: pipes, text wrangling and bash scripts, all in the pipes and bash module.",
    "source_ref": "S6 slide 4; S8 slide 31; S9 slides 2, 24; labs/README.md",
    "check": [
     "sample-paper-q43",
@@ -744,7 +744,7 @@
    "source_ref": "sample Q6; S9 slide 6 and take-aways",
    "origin": "teacher-sample",
    "verified_by": "run",
-   "dissection_md": "**What it really tests.** Reading a pipeline stage by stage: `grep` prints the matching lines, `|` sends them on, `wc -l` counts lines. Pipes are session 10's topic, announced in session 9; the sample already uses them, so expect at least one.\n\n**The trap.** Each wrong option is one stage misread. Option c forgets the pipe and describes `grep` alone. Option b confuses lines with matches (a line with `food` twice counts once). Option d describes counting words in the whole file.\n\n**Full marks.** Option a. On the course's Linux machines the output is just a number. We ran it on a small file with four food expenses and a dining expense at `Seafood Shack`:\n\n```console\n$ grep \"food\" expenses.csv | wc -l\n5\n```\n\nFive, not four: `grep` matches the letters `food` anywhere in the line. Option a is still the best of the four descriptions, but the precise version is \"lines that contain the text food\".\n\n**How he could make it harder.** Show the file and ask for the number, so that the `Seafood Shack` line decides it. Ask why `wc -l expenses.csv` prints 421 when there are 420 expenses (the header). Or step into session 10 with `cut -d, -f3 expenses.csv | uniq -c`, where forgetting `sort` splits the counts."
+   "dissection_md": "**What it really tests.** Reading a pipeline stage by stage: `grep` prints the matching lines, `|` sends them on, `wc -l` counts lines. Pipes are session 10's topic; the sample already uses them, so expect at least one.\n\n**The trap.** Each wrong option is one stage misread. Option c forgets the pipe and describes `grep` alone. Option b confuses lines with matches (a line with `food` twice counts once). Option d describes counting words in the whole file.\n\n**Full marks.** Option a. On the course's Linux machines the output is just a number. We ran it on a small file with four food expenses and a dining expense at `Seafood Shack`:\n\n```console\n$ grep \"food\" expenses.csv | wc -l\n5\n```\n\nFive, not four: `grep` matches the letters `food` anywhere in the line. Option a is still the best of the four descriptions, but the precise version is \"lines that contain the text food\".\n\n**How he could make it harder.** Show the file and ask for the number, so that the `Seafood Shack` line decides it. Ask why `wc -l expenses.csv` prints 421 when there are 420 expenses (the header). Or step into session 10 with `cut -d, -f3 expenses.csv | uniq -c`, where forgetting `sort` splits the counts."
   },
   {
    "id": "sample-paper-q07",

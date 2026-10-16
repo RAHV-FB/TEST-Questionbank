@@ -504,7 +504,7 @@ What not to do: memorise flags ("judgement, not memorised flags"), learn git bra
             "Night before: the sample on paper, the history, the tables. No flags.",
             "The sample never asks about the lifecycle, Agile, Scrum, or paths and permissions; they are still examined.",
         ],
-        "exam_note_md": "Session 10 (Friday 16 October) is the last session in scope; re-check pipes and bash scripts after it.",
+        "exam_note_md": "Session 10 (Friday 16 October) is the last session in scope: pipes, text wrangling and bash scripts, all in the pipes and bash module.",
         "source_ref": "S6 slide 4; S8 slide 31; S9 slides 2, 24; labs/README.md",
         "check": [qid(43), qid(44), qid(49)],
     },
@@ -818,7 +818,7 @@ Read a pipeline stage by stage. `grep "food" expenses.csv` prints the lines that
 """,
     4, "sample Q6; S9 slide 6 and take-aways", "teacher-sample", "run",
     dissection="""
-**What it really tests.** Reading a pipeline stage by stage: `grep` prints the matching lines, `|` sends them on, `wc -l` counts lines. Pipes are session 10's topic, announced in session 9; the sample already uses them, so expect at least one.
+**What it really tests.** Reading a pipeline stage by stage: `grep` prints the matching lines, `|` sends them on, `wc -l` counts lines. Pipes are session 10's topic; the sample already uses them, so expect at least one.
 
 **The trap.** Each wrong option is one stage misread. Option c forgets the pipe and describes `grep` alone. Option b confuses lines with matches (a line with `food` twice counts once). Option d describes counting words in the whole file.
 

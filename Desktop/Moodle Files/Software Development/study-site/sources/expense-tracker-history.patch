@@ -1495,3 +1495,304 @@ index 0d059d3..58aaec4 100644
 -            unique.append(expense)
 -    return unique
 +    return list(dict.fromkeys(expenses))
+
+########## COMMIT 8492f59  2026-04-20
+Add scripts/check.sh to run every check with one command
+
+
+---
+ scripts/check.sh | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/scripts/check.sh b/scripts/check.sh
+new file mode 100755
+index 0000000..94eab5c
+--- /dev/null
++++ b/scripts/check.sh
+@@ -0,0 +1,14 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++echo "==> ruff check"
++uv run ruff check .
++
++echo "==> ruff format"
++uv run ruff format --check .
++
++echo "==> mypy"
++uv run mypy src tests
++
++echo "==> pytest"
++uv run pytest
+
+########## COMMIT 8fabdb3  2026-04-22
+Run scripts/check.sh in CI instead of four separate steps
+
+
+---
+ .github/workflows/check.yml | 13 ++-----------
+ 1 file changed, 2 insertions(+), 11 deletions(-)
+
+diff --git a/.github/workflows/check.yml b/.github/workflows/check.yml
+index eb2e436..eb59e60 100644
+--- a/.github/workflows/check.yml
++++ b/.github/workflows/check.yml
+@@ -24,14 +24,5 @@ jobs:
+       - name: Install dependencies from the lockfile
+         run: uv sync --locked
+ 
+-      - name: Lint
+-        run: uv run ruff check .
+-
+-      - name: Formatting
+-        run: uv run ruff format --check .
+-
+-      - name: Types
+-        run: uv run mypy src tests
+-
+-      - name: Tests
+-        run: uv run pytest
++      - name: Run the checks
++        run: scripts/check.sh
+
+########## COMMIT d814ca9  2026-04-27
+Add filter_by_month and a validator for month strings
+
+
+---
+ src/expense_tracker/report.py | 11 +++++++++++
+ tests/test_month.py           | 40 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+)
+
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index 58aaec4..b775d62 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -1,4 +1,5 @@
+ import csv
++import re
+ from dataclasses import dataclass
+ 
+ DATE = 0
+@@ -11,6 +12,8 @@ NAME_WIDTH = 20
+ AMOUNT_WIDTH = 10
+ RULE_WIDTH = 40
+ 
++MONTH_PATTERN = re.compile(r"\d{4}-(0[1-9]|1[0-2])")
++
+ 
+ @dataclass(frozen=True)
+ class Expense:
+@@ -93,3 +96,11 @@ def format_report(
+ 
+ def remove_duplicates(expenses: list[Expense]) -> list[Expense]:
+     return list(dict.fromkeys(expenses))
++
++
++def is_valid_month(month: str) -> bool:
++    return MONTH_PATTERN.fullmatch(month) is not None
++
++
++def filter_by_month(expenses: list[Expense], month: str) -> list[Expense]:
++    return [expense for expense in expenses if expense.date.startswith(month + "-")]
+diff --git a/tests/test_month.py b/tests/test_month.py
+new file mode 100644
+index 0000000..5d402a2
+--- /dev/null
++++ b/tests/test_month.py
+@@ -0,0 +1,40 @@
++import pytest
++
++from expense_tracker.report import Expense, filter_by_month, is_valid_month
++
++JULY_FIRST = Expense("2025-07-01", "Bar Ramon", "dining", 10.0)
++JULY_LAST = Expense("2025-07-31", "Zara", "clothing", 40.0)
++AUGUST_FIRST = Expense("2025-08-01", "Cabify", "transport", 15.0)
++OTHER_JULY = Expense("2024-07-15", "Lidl", "groceries", 20.0)
++
++
++@pytest.mark.parametrize(
++    ("month", "expected"),
++    [
++        ("2025-07", [JULY_FIRST, JULY_LAST]),
++        ("2025-08", [AUGUST_FIRST]),
++        ("2025-09", []),
++        ("2024-07", [OTHER_JULY]),
++    ],
++)
++def test_filter_keeps_only_that_month_of_that_year(month: str, expected: list[Expense]) -> None:
++    expenses = [JULY_FIRST, JULY_LAST, AUGUST_FIRST, OTHER_JULY]
++
++    assert filter_by_month(expenses, month) == expected
++
++
++def test_filter_on_no_expenses_returns_no_expenses() -> None:
++    assert filter_by_month([], "2025-07") == []
++
++
++@pytest.mark.parametrize("month", ["2025-01", "2025-09", "2025-12", "1999-10"])
++def test_valid_months(month: str) -> None:
++    assert is_valid_month(month)
++
++
++@pytest.mark.parametrize(
++    "month",
++    ["", "2025", "2025-7", "2025-13", "2025-00", "25-07", "2025/07", "2025-07-01", "july"],
++)
++def test_invalid_months(month: str) -> None:
++    assert not is_valid_month(month)
+
+########## COMMIT 416604b  2026-04-29
+Add a --month option to the report command
+
+
+---
+ README.md                     |  1 +
+ src/expense_tracker/cli.py    | 10 +++++++++-
+ src/expense_tracker/report.py |  3 +++
+ tests/test_cli_month.py       | 33 +++++++++++++++++++++++++++++++++
+ 4 files changed, 46 insertions(+), 1 deletion(-)
+
+diff --git a/README.md b/README.md
+index 97d3397..6824f63 100644
+--- a/README.md
++++ b/README.md
+@@ -21,6 +21,7 @@ Report on the sample data, everything or one category:
+ ```bash
+ uv run expenses report
+ uv run expenses report --category dining --min 20
++uv run expenses report --month 2025-09
+ ```
+ 
+ Add an expense:
+diff --git a/src/expense_tracker/cli.py b/src/expense_tracker/cli.py
+index 5f5b307..7b9b436 100644
+--- a/src/expense_tracker/cli.py
++++ b/src/expense_tracker/cli.py
+@@ -5,7 +5,9 @@ from pathlib import Path
+ import typer
+ 
+ from expense_tracker.report import (
++    filter_by_month,
+     format_report,
++    is_valid_month,
+     largest_expense,
+     read_expenses,
+     total_by_category,
+@@ -26,16 +28,22 @@ def report(
+     path: str = typer.Argument("expenses.csv", help="CSV file to read."),
+     category: str = typer.Option("", help="Only this category."),
+     minimum: float = typer.Option(0.0, "--minimum", "--min", help="Ignore amounts below this."),
++    month: str = typer.Option("", help="Only this month, as YYYY-MM."),
+ ) -> None:
++    if month != "" and not is_valid_month(month):
++        typer.echo(f"month must look like 2025-07, not {month}", err=True)
++        raise typer.Exit(2)
+     try:
+         expenses = read_expenses(path)
+     except (OSError, ValueError):
+         typer.echo(f"could not read {path}", err=True)
+         raise typer.Exit(1) from None
+ 
++    if month != "":
++        expenses = filter_by_month(expenses, month)
+     totals = total_by_category(expenses, category, minimum)
+     largest = largest_expense(expenses)
+-    for line in format_report(path, category, minimum, totals, largest):
++    for line in format_report(path, category, minimum, totals, largest, month):
+         typer.echo(line)
+ 
+ 
+diff --git a/src/expense_tracker/report.py b/src/expense_tracker/report.py
+index b775d62..f8a1243 100644
+--- a/src/expense_tracker/report.py
++++ b/src/expense_tracker/report.py
+@@ -70,10 +70,13 @@ def format_report(
+     minimum: float,
+     totals: list[tuple[str, float]],
+     largest: Expense | None,
++    month: str = "",
+ ) -> list[str]:
+     lines = [f"Expense report for {path}"]
+     if category != "":
+         lines.append(f"category: {category}")
++    if month != "":
++        lines.append(f"month: {month}")
+     if minimum > 0.0:
+         lines.append(f"only amounts of {minimum:.2f} or more")
+     lines.append("-" * RULE_WIDTH)
+diff --git a/tests/test_cli_month.py b/tests/test_cli_month.py
+new file mode 100644
+index 0000000..084361f
+--- /dev/null
++++ b/tests/test_cli_month.py
+@@ -0,0 +1,33 @@
++from pathlib import Path
++
++from typer.testing import CliRunner
++
++from expense_tracker.cli import app
++
++runner = CliRunner()
++
++CSV_TEXT = (
++    "date,merchant,category,amount\n"
++    "2025-07-01,Bar Ramon,dining,10.00\n"
++    "2025-07-02,Zara,clothing,40.00\n"
++    "2025-08-01,Cabify,transport,15.00\n"
++)
++
++
++def test_month_option_reports_only_that_month(tmp_path: Path) -> None:
++    csv_file = tmp_path / "expenses.csv"
++    csv_file.write_text(CSV_TEXT)
++
++    result = runner.invoke(app, ["report", str(csv_file), "--month", "2025-07"])
++
++    assert result.exit_code == 0
++    assert "month: 2025-07" in result.stdout
++    assert "50.00" in result.stdout
++    assert "transport" not in result.stdout
++
++
++def test_invalid_month_exits_with_two_and_explains_on_stderr() -> None:
++    result = runner.invoke(app, ["report", "expenses.csv", "--month", "2025-13"])
++
++    assert result.exit_code == 2
++    assert "month must look like 2025-07" in result.stderr
+
+########## COMMIT 8a8903d  2026-04-30
+Revert "Run scripts/check.sh in CI instead of four separate steps"
+
+This reverts commit 8fabdb3a838c588819a7b7a031f5e3b0ef20d5ce.
+
+One step called "Run the checks" hides which check failed: a red run means opening
+the log to find out whether it was ruff, mypy or pytest. Separate named steps say it
+in the Actions summary. scripts/check.sh stays, for running the same checks before a
+push.
+
+---
+ .github/workflows/check.yml | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/.github/workflows/check.yml b/.github/workflows/check.yml
+index eb59e60..eb2e436 100644
+--- a/.github/workflows/check.yml
++++ b/.github/workflows/check.yml
+@@ -24,5 +24,14 @@ jobs:
+       - name: Install dependencies from the lockfile
+         run: uv sync --locked
+ 
+-      - name: Run the checks
+-        run: scripts/check.sh
++      - name: Lint
++        run: uv run ruff check .
++
++      - name: Formatting
++        run: uv run ruff format --check .
++
++      - name: Types
++        run: uv run mypy src tests
++
++      - name: Tests
++        run: uv run pytest
