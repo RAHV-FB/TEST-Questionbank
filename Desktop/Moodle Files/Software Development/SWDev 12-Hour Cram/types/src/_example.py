@@ -1,0 +1,199 @@
+"""A complete fake type file for the builder's --example flag. Real bank ids from pools.json T07."""
+
+import json
+from pathlib import Path
+
+FAIL_LINE = "FAILED tests/test_totals.py::test_total_with_discount - assert 90.0 == 95.0"
+
+example = {
+    "tid": "T07",
+    "name": "Failing tests, pytest and TDD",
+    "shape_md": (
+        "Mirrors sample Q4: a one-line pytest failure and the question \"what can you conclude?\". "
+        "Expect one multiple-choice question and sometimes an open question about a test you would add."
+    ),
+    "minutes": 45,
+    "one_md": "A failing test is information, not a verdict: decide which side matches the rule.",
+    "spot_md": (
+        "- A line that starts with `FAILED` and ends in `assert 90.0 == 95.0`.\n"
+        "- A teammate changed a function and a test went red.\n"
+        "- The wording \"what can you conclude?\", \"what should you do?\" or \"what does this test prove?\".\n"
+        "- A test with no `assert`, or an assert that cannot fail."
+    ),
+    "basics": [
+        {
+            "id": "T07-b1",
+            "heading": "What a test is and how pytest reports a failure",
+            "body_md": (
+                "A test is a function whose name starts with `test_`. It builds some data, calls your code and "
+                "compares the result with what you expect, using `assert`. `pytest` finds these functions, runs "
+                "them and prints one line for each test that fails.\n\n"
+                "The course writes every test in three parts: **Arrange** (build the data), **Act** (call the "
+                "code once) and **Assert** (compare the result). Keep the Act to one line and the test stays "
+                "readable.\n\n"
+                "```text\n" + FAIL_LINE + "\n```\n\n"
+                "Read the line from left to right. `tests/test_totals.py` is the file. `test_total_with_discount` "
+                "is the test. `assert 90.0 == 95.0` says the code returned `90.0` while the test expected `95.0`.\n\n"
+                "| Part | What it shows |\n|---|---|\n"
+                "| `FAILED` | the test ran and the assert was false |\n"
+                "| path and `::name` | where to look |\n"
+                "| `assert a == b` | the two values that disagreed |\n\n"
+                "The line tells you that the two sides disagree. It does not tell you which side is right."
+            ),
+        },
+        {
+            "id": "T07-b2",
+            "heading": "Red, green, refactor",
+            "body_md": (
+                "Test-driven development writes the test before the code. Session 8 teaches it as a loop of "
+                "three colours.\n\n"
+                "1. **Red.** Write one small test for behaviour that does not exist yet and run it. It must "
+                "fail, and for the right reason: the code is missing or wrong, not a typo in the test.\n"
+                "2. **Green.** Write the least code that makes the test pass. Run all the tests.\n"
+                "3. **Refactor.** Clean up the code and the test while everything stays green.\n\n"
+                "The red step matters. A test that has never failed has never shown that it can. If a new test "
+                "passes at once, ask what it is really checking before you trust it.\n\n"
+                "In the demo, `largest_expense` starts with a test, then a stub that returns the wrong thing, "
+                "then the real code. The history of the expense-tracker shows the same rhythm: tests first, "
+                "then the change that makes them pass."
+            ),
+        },
+        {
+            "id": "T07-b3",
+            "heading": "When a test fails: the code or the test?",
+            "body_md": (
+                "After a change, a red test has three possible causes. The change may have introduced a bug. "
+                "The rule may have changed on purpose, so the test is out of date. Or the test itself may have "
+                "been wrong from the start.\n\n"
+                "You cannot decide from the failure line alone. Look outside the code: the backlog item, the "
+                "Product Owner, the commit message of the change. If the discount is now 10%, update the test "
+                "in the same change. If it is still 5%, the function has a bug and the test has just caught it.\n\n"
+                "Three reactions are always wrong. Choosing a winner by timing (\"the function changed last, so "
+                "the test is wrong\"). Rerunning until it goes green, as if a deterministic failure were luck. "
+                "Deleting or loosening the assert to turn CI green.\n\n"
+                "Say it on the paper like this: \"the test caught a mismatch; check the requirement to decide "
+                "which side is wrong.\""
+            ),
+        },
+    ],
+    "checks": [
+        {
+            "id": "T07-c1",
+            "q_md": "In `assert 90.0 == 95.0`, which number did the **function** return?",
+            "options": [
+                "`95.0`, the right-hand side",
+                "`90.0`, the left-hand side",
+                "Neither: the line does not say",
+            ],
+            "answer": 1,
+            "why_md": "The left of `==` is the value the code produced; the right is what the test expected.",
+        },
+        {
+            "id": "T07-c2",
+            "q_md": "A new test passes the first time you run it, before any code was written for it. What is the right reaction?",
+            "options": [
+                "Celebrate: the feature already works",
+                "Ask what the test really checks, because it has never been red",
+                "Delete the test",
+                "Run it again until it fails",
+            ],
+            "answer": 1,
+            "why_md": "A test that has never failed has not shown it can fail. Check that it asserts something real.",
+        },
+        {
+            "id": "T07-c3",
+            "q_md": "Which step of the TDD loop is the one where you may tidy the code?",
+            "options": ["Red", "Green", "Refactor"],
+            "answer": 2,
+            "why_md": "Refactor comes last, with every test green, so the tests can tell you if the tidying broke something.",
+        },
+        {
+            "id": "T07-c4",
+            "q_md": "A teammate says: \"the function changed last, so the test must be wrong.\" What is wrong with that?",
+            "options": [
+                "Nothing: the newest change is the likely culprit",
+                "It picks a winner by timing; the rule decides which side is wrong",
+                "Tests are never wrong",
+            ],
+            "answer": 1,
+            "why_md": "Only the requirement says which side is right. Timing says nothing about it.",
+        },
+    ],
+    "method": [
+        "Read the failure line: file, test name, the two values.",
+        "Say which value came from the code and which from the test.",
+        "Ask what the rule is supposed to be: backlog, Product Owner, commit message.",
+        "Decide: bug in the code, outdated test, or a wrong test.",
+        "Never rerun until green, never loosen the assert to get CI green.",
+    ],
+    "worked": [
+        {
+            "title": "Sample Q4",
+            "question_md": (
+                "A test fails after a teammate changed `apply_discount`:\n\n"
+                "```text\n" + FAIL_LINE + "\n```\n\n"
+                "The test expects 95.0. The function now returns 90.0. What can you conclude?\n\n"
+                "- a) The function is wrong, because the test was written first\n"
+                "- b) The test is wrong, because the function was changed more recently\n"
+                "- c) The test is flaky and should be rerun until it passes\n"
+                "- d) You can't tell yet: check which of the two matches what the discount is supposed to be"
+            ),
+            "steps_md": [
+                "The line says the function returned 90.0 and the test expected 95.0.",
+                "Options a and b decide by timing. Timing does not say which side is right.",
+                "Option c treats a deterministic failure as luck.",
+                "Only the business rule can decide, so you check it first.",
+            ],
+            "answer_md": "**d.** A failing test shows a mismatch, not a culprit. Check the rule, then fix the code or the test.",
+        }
+    ],
+    "twists": [
+        {
+            "twist_md": "The same failure, but the commit message says \"members now get 10% off\".",
+            "how_md": "The rule changed on purpose. The test is out of date: update it in the same change.",
+        },
+        {
+            "twist_md": "The test passes, but it contains no `assert`.",
+            "how_md": "It proves only that the code does not crash. Add an assert that can fail.",
+        },
+        {
+            "twist_md": "CI is red after a push and a teammate suggests `git revert` of the test file.",
+            "how_md": "Reverting the test hides the information. Read the failure first.",
+        },
+        {
+            "twist_md": "A new test passes immediately, before the code exists.",
+            "how_md": "It has never been red. Check what it really asserts.",
+        },
+    ],
+    "traps": [
+        "\"The newest change is wrong.\" Timing never decides; the rule does.",
+        "\"Rerun it, it is flaky.\" A deterministic assert fails every time for a reason.",
+        "\"Loosen the assert so CI goes green.\" That removes the information the test gave you.",
+        "\"A passing test proves the code is correct.\" It proves the asserted cases pass.",
+    ],
+    "say_md": (
+        "- the test caught a mismatch between the code and the expected value\n"
+        "- check the requirement (backlog, Product Owner) to decide which side is wrong\n"
+        "- red, green, refactor\n"
+        "- Arrange, Act, Assert"
+    ),
+    "practice": [
+        "testing-tdd-q01",
+        "testing-tdd-q03",
+        "testing-tdd-q16",
+        "sample-paper-q04",
+        "testing-tdd-q05",
+        "testing-tdd-q10",
+        "testing-tdd-q14",
+        "testing-tdd-q17",
+        "testing-tdd-q06",
+        "testing-tdd-q19",
+        "testing-tdd-q28",
+        "testing-tdd-q21",
+    ],
+}
+
+if __name__ == "__main__":
+    out = Path(__file__).resolve().parent.parent / "_example.json"
+    out.write_text(json.dumps(example, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(f"wrote {out}")

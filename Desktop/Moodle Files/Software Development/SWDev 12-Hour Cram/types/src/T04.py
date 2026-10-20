@@ -1,0 +1,341 @@
+"""Build CRAM/types/T04.json: exercise type T04 'Refactoring or not'.
+
+Run: python3 types/src/T04.py   (from the CRAM folder, or anywhere)
+Writes ../T04.json and checks every practice id against ../../pools.json.
+"""
+
+import json
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+CRAM = HERE.parent.parent
+OUT = HERE.parent / "T04.json"
+
+basics = [
+    {
+        "id": "T04-b1",
+        "heading": "What a refactoring is, and the one test",
+        "body_md": """A **refactoring** changes the structure of code and keeps its behaviour. That is the whole definition on the session 7 slide, and it comes with one test: **if the output changes, it was not a refactoring.**
+
+Two words to keep apart:
+
+| | What it is | Examples |
+|---|---|---|
+| Behaviour | What the program does from the outside | what it prints, what it writes, its exit code, the command and options a user types, the results the tests pin down |
+| Structure | Everything a user cannot see | names, how the code is split into functions, which function prints, a tuple or an `Expense` |
+
+A refactoring touches only the second row. Tidier code is the reason to do it. It is never the test for it.
+
+For this question, a change to the expense-tracker is one of four kinds of work. Only one of them keeps the output:
+
+| Kind of work | Does the output change? | Example |
+|---|---|---|
+| Feature | Yes, new behaviour | adding a `--month` option |
+| Bug fix | Yes, on purpose | counting the last row, which used to be skipped |
+| Refactoring | No | `calculate_totals` renamed to `total_by_category` |
+| Safety net (tests, CI) | No, and no structure changes either | `d38d9e6 Test the pure core` |
+
+Replacing the CSV file with a JSON file is not a refactoring either: the program now reads and writes something else.
+
+All of these can be good work. They are different work, and they belong in their own commits, with messages that say which one it is.
+
+On the paper, look for the words that guarantee the behaviour: "the report is identical", "every test still passing unchanged", "`diff` prints nothing". An option that carries its own proof is usually the refactoring.""",
+    },
+    {
+        "id": "T04-b2",
+        "heading": "The six moves, each with the problem it solves",
+        "body_md": """Session 6 took the expense-tracker from `v0.1` to `v0.2` in five commits. Session 7 gave the moves names. The paper can name a move and show code, or show code and ask which move it is. Learn each move with the example you saw and the problem it removes.
+
+| Move | You saw it as | Problem it solves | Commit |
+|---|---|---|---|
+| Extract constant | `print("-" * 40)` becomes `print("-" * RULE_WIDTH)` (the slide's name for the idea is `STANDARD_VAT_RATE`) | a bare number nobody can explain, with no single place to change it | `5e9466d` |
+| Rename (replace comment with a name) | `calculate_totals` becomes `total_by_category`; `x, y, z` become `expenses, category, minimum` | a name that needs a comment | `f3bb801` |
+| Separate I/O from logic | `run()` split into read, compute, format | a function that prints can only be looked at, not tested | `9d6c607` |
+| Introduce a type | tuple becomes `Expense`; `e[3]` becomes `expense.amount` | "a tuple is a missing type": nobody knows what `e[3]` is | `017f926` |
+| Extract function | `largest_expense` out of `run()` | one function with five jobs; ask "can I describe it without the word and?" | `9d6c607` |
+| Decompose conditional | a nested `if` becomes guard clauses or a named condition | a tangle of conditions | session 6 slide 19, session 7 slide 6 |
+
+When the name does the job, the comment goes. In `5e9466d` the comment `# skip rows that do not have all four fields` was deleted once the line read `if len(row) == FIELDS_PER_ROW:`. A comment that restates the line is a symptom. Comments stay for *why*: a business rule, a workaround with its reason.
+
+The invoice lab asks for the same moves on `calc(c, i, d)`: rename it so no comment is needed (session 6 showed `invoice_total(lines, tax_rate, discount_rate)`), name `0.21` and `0.1`, replace `p[1] * p[2]` with a small dataclass for an invoice line, split `calc` into functions that sum, discount and add tax, and use `sum` instead of the hand-written loop in `x`.""",
+    },
+    {
+        "id": "T04-b3",
+        "heading": "Decompose conditional: a condition with a name",
+        "body_md": """The session 7 slide shows the smallest case. Before, the rule "which expenses count" is buried in two nested `if`s that index a tuple:
+
+```python
+if e[2] == category:
+    if e[3] >= minimum:
+        totals[e[2]] += e[3]
+```
+
+After, the rule has a name and a function of its own:
+
+```python
+def is_wanted(expense: Expense, category: str, minimum: float) -> bool:
+    matches_category = category == "" or expense.category == category
+    return matches_category and expense.amount >= minimum
+```
+
+Read it with one sentence. `is_wanted` answers yes or no for one expense: yes when the category matches and the amount is at least the minimum. An empty `category` means "no filter". The `>=` keeps an amount equal to the minimum.
+
+The slide gives the reason: **"A condition with a name is a condition you can test."** Inside the loop you can only see the rule through the totals. As a function it is one call with one expense and one `True` or `False`. Its name reads like a yes/no question, like `is_duplicate`, not `flag`.
+
+The other form is the guard clause from session 6: deal with the exceptions first and get out, so the main path is not buried.
+
+```python
+if category != "" and expense.category != category:
+    continue
+if expense.amount < minimum:
+    continue
+totals[expense.category] += expense.amount
+```
+
+Both forms are decompose conditional, and both keep the output. On the demo at `v0.4`, making `total_by_category` call `is_wanted` leaves all 24 existing tests passing without an edit. A good commit message says what moved and where: `Extract is_wanted from total_by_category`.""",
+    },
+    {
+        "id": "T04-b4",
+        "heading": "Proving it: small steps, and the limit of the proof",
+        "body_md": """Moves are small on purpose. You make one, run the program, compare, and only then make the next. If the output changes, you know which move did it. The session 6 exercise as commands:
+
+```bash
+uv run expenses report --category dining --min 20 > before.txt
+# ... one small move ...
+uv run expenses report --category dining --min 20 > after.txt
+diff before.txt after.txt   # nothing printed = you're safe
+```
+
+`before.txt` must come from the code before the move. The invoice lab uses two numbers: `uv run python main.py` prints `163.35` and `20.0`, and you run it after every step. The lab's rule: "If the output changes, you have not refactored: undo the last step." Tests give the same evidence: if you had to edit a test to make it pass, the behaviour it pins has changed. ruff and mypy check how the code is written and typed, not what it returns, so they are no evidence of behaviour.
+
+An empty `diff` has a limit: it proves the report is the same **for the input you ran**. Suppose a rewrite turns `>=` into `>` in `is_wanted`. Run on a file where no amount equals the minimum you chose, `diff` prints nothing, yet an expense of exactly the minimum now disappears. So choose inputs on the edges: the empty list, zero, an amount equal to the limit, a negative amount.
+
+The invoice lab applies the same idea. It asks you to name the edge cases of the original code (an empty list, a discount above 100% or below 0, a negative quantity, a price of zero) and not to fix them. Fixing one changes what the code returns, so it is not refactoring. Friday's tests start from this list.""",
+    },
+]
+
+checks = [
+    {
+        "id": "T04-c1",
+        "q_md": "The report used to skip the last row of `expenses.csv`. A change makes it count that row. What kind of work is this?",
+        "options": [
+            "A refactoring, because the code ends up more correct",
+            "A feature, because the report now includes one more row",
+            "A bug fix: the output changes on purpose",
+        ],
+        "answer": 2,
+        "why_md": "The output changes, so by the slide's test it is not a refactoring. The row was meant to be counted all along, so this is an unintended behaviour being fixed, not new behaviour.",
+    },
+    {
+        "id": "T04-c2",
+        "q_md": "`if len(row) == 4:` becomes `if len(row) == FIELDS_PER_ROW:` and the comment above it is deleted. Which move is this?",
+        "options": [
+            "Extract constant",
+            "Introduce a type",
+            "Separate I/O from logic",
+        ],
+        "answer": 0,
+        "why_md": "A bare number got a name. The comment only repeated the line, so it went with it. This is `5e9466d`.",
+    },
+    {
+        "id": "T04-c3",
+        "q_md": "A function `process(rows)` reads a file, totals the rows and prints the result. You change it so the totals come back as a value and only the caller prints. Which move is this, and which problem does it solve?",
+        "options": [
+            "Extract constant: the numbers had no names",
+            "Separate I/O from logic: a function that prints can only be looked at, not tested",
+            "Rename: a comment was doing a name's job",
+        ],
+        "answer": 1,
+        "why_md": "Computation is not output. A function that returns a value can be tested with one call; a function that prints can only be looked at on the screen.",
+    },
+    {
+        "id": "T04-c4",
+        "q_md": """With the slide's function:
+
+```python
+def is_wanted(expense: Expense, category: str, minimum: float) -> bool:
+    matches_category = category == "" or expense.category == category
+    return matches_category and expense.amount >= minimum
+```
+
+what does `is_wanted(Expense("2026-10-02", "Zara", "clothing", 40.0), "", 25.0)` return?""",
+        "options": [
+            "`True`, because an empty category means no filter and `40.0 >= 25.0`",
+            "`False`, because `\"clothing\"` is not an empty string",
+            "It raises an error, because `\"\"` is not a category",
+        ],
+        "answer": 0,
+        "why_md": "`category == \"\"` is true, so `matches_category` is true. Then `40.0 >= 25.0` is true, so both halves of the `and` pass.",
+    },
+    {
+        "id": "T04-c5",
+        "q_md": "You extract a function, run the report before and after, and `diff before.txt after.txt` prints nothing. What have you shown?",
+        "options": [
+            "The change is a refactoring for every possible input",
+            "Nothing, because `diff` compares only the size of the files",
+            "The report is the same for the file you ran, so the step looks safe, but other inputs are untested",
+        ],
+        "answer": 2,
+        "why_md": "An empty `diff` is evidence for the input you ran. An empty file or a file of refunds may still behave differently, which is why the lab also asks you to name edge cases.",
+    },
+]
+
+method = [
+    "**Read the question word.** \"Which is a refactoring?\", \"which move is this?\" and \"is this a pure refactoring?\" are three different questions. Say which one it is before you read the options.",
+    "**Apply the test to every option.** Ask what a user, or a test, would see differently. A new option, a fixed bug, a new file format, a renamed command or a changed printed label all change the output, so none is a refactoring.",
+    "**Prefer the option that carries its own proof.** \"The report is identical\", \"every test still passing unchanged\" and \"`diff` prints nothing\" are the phrases that guarantee the behaviour. Be suspicious of \"and the tests were updated\".",
+    "**To name a move, match the problem.** A bare number is extract constant. A comment doing a name's job is rename. A function that prints is separate I/O from logic. A tuple is introduce a type. A block of a long function is extract function. A nested `if` is decompose conditional.",
+    "**With a before and after, hunt for the hidden rule.** Compare start values (`0` and `0.0`), a dropped `if`, `>` against `>=`, the empty list, negatives. Compute both versions by hand on an input where they could differ.",
+    "**In an open answer, write move plus problem, one pair per line,** then say how you prove the behaviour is kept: record the output first, compare after each small move, undo a move that changes it, try edge inputs, tests pass unedited. Words only, no code.",
+]
+
+worked = [
+    {
+        "title": "Sample Q2 (the teacher's question)",
+        "question_md": """Which of these changes is a refactoring?
+- a) Adding a `--month` option to the `report` command
+- b) Fixing a bug where the last expense in the file was skipped
+- c) Renaming variables and splitting one long function into two, with every test still passing unchanged
+- d) Replacing the CSV file with a JSON file""",
+        "steps_md": [
+            "Write the test next to the question: a refactoring changes the structure and keeps the behaviour. If the output changes, it was not a refactoring.",
+            "Option a: a new option is new behaviour for the user. That is a feature.",
+            "Option b: after the fix the last expense is counted, so the totals change on purpose. Good work, but a bug fix.",
+            "Option d: the program now reads and writes a different file, and every existing CSV stops working. Session 1 used \"refactor\" for swapping components, but session 7's definition decides here: the behaviour changed.",
+            "Option c: names and function boundaries are structure. It also carries its own proof, \"with every test still passing unchanged\", because tests pin the behaviour.",
+        ],
+        "answer_md": "**c.** It is the only change that alters structure alone. The other three are a feature, a bug fix and a change of storage format, and each changes what the user sees.",
+    },
+    {
+        "title": "Four renames (a variant of sample Q2)",
+        "question_md": """Four teammates each made one rename in the expense-tracker. Which change is a refactoring?
+- a) Renaming the `--min` option of `report` to `--minimum-amount`, and updating the tests
+- b) Renaming the command in `[project.scripts]` from `expenses` to `expense-tracker`
+- c) Renaming the report's `TOTAL` label to `Grand total`
+- d) Renaming `calculate_totals` to `total_by_category` and updating its caller""",
+        "steps_md": [
+            "All four are renames, and that is the trap: \"rename\" is a refactoring move, so a careless reader picks the first one that looks tidy.",
+            "Ask of each name who meets it. The test is behaviour as a user meets it: what they type, what they read, what exit code they get.",
+            "Option a: `--min` is part of the command line. `expenses report --min 20` stops working, and the tests had to change, which is the giveaway.",
+            "Option b: the command users type disappears. That is an interface change.",
+            "Option c: the printed report changes, so `diff before.txt after.txt` would show a line.",
+            "Option d: the function is internal and its caller changes in the same commit. Nothing a user types or reads moves.",
+        ],
+        "answer_md": "**d.** An internal rename keeps what the user types, reads and gets back. An option, an installed command and a printed label are the interface or the output. Option d is commit `f3bb801` in the demo history.",
+    },
+]
+
+twists = [
+    {
+        "twist_md": "An option looks harmless because it is only presentation: a euro sign on each amount, wider columns, a reworded heading.",
+        "how_md": "Presentation is output. `diff before.txt after.txt` would print the changed lines, so it is not a refactoring, however cosmetic or tidy. Ask whether anything a user types, reads or gets back would differ by even one character.",
+    },
+    {
+        "twist_md": "An option says the change was made \"and the tests were updated to match\".",
+        "how_md": "Treat it as a warning. Tests pin the behaviour, so a test you had to change means the behaviour it pins changed. The refactoring in sample Q2 is the one where every test still passes unchanged.",
+    },
+    {
+        "twist_md": "An extraction gives an identical report on the demo's `expenses.csv`, and the question asks which statement is most accurate.",
+        "how_md": "One identical run is evidence, not proof. Look for the rule the new code dropped: a start value (`0.0` against the first item), a removed `if`, `>` against `>=`, the empty list, negatives. If one option names an input where the two versions differ, take it. A change that restructures and also changes behaviour belongs in two commits, or in a message that says both.",
+    },
+    {
+        "twist_md": "\"Which input would show this rewrite is not a pure refactoring?\" You are given the original and a tidier version of a short function.",
+        "how_md": "Find the condition the rewrite dropped or merged (an `if`, a start value, a comparison). Only inputs where that condition used to matter will differ. Inputs where both versions agree (an empty list, zero) are the distractors. Compute both versions by hand on each candidate.",
+    },
+    {
+        "twist_md": "A mypy error is shown and you are asked whether the fix is also a refactoring.",
+        "how_md": "Ask whether the printed result changes. Making two types agree (an `int` start value that becomes a `float`) leaves the output identical, so it is a refactoring. A cast that throws information away, such as the cents, changes the printed total. `Any` and `# type: ignore` change only what mypy says.",
+    },
+    {
+        "twist_md": "Commit messages from the history are sorted into refactoring, feature and safety net.",
+        "how_md": "Think about what the diff touches. A new option, line or command is a feature. A rename, a constant or a shorter version with the same results is a refactoring (`d3df52b`, with the five duplicate tests still green). A commit that only adds tests or a workflow (`d38d9e6`, `0e05065`) changes no line of the program, so it is a safety net.",
+    },
+    {
+        "twist_md": "Open question: \"Describe three refactoring moves for this function and the problem each solves. How would you show the behaviour is kept?\"",
+        "how_md": "Pair each move with its problem: rename because the names say nothing, extract constant for the bare numbers and strings, separate I/O because a `print` sits inside a calculation. A tuple index or a nested `if` gives you introduce a type or decompose conditional. Then the proof: record the output first, compare after each small move, undo a move that changes it, try edge inputs, tests pass unedited. \"Run mypy and ruff\" is not proof of behaviour.",
+    },
+    {
+        "twist_md": "A teammate renames the variables of the invoice code and, in the same commit, makes it reject a discount above 100%. The message says `Refactor invoice`.",
+        "how_md": "Two kinds of work in one commit. The renames keep the behaviour. The rejection changes it, because an input that used to return a number now raises an error, so the message is wrong. Split them into two commits, and pin the intended behaviour with a test before changing it. What the code should do with a 150% discount is a decision for the team.",
+    },
+]
+
+traps = [
+    "\"A rename is always a refactoring.\" Only if the output is unchanged. Renaming an option, the installed command or a printed label changes what the user types or reads.",
+    "\"The code is cleaner, so it is a refactoring.\" Tidier code is the reason for a refactoring, not the test. The test is that the output stays the same. A fix that also tidies the code is a bug fix and belongs in its own commit.",
+    "\"`diff before.txt after.txt` printed nothing, so it is right for every input.\" It is proven for the input you ran. An empty file or a file of refunds can still behave differently.",
+    "\"ruff and mypy pass, so the behaviour is the same.\" They check how the code is written and typed. Only the output, or tests that pass unedited, say the behaviour survived.",
+    "\"The output moved a little, so I will carry on and sort it out at the end.\" The lab says to undo the last step. Small steps exist so that one move can be blamed. Making a fresh `before.txt` from the new code throws the evidence away.",
+    "\"To satisfy mypy I will cast with `int(...)`, use `Any` or add `# type: ignore`.\" The cast drops the cents and changes the `TOTAL` line. `Any` and `# type: ignore` only change what mypy says. Make the types agree with `0.0` and the output stays identical.",
+    "\"I will fix the edge cases while I refactor.\" Fixing the negative invoice or the division by zero changes behaviour. Name the cases first, pin them with tests, and fix them in their own commit.",
+    "\"Session 1 calls swapping a component a refactor, so CSV to JSON is a refactoring.\" When the question gives session 7's test, use it. The program reads and writes a different file, so the behaviour changed.",
+]
+
+say_md = """- A refactoring **changes the structure and keeps the behaviour. If the output changes, it was not a refactoring.**
+- Evidence: **the report is identical** (`diff before.txt after.txt` prints nothing) and **every test still passes without being edited**.
+- A feature is new behaviour. A bug fix changes the output on purpose. Both are good work, in their own commits.
+- **Extract constant:** a magic number gets a name and one place to change.
+- **Rename:** a name replaces a comment. A name that needs a comment is not finished.
+- **Separate I/O from logic:** a function that returns can be tested; a function that prints can only be looked at.
+- **Introduce a type:** a tuple is a missing type. `e[3]` becomes `expense.amount`.
+- **Extract function:** one function, one job. Can I describe it without the word "and"?
+- **Decompose conditional:** a condition with a name is a condition you can test.
+- Small steps: run after each move, and if the output changes, undo the last step.
+- One identical run is evidence for that input, not proof for every input. Try the empty list, zero, negatives.
+- Edge cases are named now and become tests. Fixing them is a behaviour change, not a refactoring.
+- A good commit message says what moved and where: `Extract is_wanted from total_by_category`."""
+
+practice = [
+    "refactor-types-q01",  # core mcq: which change is a refactoring
+    "refactor-types-q06",  # core mcq: rename, the comment goes
+    "refactor-types-q07",  # core mcq: a condition with a name
+    "refactor-types-q35",  # exam sort: refactoring or behaviour change
+    "refactor-types-q05",  # exam mcq: diff hunk, extract constant
+    "refactor-types-q02",  # exam mcq: before/after diff, what to do
+    "refactor-types-q36",  # exam sort: move names
+    "refactor-types-q46",  # exam mcq: diff, separate I/O from logic
+    "refactor-types-q17",  # exam mcq: the mypy fix that keeps the output
+    "refactor-types-q44",  # exam open: compare diff and commit messages
+    "refactor-types-q39",  # exam open: three moves and how to show behaviour kept
+    "sample-paper-q14",  # hard mcq: extraction with a hidden rule
+    "refactor-types-q03",  # beyond mcq: invoice rewrite, which input differs
+    "refactor-types-q42",  # hard open: invoice edge cases
+]
+
+tfile = {
+    "tid": "T04",
+    "name": "Refactoring or not",
+    "shape_md": "Mirrors sample Q2 (\"Which of these changes is a refactoring?\"): four changes, one keeps the behaviour. It also appears as a diff or lab code where you name the move or spot the hidden change, and as the third part of an open question (\"describe in words how you would change it\").",
+    "minutes": 35,
+    "one_md": "A refactoring changes the structure and keeps the behaviour: if the output changes, it was not a refactoring.",
+    "spot_md": """- The wording: \"Which of these changes is a refactoring?\", \"Which refactoring move is this?\", \"Is this a pure refactoring?\".
+- Four one-line changes, with a feature, a bug fix and a new file format among them, and one that says \"with every test still passing unchanged\".
+- A diff hunk or a commit (`5e9466d`, `9d6c607`) where you name the move and say what it makes possible.
+- A `before.txt` and `after.txt` comparison, or the invoice lab's `163.35` and `20.0`, and the question \"what should you do?\".
+- A short ugly function and \"describe in words how you would change it and which problem each change solves\".""",
+    "basics": basics,
+    "checks": checks,
+    "method": method,
+    "worked": worked,
+    "twists": twists,
+    "traps": traps,
+    "say_md": say_md,
+    "practice": practice,
+}
+
+
+def main() -> None:
+    pools = json.loads((CRAM / "pools.json").read_text())["pools"]["T04"]
+    pool_ids = {q["id"] for q in pools}
+    missing = [i for i in practice if i not in pool_ids]
+    assert not missing, f"not in pools[T04]: {missing}"
+    assert len(set(practice)) == len(practice), "duplicate practice ids"
+    assert 10 <= len(practice) <= 14
+    with OUT.open("w", encoding="utf-8") as f:
+        json.dump(tfile, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    print(f"wrote {OUT}")
+
+
+if __name__ == "__main__":
+    main()

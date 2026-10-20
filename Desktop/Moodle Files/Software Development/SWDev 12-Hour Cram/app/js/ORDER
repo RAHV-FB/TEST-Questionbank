@@ -1,0 +1,36 @@
+# Concatenation order for build_cram.py: one file per line; # starts a comment.
+# Every .js file in app/js must be listed exactly once (the build fails otherwise).
+
+# The namespace, then pure logic (unit-tested in tests/*.test.mjs)
+core.js
+util.js
+route.js
+clock.js
+scoring.js
+mistakes.js
+paper.js
+state.js
+tutor.js
+data.js
+
+# Runtime services
+store.js
+claude.js
+dom.js
+router.js
+
+# Shared UI and the question components
+ui.js
+q.js
+shell.js
+
+# Views (each registers its routes)
+view-start.js
+view-home.js
+view-type.js
+view-practice.js
+view-paper.js
+view-misc.js
+
+# Boot (always last)
+main.js

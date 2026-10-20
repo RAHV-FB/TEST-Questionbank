@@ -1,0 +1,165 @@
+{
+ "stops": [
+  {
+   "kind": "intro",
+   "ref": "intro",
+   "title": "The exam in 2 minutes",
+   "minutes": 5,
+   "note": "Format, scope, limits and the nine sample shapes. Read it once."
+  },
+  {
+   "kind": "baseline",
+   "ref": "sample",
+   "title": "Baseline: the teacher's sample paper",
+   "minutes": 30,
+   "note": "Nine questions, 30 minutes, no notes. The score does not matter yet; it shows what you are up against."
+  },
+  {
+   "kind": "type",
+   "ref": "T10",
+   "title": "Process: lifecycle, Agile and Scrum",
+   "minutes": 40,
+   "note": "Scenario judgement: lifecycle, Agile and Scrum. The words you choose matter."
+  },
+  {
+   "kind": "type",
+   "ref": "T01",
+   "title": "Tool errors and project setup",
+   "minutes": 40,
+   "note": "A tool error and one sensible next step. Sample Q1 is this shape."
+  },
+  {
+   "kind": "type",
+   "ref": "T02",
+   "title": "Programs and the command line",
+   "minutes": 35,
+   "note": "Typer argument or option, exit codes and what the entry point runs."
+  },
+  {
+   "kind": "break",
+   "ref": "break1",
+   "title": "Break",
+   "minutes": 10,
+   "note": "Away from the screen. Water, food, a short walk. No notes."
+  },
+  {
+   "kind": "type",
+   "ref": "T03",
+   "title": "Clean-code problems",
+   "minutes": 40,
+   "note": "Name the clean-code problem and say why it hurts a teammate."
+  },
+  {
+   "kind": "type",
+   "ref": "T04",
+   "title": "Refactoring or not",
+   "minutes": 35,
+   "note": "Refactoring or not: does the behaviour change? Sample Q2 is this shape."
+  },
+  {
+   "kind": "type",
+   "ref": "T05",
+   "title": "mypy errors and the right fix",
+   "minutes": 40,
+   "note": "Read one mypy error and pick the right fix. Sample Q3 and Q9."
+  },
+  {
+   "kind": "type",
+   "ref": "T06",
+   "title": "Core, shell and failing well",
+   "minutes": 35,
+   "note": "Functional core, imperative shell, and failing loudly at the boundary."
+  },
+  {
+   "kind": "break",
+   "ref": "break2",
+   "title": "Break",
+   "minutes": 10,
+   "note": "Stand up, eat something, drink water. The next block is tests and diffs."
+  },
+  {
+   "kind": "type",
+   "ref": "T07",
+   "title": "Failing tests, pytest and TDD",
+   "minutes": 45,
+   "note": "A failing test line and what you can conclude. Sample Q4 is this shape."
+  },
+  {
+   "kind": "type",
+   "ref": "T11",
+   "title": "Diffs and commit messages",
+   "minutes": 35,
+   "note": "Read a diff and judge two commit messages. Sample Q8."
+  },
+  {
+   "kind": "type",
+   "ref": "T12",
+   "title": "Writing the open answers",
+   "minutes": 40,
+   "note": "Open answers: what to write in 5 to 8 lines. Sample Q7, Q8 and Q9."
+  },
+  {
+   "kind": "type",
+   "ref": "T08",
+   "title": "Paths, files and permissions",
+   "minutes": 30,
+   "note": "Read a terminal transcript: paths, files and permissions."
+  },
+  {
+   "kind": "type",
+   "ref": "T09",
+   "title": "Pipes, text wrangling and bash scripts",
+   "minutes": 45,
+   "note": "Pipes, text wrangling and bash scripts. Sample Q6 and Lab 10."
+  },
+  {
+   "kind": "break",
+   "ref": "break3",
+   "title": "Break",
+   "minutes": 10,
+   "note": "Last break before the full papers. Clear your head, then sit them like the real thing."
+  },
+  {
+   "kind": "paper",
+   "ref": "paper-a",
+   "title": "Paper A, realistic",
+   "minutes": 60,
+   "note": "Sit it as on the day: 60 minutes, pen and paper for the open answers, no notes."
+  },
+  {
+   "kind": "review",
+   "ref": "paper-a",
+   "title": "Review Paper A",
+   "minutes": 20,
+   "note": "Read every explanation, wrong or right. Mark the open answers against the rubric."
+  },
+  {
+   "kind": "mistakes",
+   "ref": "redo",
+   "title": "Redo your mistakes",
+   "minutes": 15,
+   "note": "Every question you got wrong so far, again."
+  },
+  {
+   "kind": "paper",
+   "ref": "paper-c",
+   "title": "Paper C, worst case",
+   "minutes": 60,
+   "note": "Longer artefacts, closer options. If you can do this one, the real paper is easier."
+  },
+  {
+   "kind": "review",
+   "ref": "paper-c",
+   "title": "Review Paper C",
+   "minutes": 20,
+   "note": "Same routine: read every explanation, then mark the open answers."
+  },
+  {
+   "kind": "final",
+   "ref": "say",
+   "title": "Say it on the paper",
+   "minutes": 10,
+   "note": "The phrases to write, type by type. Read them out loud once."
+  }
+ ]
+}

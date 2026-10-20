@@ -1,0 +1,49 @@
+<script>
+/* Apply a chosen theme before anything paints (the same key and shape as store.js). */
+(() => {
+  try {
+    const theme = JSON.parse(localStorage.getItem("swdev-cram-v1") || "null")?.prefs?.theme;
+    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  } catch {
+    /* storage blocked or damaged: the system theme applies */
+  }
+})();
+</script>
+<button type="button" class="skip" id="skip">Skip to content</button>
+<header class="topbar">
+  <a class="brand" href="#home">SWDev <span class="brand-sub">12-hour cram</span></a>
+  <nav class="topnav" aria-label="Main">
+    <a href="#home" data-nav="home">Route</a>
+    <a href="#paper" data-nav="papers">Papers</a>
+    <a href="#mistakes" data-nav="mistakes">Mistakes <span class="nav-count" data-mistakes-count hidden></span></a>
+  </nav>
+  <p class="countdown" id="countdown"></p>
+</header>
+<a class="sitting-chip" id="sitting-chip" href="#paper" hidden></a>
+<section class="shortcuts" id="shortcuts" aria-labelledby="shortcuts-title" hidden>
+  <div class="shortcuts-inner">
+    <h2 id="shortcuts-title" tabindex="-1">Keyboard shortcuts</h2>
+    <dl class="keys">
+      <div><dt><kbd>?</kbd></dt><dd>Show or hide this list</dd></div>
+      <div><dt><kbd>a</kbd>–<kbd>d</kbd> or <kbd>1</kbd>–<kbd>4</kbd></dt><dd>Choose a multiple-choice option, in a quick check, in practice and on a paper. Click or Tab into a question first when a page holds several</dd></div>
+      <div><dt><kbd>Enter</kbd></dt><dd>Check the answer, then go on to the next question. Not on a page heading or a code block</dd></div>
+      <div><dt><kbd>1</kbd>–<kbd>5</kbd></dt><dd>Sort question: place the focused item; <kbd>↑</kbd> <kbd>↓</kbd> move between items</dd></div>
+      <div><dt><kbd>Esc</kbd></dt><dd>Close this list</dd></div>
+    </dl>
+    <button type="button" class="btn btn-quiet" id="shortcuts-close">Close</button>
+  </div>
+</section>
+<main id="main" tabindex="-1"></main>
+<footer class="statusbar">
+  <span id="save-status"></span>
+  <span id="build-info"></span>
+  <button type="button" class="link-btn" id="shortcuts-open" aria-controls="shortcuts" aria-expanded="false">Keyboard shortcuts</button>
+  <button type="button" class="link-btn" id="theme-toggle">Theme: system</button>
+</footer>
+<nav class="tabbar" aria-label="Main">
+  <a href="#home" data-nav="home">Route</a>
+  <a href="#paper" data-nav="papers">Papers</a>
+  <a href="#mistakes" data-nav="mistakes">Mistakes <span class="nav-count" data-mistakes-count hidden></span></a>
+</nav>
+<div id="live" class="vh" aria-live="polite"></div>
+<noscript><p class="noscript">This page needs JavaScript to run.</p></noscript>

@@ -1,0 +1,107 @@
+{
+ "facts": [
+  {
+   "label": "When",
+   "value_md": "Thursday 22 October 2026, 14:00, room 108"
+  },
+  {
+   "label": "Length and weight",
+   "value_md": "1 hour, 30% of the course mark. It removes nothing from the final."
+  },
+  {
+   "label": "Covers",
+   "value_md": "Sessions 1 to 10: starting a project, clean code and tests, the terminal."
+  },
+  {
+   "label": "Format",
+   "value_md": "Pen and paper, closed book, no devices. Multiple choice with no penalty for a wrong answer, then open questions answered in 5 to 8 lines."
+  },
+  {
+   "label": "Not covered",
+   "value_md": "Git in depth (branching, merging, pull requests) and Docker."
+  }
+ ],
+ "limits_md": "The teacher's own words: \"You will not write code. Judgement, not memorised flags.\" You explain, compare, or read a piece of code or tool output and say what it does or what is wrong. The sample questions show the kind of question, not the exam, and the exam does not reuse them.",
+ "technique": [
+  "**Multiple choice.** A wrong answer costs nothing, so never leave one blank. Read the artefact before the options. The wrong options are usually moves that act on something the message never mentions: delete `.venv`, reinstall, `# type: ignore`, rerun until it passes.",
+  "**Open answers.** There are usually two to four numbered parts. Answer in the same numbers, one idea per line. For each problem you name, say what a teammate cannot do because of it.",
+  "**Time.** About 90 seconds for each multiple-choice question and about 8 minutes for each open question."
+ ],
+ "shapes": [
+  {
+   "n": 1,
+   "type": "mcq",
+   "ask_md": "A tool error from `uv`. What should you do next?",
+   "tids": [
+    "T01"
+   ]
+  },
+  {
+   "n": 2,
+   "type": "mcq",
+   "ask_md": "Which of these changes is a refactoring?",
+   "tids": [
+    "T04"
+   ]
+  },
+  {
+   "n": 3,
+   "type": "mcq",
+   "ask_md": "A `mypy --strict` error on a short snippet. Which fix is most appropriate?",
+   "tids": [
+    "T05"
+   ]
+  },
+  {
+   "n": 4,
+   "type": "mcq",
+   "ask_md": "A failing `pytest` line. What can you conclude?",
+   "tids": [
+    "T07"
+   ]
+  },
+  {
+   "n": 5,
+   "type": "mcq",
+   "ask_md": "A function that does too much. Which clean-code problem is it?",
+   "tids": [
+    "T03"
+   ]
+  },
+  {
+   "n": 6,
+   "type": "mcq",
+   "ask_md": "A pipe such as `grep \"food\" expenses.csv | wc -l`. What does it print?",
+   "tids": [
+    "T09"
+   ]
+  },
+  {
+   "n": 7,
+   "type": "open",
+   "ask_md": "Read code and say what is wrong: what it does, two problems, and how you would change it in words.",
+   "tids": [
+    "T03",
+    "T12"
+   ]
+  },
+  {
+   "n": 8,
+   "type": "open",
+   "ask_md": "Compare a diff and two commit messages: what the change does, which message is better, one test in words.",
+   "tids": [
+    "T11",
+    "T12"
+   ]
+  },
+  {
+   "n": 9,
+   "type": "open",
+   "ask_md": "Read `mypy` output: sort the errors into kinds, say which one can crash, and whether you accept `# type: ignore`.",
+   "tids": [
+    "T05",
+    "T12"
+   ]
+  }
+ ]
+}

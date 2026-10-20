@@ -1,0 +1,419 @@
+"""Cram exercise type T06: Core, shell and failing well.
+
+Run: python3 T06.py   -> writes ../T06.json
+"""
+
+import json
+from pathlib import Path
+
+OUT = Path(__file__).resolve().parent.parent / "T06.json"
+
+B1 = """Every function does one of two kinds of work. It **decides** something (a total, a fee, a pass mark) or it **touches the world** (reads a file, prints, ends the program). Session 7 keeps the two apart, one layer inside the other:
+
+```text
+        ┌─────────────────────────────┐
+        │  shell: cli.py              │   reads files, prints, exits
+        │  ┌───────────────────────┐  │
+        │  │  core: pure functions │  │   data in → data out
+        │  └───────────────────────┘  │
+        └─────────────────────────────┘
+```
+
+- **Core**: takes values, returns values. No `open`, no `print`, no `sys.exit`. The same values in give the same answer out.
+- **Shell**: the only place that touches the world. It stays thin: read, call the core, show the result, set the exit code.
+
+| Touches the world (shell) | Does not (core) |
+|---|---|
+| `open`, reading or writing a file | arithmetic, loops, an `if` on the arguments |
+| `print`, `typer.echo` | building the report lines and returning them (`format_report`) |
+| `sys.exit`, `raise typer.Exit` | `raise ValueError(...)` |
+| the clock (`date.today()`), the network | taking `today` as a parameter |
+
+The demo's `report` command at v0.3 (slide 14) runs in the order shell, core, shell:
+
+```python
+expenses = read_expenses(path)                       # shell: touches a file
+totals = total_by_category(expenses, category, minimum)   # core: pure
+lines = format_report(path, category, minimum, totals, largest)  # core: pure
+for line in lines:
+    print(line)                                      # shell: prints
+```
+
+Two readings catch people. `read_expenses` returns a value and sits in `report.py`, yet it is **shell**, because it opens a file. What a function does decides, not its file and not its return type. And a function that does both jobs is **mixed**: it must be split before its logic can be tested with plain data. Example: `average_mark(path)` opens a CSV and returns the mean."""
+
+B2 = """The split pays three times (slide 15):
+
+| Word | What it means | Example |
+|---|---|---|
+| Testable | Pass a list, check the answer. No file. | `total_by_category` with three `Expense` objects typed into the test |
+| Reusable | One core behind a CLI today and a web page later | the web page brings its own shell |
+| Replaceable | Session 17's database changes only the reading | the core and its tests stay as they are |
+
+A function that prints instead of returning gives a test `None`: **you cannot assert on a print**. Make it return, and print in the shell. That is session 6's "computation is not output".
+
+When a question says "describe how you would change it", the answer is the refactoring *separate I/O from logic*, in four moves:
+
+1. Find the decision inside the function: the total, the fee, the grade.
+2. Move it into a new function whose parameters are the values it needs and which returns the answer.
+3. Leave the reading and printing in a thin function that calls it.
+4. Run it: the output must not change, or it was not a refactoring. Then write the first test on the new function with plain data, for example marks 80 and 60 with weights 0.5 and 0.5 give 70.0.
+
+Session 8's 2×2 gives the same map. Pure logic is *Algorithms* (worth testing, cheap). Logic mixed with I/O is *Overcomplicated code, needs refactoring*, like v0.1's `run()`. A command that only calls other parts is a *Coordinator*: little to get wrong, much to set up, so one or two `CliRunner` tests on purpose.
+
+The project marks it twice. Checkpoint 2, item 3: most tests call pure functions with plain data. Partial-submission Structure: 3 is "no module does both", 2 is one function still mixing, 1 is logic mostly inside the commands."""
+
+B3 = """When something goes wrong, or there is nothing to return, slide 17 gives three rows:
+
+| Situation | What the function does |
+|---|---|
+| The caller can't carry on | `raise` an exception |
+| A normal "no result" | return `None` or empty |
+| Crossing to the shell | translate to an exit code |
+
+`read_expenses("nosuch.csv")` raises (`FileNotFoundError`, a kind of `OSError`), and so does a row with the amount `forty` (`ValueError`): no report can be built. `largest_expense([])` returns `None`, declared `-> Expense | None`: there is no largest of nothing, and `mypy --strict` makes every caller check.
+
+**Do not return -1 and hope somebody checks.** A meal planner's `price_of` returns `-1` for saffron and is declared `-> float`:
+
+```console
+$ uv run python prices.py
+2.30
+$ uv run mypy --strict prices.py
+Success: no issues found in 1 source file
+```
+
+Rice 1.20 plus tomatoes 2.10 plus saffron -1 gives a believable 2.30, and mypy is satisfied because -1 is a `float`. Declare `-> float | None` and mypy stops at the addition. A missing file must not become `[]` either: a mistyped name would print `TOTAL 0.00` and exit 0.
+
+**Catch only what you can handle.** A bare `except:` catches everything raised inside its `try`:
+
+```python
+except:                        # v0.1
+except (OSError, ValueError):  # v0.2: only the two we expect
+```
+
+With `float` misspelt `flaot` in v0.1's reading loop, a good file gave:
+
+```console
+$ uv run expenses report expenses.csv
+could not read expenses.csv
+$ echo $?
+1
+```
+
+The file is fine and the message blames it. A typo, a missing import and Ctrl-C all end this way. `except Exception:` silences ruff's `E722` but still hides the typo."""
+
+B4 = """Slide 19: the **core raises** on bad input and never prints an error. The **shell catches it, prints to stderr and exits non-zero**.
+
+```python
+try:
+    expenses = read_expenses(path)
+except (OSError, ValueError) as error:
+    typer.echo(f"could not read {path}: {error}", err=True)
+    raise typer.Exit(code=1)
+```
+
+These are two jobs. `err=True` decides where the text goes; `raise typer.Exit(code=1)` decides how the program ends. A program has two streams: **stdout** for its output (the report) and **stderr** for messages to the person. `>` and a pipe carry stdout only. We ran a missing file on both tags:
+
+| What the user typed | v0.2 (`print`) | v0.3 (`err=True`) |
+|---|---|---|
+| report sent to `report.txt` | screen silent; the error is inside `report.txt` | error on screen; `report.txt` empty |
+| report piped into `wc -l` | prints `1`: the error counted as a line | error on screen, then `0` |
+
+The exit code is the other half. 0 is success, anything else is failure, and `&&`, scripts and CI read that number. **A program that prints an error and exits 0 is a program that lies.** At v0.2 the `print` and `sys.exit(1)` still sat in `report.py`; commit `15836e1` moved them into the `report` command in `cli.py`, and that is v0.3.
+
+Messages that are neither output nor errors, such as "skipped malformed row 3", are the program's diary. **`print` is for the program's output; logging is for its diary.** A log call has a level (debug, info, warning, error) and can be silenced, filtered or sent to a file without editing the code. Modules log with `logging.getLogger(__name__)`; the shell configures once with `logging.basicConfig(level=...)`."""
+
+SAMPLE_Q7 = """**Q7 (read code and say what is wrong)**
+
+```python
+def process(rows):
+    total = 0
+    for r in rows:
+        if r[2] == "food":
+            total += float(r[1])
+    print("Food total:", total)
+    return total
+```
+
+1. In one sentence, what does this function do?
+2. Name two problems a teammate would face when reading, testing or changing it.
+3. Describe (in words, do not write code) how you would change it, and which of the two problems each change solves."""
+
+STREAMS_Q = """A user runs the report on a file that does not exist, on the v0.2 and the v0.3 tags of the demo. `nosuch.csv` is missing.
+
+v0.2:
+
+```console
+$ uv run expenses report nosuch.csv > report.txt
+$ cat report.txt
+could not read nosuch.csv
+$ uv run expenses report nosuch.csv; echo $?
+could not read nosuch.csv
+1
+```
+
+v0.3:
+
+```console
+$ uv run expenses report nosuch.csv > report.txt
+could not read nosuch.csv
+$ cat report.txt
+$ uv run expenses report nosuch.csv; echo $?
+could not read nosuch.csv
+1
+```
+
+1. Why did the v0.2 user see nothing on the screen after the first command?
+2. What does v0.3 do differently? Use the words stdout and stderr.
+3. Both versions print `1`. Why does that number matter to a script, and did v0.3 change it?"""
+
+SAY = """- **Sorting a function:** "functional core, imperative shell"; "the core takes values and returns values: data in, data out"; "the shell is the only place that touches the world: it reads, prints and exits"; "this function is mixed: it decides and it prints".
+- **Why split:** "testable: pass a list and check the answer"; "reusable: the same core behind a CLI or a web page"; "replaceable: a database only changes the shell"; "you cannot assert on a print"; "computation is not output".
+- **The change, in words:** "separate I/O from logic"; "a pure function that takes the marks and returns the total, and a thin shell that reads the file and prints"; "it is a refactoring: the output stays the same".
+- **Failing:** "the caller can't carry on, so raise"; "a normal 'no result' is `None` or empty, and `| None` in the type makes mypy force the check"; "do not return -1 and hope somebody checks"; "catch only what you can handle: `(OSError, ValueError)`"; "a bare except hides every bug: a typo, a missing import, Ctrl-C".
+- **At the boundary:** "fail loudly, at the boundary"; "the core raises; the shell catches it, writes to stderr and exits non-zero"; "stdout is the program's output, stderr is for the person"; "a program that prints an error and exits 0 is a program that lies"; "CI is the referee, not the judge".
+- **Logging:** "print is for the program's output; logging is for its diary"; "it has levels and can be silenced or filtered without editing the code"; "configure once, in the shell"."""
+
+T06 = {
+    "tid": "T06",
+    "name": "Core, shell and failing well",
+    "shape_md": (
+        "Mirrors the open question in sample Q7 (read a function that computes and prints, say what is wrong, "
+        "describe the change in words) and the Q5 idea of one function doing several jobs. The artefact can be a "
+        "function, a v0.2 to v0.3 diff, a terminal transcript with `>` or a pipe, or a failing test, with the "
+        "question \"what is wrong and where should it live?\"."
+    ),
+    "minutes": 35,
+    "one_md": (
+        "Keep every decision in a function that takes values and returns values, put every read, print and exit "
+        "in a thin outer layer, and when something fails, raise in the core and let the shell write to stderr "
+        "and exit non-zero."
+    ),
+    "spot_md": (
+        "- One function body that opens a file, calculates and prints (`process`, `show_final_grade`, `charge`), "
+        "with \"what is wrong?\" or \"how would you change it?\".\n"
+        "- Code that prints or opens files next to the words test, reuse or database, asking where the logic should live.\n"
+        "- `except:` with a `print` and `sys.exit(1)`, or a failure answered with `return -1`, `return 0` or `return []`.\n"
+        "- A transcript with `>`, a pipe or `echo $?` around an error message, or a diff that moves `print` and "
+        "`sys.exit` out of `report.py`.\n"
+        "- A message such as \"skipped malformed row\" inside a loop, or `print(\"DEBUG ...\")` left in a function."
+    ),
+    "basics": [
+        {
+            "id": "T06-b1",
+            "heading": "Core and shell: sort any function in ten seconds",
+            "body_md": B1,
+        },
+        {
+            "id": "T06-b2",
+            "heading": "Why split, and how to describe the split in words",
+            "body_md": B2,
+        },
+        {
+            "id": "T06-b3",
+            "heading": "Failing well, part one: raise, return None, or neither",
+            "body_md": B3,
+        },
+        {
+            "id": "T06-b4",
+            "heading": "Failing well, part two: the boundary, stderr and logging",
+            "body_md": B4,
+        },
+    ],
+    "checks": [
+        {
+            "id": "T06-c1",
+            "q_md": "Three functions from a library group's project. Which one is core?",
+            "options": [
+                "`load_loans(path: str) -> list[Loan]`, which opens `loans.csv` and returns the loans",
+                "`late_fee(days: int) -> float`, which turns a number of days into a fee and returns it",
+                "`show_fee(days: int) -> None`, which works out the fee and prints it",
+            ],
+            "answer": 1,
+            "why_md": (
+                "`late_fee` takes a value and returns a value. `load_loans` returns a value but opens a file, so it is "
+                "shell. `show_fee` decides and prints, so it is mixed and needs splitting."
+            ),
+        },
+        {
+            "id": "T06-c2",
+            "q_md": (
+                "A function reads a CSV, adds up one student's marks times weights and prints the total. You split it "
+                "into a pure function that returns the total and a thin function that reads the file and prints. "
+                "What should the user see when they run the program?"
+            ),
+            "options": [
+                "Nothing on the screen, because the total is now returned",
+                "A different layout, because the printing moved",
+                "The same output as before",
+            ],
+            "answer": 2,
+            "why_md": (
+                "Separate I/O from logic is a refactoring: the structure changes and the behaviour stays. If the "
+                "output changes, it was not a refactoring. The thin function still prints."
+            ),
+        },
+        {
+            "id": "T06-c3",
+            "q_md": "Which situation should raise an exception rather than return `None` or an empty list?",
+            "options": [
+                "`read_expenses` meets a row whose amount is `forty`",
+                "`find_expense(expenses, 99)` is called and no expense has the id 99",
+                "`total_by_category(expenses, \"pets\", 0.0)` is called and nobody has a pets expense",
+            ],
+            "answer": 0,
+            "why_md": (
+                "`float(\"forty\")` raises `ValueError`: no report can be built, so the caller can't carry on. A search "
+                "with no match and a category nobody used are normal \"no result\" cases: `None` and `[]`."
+            ),
+        },
+        {
+            "id": "T06-c4",
+            "q_md": (
+                "```python\ntry:\n    ...\nexcept:\n    print(\"could not read \" + path)\n    sys.exit(1)\n```\n\n"
+                "The `...` is v0.1's code for reading the file. For which case does this message blame a file that is fine?"
+            ),
+            "options": [
+                "The file name is misspelt, so the file does not exist",
+                "`float` is misspelt as `flaot` in the reading loop",
+                "An amount in the file reads `forty`",
+            ],
+            "answer": 1,
+            "why_md": (
+                "The typo raises `NameError` inside the `try`, and the bare except reports it as a reading problem. "
+                "A missing file and a bad amount are real input problems, so the message is fair there."
+            ),
+        },
+        {
+            "id": "T06-c5",
+            "q_md": (
+                "A command should tell the person what failed and tell scripts that it failed. "
+                "Which pair of lines does both?"
+            ),
+            "options": [
+                "`print(msg)` then `return`",
+                "`logger.info(msg)` then `raise typer.Exit(code=0)`",
+                "`typer.echo(msg, err=True)` then `raise typer.Exit(code=1)`",
+            ],
+            "answer": 2,
+            "why_md": (
+                "`err=True` puts the message on stderr for the person, and `typer.Exit(code=1)` gives the non-zero exit "
+                "code that `&&`, scripts and CI read. The first pair uses stdout and exits 0; the second exits 0 too."
+            ),
+        },
+    ],
+    "method": [
+        "**Mark every line.** Go through the code and tag each line as *decides* or *touches the world*: `open`, `print`, `typer.echo`, `sys.exit`, `typer.Exit`, the clock. Say the verdict for the function in one word: core, shell or mixed.",
+        "**Say what it does in one sentence** with three facts: what goes in, what is computed, what happens to the result (printed, returned, or both).",
+        "**Name the problems with their consequences.** Each one needs a cost: \"it prints inside the calculation, so every call writes to the screen and the wording is welded to the arithmetic\"; \"the bare except turns a typo into `could not read`\"; \"`-1` adds up like a grade\".",
+        "**Ask slide 17's question for each failure:** can the caller carry on? No: raise. A normal \"no result\": return `None` or empty, typed `| None`. At the edge of the program: message on stderr and a non-zero exit code.",
+        "**Describe the change in words**, never in code: a pure function that takes this and returns that; a thin shell that reads, calls and prints; named exceptions caught at the boundary. Tie each change to the problem it solves, and say the output stays the same.",
+        "**Name one test in words**: a plain-data test with real numbers (marks 80 and 60 at weights 0.5 give 70.0), and, if asked about failing, one `CliRunner` test that checks exit code 1 and the message in `result.stderr`.",
+    ],
+    "worked": [
+        {
+            "title": "Sample Q7: read code and say what is wrong",
+            "question_md": SAMPLE_Q7,
+            "steps_md": [
+                "Tag the lines. The loop, the `if r[2] == \"food\"` and `total += float(r[1])` decide. `print(\"Food total:\", total)` touches the world. `return total` hands the value back. So the function is **mixed**: computation and output in one body.",
+                "Part 1 needs three facts in one sentence: which rows (those whose third field is \"food\"), what it adds up (the second field, as a float), what it does with the result (prints it **and** returns it). Leaving out the return loses a mark.",
+                "Part 2: two problems, each with its consequence. Output: the `print` is inside the calculation, so every call writes to the screen and the report's wording is welded to the arithmetic (computation is not output). Reading: `process`, `r[1]` and `r[2]` say nothing, so a teammate must guess which field is the amount (a tuple is a missing type). Do not write \"a test cannot check the total\": the function returns it, so a test can.",
+                "Part 3: pair each change with its problem. A dataclass with named fields and a name that says what it returns solves the reading problem. Removing the `print` so the function only returns, with the CLI printing the result, solves the output problem. Add that the user sees the same output, so it is a refactoring.",
+            ],
+            "answer_md": (
+                "1. It adds up the amounts (second field) of the rows whose third field is \"food\", prints that total and returns it.\n"
+                "2. Reading: `process`, `r[1]` and `r[2]` say nothing, so a teammate must guess which field is the amount. "
+                "Output: the `print` is inside the calculation, so every call writes to the screen and the wording is tied to the arithmetic.\n"
+                "3. Use an `Expense` dataclass and a name such as `food_total`: that solves the reading problem. "
+                "Remove the `print` and let the CLI print the result: that solves the output problem, because the function can be reused quietly and the shell chooses the wording. "
+                "The output the user sees stays the same."
+            ),
+        },
+        {
+            "title": "Reading a transcript: where did the error go?",
+            "question_md": STREAMS_Q,
+            "steps_md": [
+                "Find the two streams. At v0.2 the error is written with `print`, which goes to **stdout**. `>` redirects stdout only.",
+                "Read the first v0.2 command. The screen is silent because the message went into `report.txt`; `cat` proves it. The saved \"report\" is an error message.",
+                "Read v0.3. `typer.echo(..., err=True)` writes to **stderr**, which `>` leaves alone: the message reaches the screen and `report.txt` stays empty.",
+                "Read the exit code. Both versions end with `1`. 0 is success and anything else is failure, and `&&`, scripts and CI read that number. v0.2 already exited with 1 through `sys.exit(1)`; v0.3 keeps it with `typer.Exit`. What v0.3 changed is the stream, and where the handling lives: from `report.py` to the `report` command in `cli.py`.",
+            ],
+            "answer_md": (
+                "1. v0.2 prints the error with `print`, which writes to stdout. `>` sent stdout into `report.txt`, so the message went into the file.\n"
+                "2. v0.3 writes the error to stderr and keeps stdout for the report. Redirection takes only stdout, so the message appears on the screen and `report.txt` stays empty.\n"
+                "3. Scripts, `&&` and CI decide by the exit code: non-zero means failure. v0.2 already exited with 1, so v0.3 did not change the number; it fixed where the message goes."
+            ),
+        },
+    ],
+    "twists": [
+        {
+            "twist_md": "The function both prints and returns, as in sample Q7, and a classmate writes \"the print means a test cannot check the total\".",
+            "how_md": "Judge the reason, not the letter. The function returns the total, so a test can assert on it. The real costs are the output on every call and wording tied to the arithmetic. Only a function that prints and returns nothing gives a test `None`.",
+        },
+        {
+            "twist_md": "A function returns a value but opens a file to get its data, such as `busiest_hour(log_path)` or `average_mark(path)`.",
+            "how_md": "It is mixed, not core. Returning a value does not make a function pure. Split it: a function that takes the list and returns the answer, and a shell that reads the file.",
+        },
+        {
+            "twist_md": "A teammate drops the `today` parameter and calls `date.today()` inside a core function \"so callers pass one less argument\". It still has no `open`, `print` or `sys.exit`.",
+            "how_md": "The clock is the world too: the same arguments give a different answer tomorrow. Pass `today` in from the shell, and a test can use a fixed date and a fixed answer.",
+        },
+        {
+            "twist_md": "ruff flags the bare `except:` with `E722`, and a teammate changes it to `except Exception:` \"because ruff accepts it\".",
+            "how_md": "Refuse and give the reason. A typo's `NameError` and a wrong column's `IndexError` are `Exception`s too, so they are still reported as `could not read`. Only Ctrl-C escapes. Name the failures you expect: `(OSError, ValueError)`.",
+        },
+        {
+            "twist_md": "A typo sits on a line after the `try` block, or the error is raised outside it.",
+            "how_md": "A handler catches only what is raised inside its `try`. Code after it fails with a traceback that names the line. For a bug that is the right result. Read where the `try` starts and ends before you say what is hidden.",
+        },
+        {
+            "twist_md": "The shell's `except` block prints the error to stderr and then ends with `return`, \"so users do not see an error code\". A script runs `command && echo done`.",
+            "how_md": "The exit code is now 0, so `&&` runs the next command and CI stays green after a failure. The message and the exit code are two jobs. Finish with `raise typer.Exit(code=1)`.",
+        },
+        {
+            "twist_md": "Someone changes `typer.echo(..., err=True)` to `print(...)`, and ruff, mypy and pytest all stay green. The only test of the error path checks `result.exit_code == 1`.",
+            "how_md": "A test protects only what it asserts. Nothing checks which stream the message uses, so green says nothing about it. Add the assertion that the message is in `result.stderr`. CI is the referee, not the judge.",
+        },
+        {
+            "twist_md": "The team wants a `--verbose` option that shows `info` messages such as \"read 420 expenses\". The core already logs through `logging.getLogger(__name__)`.",
+            "how_md": "Change the shell only: the typer callback reads the option and sets the level in `logging.basicConfig`. Do not thread a flag through core functions or wrap each log call in an `if`.",
+        },
+    ],
+    "traps": [
+        "`read_expenses` lives in `report.py`, so it is core. **Wrong:** it opens a file, so slide 14 labels it shell. What a function does decides, not the file it sits in.",
+        "A function that prints its result is fine as long as it also returns it. **Wrong:** it still mixes computation with output, so every caller gets the printing and a web page cannot reuse it cleanly. Return the value and print in the shell.",
+        "A bare `except:` is the safe choice, because the program never crashes. **Wrong:** it hides every bug raised inside its `try` (a typo, a missing import, Ctrl-C) behind one misleading message. For a bug, a traceback that names the line is the right result; the partial-submission rubric's \"not a traceback\" is about bad input.",
+        "`except Exception:` fixes a bare except. **Wrong:** ruff's `E722` goes quiet, but a typo or an `IndexError` is an `Exception` too and is still disguised. Name the failures you expect.",
+        "Returning `-1`, `0` or `[]` is a simple way to report a failure. **Wrong:** these look like data and flow into totals without a sound, and mypy accepts them. Raise when the caller can't carry on; use `None` with `| None` in the type for a normal \"no result\".",
+        "The message and the exit code do the same job, so one of them is enough. **Wrong:** `err=True` decides where the text goes and `raise typer.Exit(code=1)` decides how the program ends. Scripts, `&&` and CI read only the exit code. Failing well needs both.",
+        "The core should catch its own errors and print a friendly message. **Wrong:** the core does not know who is calling. It raises; each shell (CLI, web page, test) decides how to show the failure.",
+        "Logging is `print` with a prefix. **Wrong:** a log message has a level, can be silenced, filtered or sent to a file without editing the code, and by default goes to stderr, away from the program's output.",
+    ],
+    "say_md": SAY,
+    "practice": [
+        "core-shell-failing-q03",
+        "core-shell-failing-q27",
+        "core-shell-failing-q15",
+        "core-shell-failing-q02",
+        "core-shell-failing-q07",
+        "core-shell-failing-q32",
+        "core-shell-failing-q40",
+        "core-shell-failing-q13",
+        "core-shell-failing-q20",
+        "core-shell-failing-q18",
+        "core-shell-failing-q34",
+        "core-shell-failing-q44",
+        "core-shell-failing-q26",
+        "core-shell-failing-q46",
+    ],
+}
+
+
+def main() -> None:
+    with OUT.open("w", encoding="utf-8") as handle:
+        json.dump(T06, handle, ensure_ascii=False, indent=1)
+        handle.write("\n")
+    print(f"wrote {OUT}")
+
+
+if __name__ == "__main__":
+    main()

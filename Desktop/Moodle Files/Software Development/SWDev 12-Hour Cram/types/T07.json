@@ -1,0 +1,180 @@
+{
+ "tid": "T07",
+ "name": "Failing tests, pytest and TDD",
+ "shape_md": "Mirrors sample Q4: a test fails after a teammate's change and you say what you can conclude. On the paper it appears as a pytest failure block, a diff, a short test, a coverage table or the TDD commits, with a judgement question (who is wrong, what does the output mean, which fix, which test would you add), and as an open question that asks for tests \"in words\" (sample Q8, part 3).",
+ "minutes": 45,
+ "one_md": "A failing test says the code and the test disagree: read what pytest shows on each side, then let the agreed rule, not age or timing, decide what changes.",
+ "spot_md": "- A pytest block with `>` and `E` lines, or one `FAILED ...` line, after \"a teammate changed ...\".\n- The wording: \"What can you conclude?\", \"What should you do next?\", \"Which fix is most appropriate?\", \"Why does it fail?\", \"What does this passing test prove?\".\n- A short test (Arrange, Act, Assert) that is weak or odd: no `assert`, a function that prints, a file that exists only on your laptop, a missing `-> None`.\n- A coverage table with a `Missing` column, the slide-18 quadrants, or the expense-tracker commits `e1b96de`, `1e421bc` and `d3df52b`.\n- The open version: \"name a test you would add, in words\", or \"give two reasons this is hard to test, then describe how you would restructure it\".",
+ "basics": [
+  {
+   "id": "T07-b1",
+   "heading": "Red, green, refactor, and the shape of one test",
+   "body_md": "A test is a small function in `tests/test_<something>.py` that calls your code and uses `assert` on the answer. Every test in the course has the same three parts, **Arrange, Act, Assert**: build the input, make one call to the function under test, compare the result with an answer you worked out by hand.\n\n```python\ndef test_totals_are_grouped_by_category() -> None:\n    expenses = [\n        Expense(\"2025-07-01\", \"Bar Ramon\", \"dining\", 10.0),\n        Expense(\"2025-07-02\", \"Zara\", \"clothing\", 40.0),\n        Expense(\"2025-07-03\", \"Bar Ramon\", \"dining\", 5.0),\n    ]\n    result = total_by_category(expenses, category=\"\", minimum=0.0)\n    assert result == [(\"clothing\", 40.0), (\"dining\", 15.0)]\n```\n\nTest-driven development (TDD) means you write that test before the function, in a loop of three steps.\n\n| Step | What you do | Evidence |\n|---|---|---|\n| Red | Write a test for behaviour that does not exist yet | You saw it fail |\n| Green | Write the smallest code that passes: \"Not elegant. Nobody asked for elegant yet.\" | All tests pass |\n| Refactor | Clean the code up | The same tests, unedited, still pass |\n\nThe slide gives the reason: \"The test forces you to say what 'done' means before you can fool yourself.\" A test you never saw fail may be checking nothing, so break the code on purpose once and watch the test notice. A refactoring changes structure and keeps behaviour, so if the tests have to change to stay green, the behaviour changed. Every test function needs `-> None`, because CI runs `mypy --strict` on `tests/` as well."
+  },
+  {
+   "id": "T07-b2",
+   "heading": "Reading a failure, and who is wrong",
+   "body_md": "When a test fails, pytest prints both sides of the `assert`. This is real output after a teammate changed the sort in `total_by_category`:\n\n```text\n>       assert result == [(\"clothing\", 40.0), (\"dining\", 15.0)]\nE       AssertionError: assert [('dining', 1...thing', 40.0)] == [('clothing',...ining', 15.0)]\nE         At index 0 diff: ('dining', 15.0) != ('clothing', 40.0)\nE         Use -v to get more diff\n\ntests/test_totals.py:11: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_totals.py::test_totals_are_grouped_by_category - AssertionE...\n1 failed in 0.01s\n```\n\nRead it from the bottom. The last line counts failures, the `FAILED` line names the test, the `>` line is the assert that failed, and the `E` lines compare the two sides. The course writes `assert result == expected`, so the left side is what the code returned and the right side is what the test expected; check the `>` line to see which side is which. Here both totals are right and the order is reversed: the code now sorts smallest first.\n\nThe main idea of this type comes from sample Q4. **A failing test says the code and the test disagree. It does not say which one is wrong.** Which was written first, which changed last, and rerunning a deterministic test are all irrelevant. The specification decides: the backlog item, the product owner, the commit message.\n\n| What you find | What you do |\n|---|---|\n| The rule is unchanged and the code broke it | Fix the code, keep the test |\n| The rule changed on purpose | Update the test (and its name) in the same commit, and say so in the message |\n| Nobody wrote the rule down | Find out the rule first, then pin it with a test |"
+  },
+  {
+   "id": "T07-b3",
+   "heading": "Which tests to write, and which tool",
+   "body_md": "The happy path is the test everybody writes, and bugs live elsewhere. Before writing a test, ask the five questions from the slide.\n\n| Ask | Example |\n|---|---|\n| Empty: nothing in? | `total_by_category([], \"\", 0.0) == []` |\n| Zero: the boundary? | an amount exactly equal to `minimum` |\n| Negative: nonsense? | a refund |\n| Duplicate: twice? | six exact duplicate rows in `expenses.csv` |\n| Missing: not there? | a category nobody used |\n\n\"Do not test what feels likely. Test what could break.\" Only a test exactly on a boundary tells `<` from `<=`. A test name that states the rule makes the suite read as documentation.\n\nThen ask how costly the code is to test. Slide 18 has two axes: the benefit of a unit test (how non-obvious the code is) and its cost (how many dependencies it has).\n\n| | Low cost | High cost |\n|---|---|---|\n| High benefit | Algorithms: test thoroughly | Overcomplicated code: refactor first |\n| Low benefit | Trivial code: little to gain | Coordinators: one or two edge tests |\n\nA pure function takes data and returns data, with no file and no `print`, so it tests itself. If logic is tangled up with `print` or `open`, split it first. Most of your tests use plain lists. The few that must touch the world use one tool each: `tmp_path` for a file, `CliRunner` for the command line, `monkeypatch` for the working directory or an environment variable. These three are I/O tests, and Checkpoint 2 allows one or two."
+  },
+  {
+   "id": "T07-b4",
+   "heading": "Decoding the other pytest messages",
+   "body_md": "A fixture is a function marked `@pytest.fixture` that pytest calls for you; a test asks for it by naming it as an argument. `@pytest.mark.parametrize` runs one test once per row of a table. The lab's troubleshooting table is a source of ready-made questions: an output, then \"what should you do next?\"\n\n| You see | It means | You do |\n|---|---|---|\n| `assert 30.299999999999997 == 30.3` | float noise, the code is fine | compare with `pytest.approx(30.3)` |\n| `ERROR at setup`, `fixture 'expense' not found` | a typo, so the test never started | fix the argument name |\n| `FAILED ...::test_pass_mark[50.0-True]` | one `parametrize` row failed, the others ran | read that row's values |\n| `no tests ran`, exit code 5 | nothing collected, for example a file not named `test_*.py` | rename it; 5 is not 0, so CI is red |\n| `ModuleNotFoundError` for your package | bare `pytest` ran outside the project | `uv sync`, then `uv run pytest` |\n| `assert None == 'Ana: pass'` | the function prints and returns `None` | return the text, print in the shell |\n| `Function is missing a return type annotation` in `tests/` | CI runs strict mypy on tests | add `-> None` |\n| `FileNotFoundError` for `data/expenses.csv` in CI | the test needs a file only your laptop has | build the data in the test or in `tmp_path` |\n| `TypeError: unhashable type: 'Expense'` | `frozen=True` was removed; mypy stays quiet | put `frozen=True` back |\n\nPassing output can mislead too. A test with no `assert` still shows `1 passed`. Coverage lists the lines that ran, and its `Missing` column shows what you forgot. \"100% coverage with weak assertions proves nothing. Never chase the number.\""
+  }
+ ],
+ "checks": [
+  {
+   "id": "T07-c1",
+   "q_md": "You are building `basket_total` with TDD. Which of these is the **red** step?",
+   "options": [
+    "Write `test_empty_basket_costs_nothing`, run it, and watch it fail",
+    "Write `basket_total` so that it returns `0.0` for an empty list",
+    "Rename the variables in `basket_total` and run the tests again"
+   ],
+   "answer": 0,
+   "why_md": "Red is a test for behaviour that does not exist yet, seen failing. The second option is green, the smallest code that passes, and the third is a refactor."
+  },
+  {
+   "id": "T07-c2",
+   "q_md": "A test fails with this output:\n\n```text\n>       assert total_by_category(expenses, \"\", 0.0) == [(\"dining\", 15.0)]\nE       AssertionError: assert [] == [('dining', 15.0)]\nE         \nE         Right contains one more item: ('dining', 15.0)\nE         Use -v to get more diff\n```\n\nWhat did `total_by_category` return?",
+   "options": [
+    "`[('dining', 15.0)]`",
+    "`[]`",
+    "Nothing: the test stopped before the call"
+   ],
+   "answer": 1,
+   "why_md": "The `>` line shows the call on the left of `==` and the expected list on the right. pytest evaluates both and prints the values in the same order, so the call returned an empty list and the test expected one item."
+  },
+  {
+   "id": "T07-c3",
+   "q_md": "A cinema charges the child price to everyone aged 12 or under. Your tests cover a child aged 5 and an adult aged 30. Which test is most likely to catch a bug next?",
+   "options": [
+    "A child aged 8",
+    "An adult aged 40",
+    "A visitor aged exactly 12"
+   ],
+   "answer": 2,
+   "why_md": "Zero: the boundary. A `<` written where `<=` was meant changes the answer only at exactly 12. Ages 8 and 40 repeat what the first two tests already check."
+  },
+  {
+   "id": "T07-c4",
+   "q_md": "A `parametrize` test has the rows `(49.99, False)`, `(50.0, True)` and `(80.0, True)`. The run ends like this:\n\n```text\nFAILED tests/test_delivery.py::test_free_delivery[50.0-True] - assert False =...\n1 failed, 2 passed in 0.01s\n```\n\nWhat does it tell you?",
+   "options": [
+    "Only the `50.0` row failed; the other two rows ran and passed",
+    "The whole test failed, so you cannot tell which case broke",
+    "Every row failed, and pytest names only the first one"
+   ],
+   "answer": 0,
+   "why_md": "pytest reports each row as its own test, with its values in the name. One failed and two passed, and the failing row sits exactly on the boundary at 50.0."
+  },
+  {
+   "id": "T07-c5",
+   "q_md": "A coverage report shows 100% for `grades.py`. What does that tell you?",
+   "options": [
+    "Every line of `grades.py` is correct",
+    "The pass mark is tested on its boundary",
+    "Every line of `grades.py` ran while the tests ran"
+   ],
+   "answer": 2,
+   "why_md": "Coverage counts lines that ran, not answers that were checked. A test with a weak `assert` still marks the line as covered, so 100% is a map of what ran and not a score."
+  }
+ ],
+ "method": [
+  "**Name the kind of artefact.** A failure (an `assert` came out false), an error (the test could not start: fixture, import, nothing collected), a test that passes, or a coverage table. Each kind has its own reading.",
+  "**Read both sides.** For a failure, find the `>` line and read the `E` lines: the call on one side, the expected value on the other. Say the difference in one sentence: same totals in reverse order, 5 EUR apart, float noise.",
+  "**Look for the rule.** A backlog item, a product owner decision or a commit message may be in the question. If the rule is given, compare it with both sides. If it is not, the answer is \"you can't tell yet: check the rule\".",
+  "**Fix the thing that is wrong.** Fix the code if it broke the rule. Update the test, and its name, in the same commit if the rule changed. Reject the shortcuts: rerun, skip, delete, widen the tolerance, copy the noisy number, `# type: ignore`.",
+  "**If you are asked for a test, aim at what could break.** Choose from empty, zero (the boundary), negative, duplicate, missing. Give the input and the expected result in words, and name the tool if a file or the command line is involved.",
+  "**In an open answer, use the parts as your structure.** What it shows, who is right and what your evidence is, what you change. Five to eight lines in total."
+ ],
+ "worked": [
+  {
+   "title": "Sample Q4 (the teacher's question)",
+   "question_md": "A test fails after a teammate changed `apply_discount`:\n\n```text\nFAILED tests/test_totals.py::test_total_with_discount - assert 90.0 == 95.0\n```\n\nThe test expects 95.0. The function now returns 90.0. What can you conclude?\n- a) The function is wrong, because the test was written first\n- b) The test is wrong, because the function was changed more recently\n- c) The test is flaky and should be rerun until it passes\n- d) You can't tell yet: check which of the two matches what the discount is supposed to be",
+   "steps_md": [
+    "Read the artefact. One `FAILED` line with `assert 90.0 == 95.0`. The question tells you the test expects 95.0 and the function returns 90.0, so they disagree.",
+    "Ask what that proves. Only the disagreement. The two numbers could be two versions of the same rule (a 5% or a 10% discount), and the output cannot tell you which one is intended.",
+    "Test each option against that. Options a and b pick a winner by timing: being written first does not make a test right, and being changed last does not make a change right. Option c treats a deterministic calculation as luck; the same input gives 90.0 again on every rerun.",
+    "Option d is the only one that sends you to the specification, and only the specification can decide: the backlog item, the product owner, the commit message of the change."
+   ],
+   "answer_md": "**d.** The failure shows that code and test disagree, nothing more. If the discount is still 5%, the function has a bug and the test did its job. If the rule changed to 10%, the test is out of date and is updated in the same change. Either way, the agreed rule decides."
+  },
+  {
+   "title": "Sample Q8, part 3 (name one test, in words)",
+   "question_md": "A teammate shows you this diff from the expense-tracker history:\n\n```diff\n def load_expenses(path):\n     with open(path) as file:\n         rows = list(csv.reader(file))\n-    return [Expense(row[0], float(row[1])) for row in rows]\n+    expenses = [Expense(row[0], float(row[1])) for row in rows]\n+    if any(expense.amount < 0 for expense in expenses):\n+        raise ValueError(\"Negative amount in \" + path)\n+    return expenses\n```\n\nPart 3 of the question: *Name one test you would add for this change, in words.* (Parts 1 and 2 ask what the change does and which commit message is better; they belong to the diffs and commit messages type.)",
+   "steps_md": [
+    "Ask what the change can break. It adds a rule: a file with a negative amount is rejected with a `ValueError`.",
+    "Run the edge-case questions over it. Negative: a file that holds one negative amount. Zero: the check is `< 0`, so an amount of exactly 0 must still load.",
+    "Pick the test that fails if the rule is written wrongly, and say its input and its expected result so a marker could turn it into code.",
+    "Name the tool. The function takes a path, so the test writes a small file into `tmp_path`. That is one of the one or two I/O tests Checkpoint 2 allows."
+   ],
+   "answer_md": "A strong answer: \"A small CSV in `tmp_path` that contains one negative amount. `load_expenses` must raise `ValueError`, and the message must name the file. A second test, a file whose only amount is exactly 0.00, must load normally, because the rule is `< 0`.\" Each test has an input and an expected result, and the second one sits on the boundary."
+  }
+ ],
+ "twists": [
+  {
+   "twist_md": "The question gives you the rule. The backlog says \"Orders of 100 EUR or more get 5% off\"; a teammate changed `>=` to `>` under the message `Simplify discount check`; the test `apply_discount(100.0) == 95.0` fails. Or the stem says the rule changed on purpose and CI is red with `assert 90.0 == 95.0`.",
+   "how_md": "Now you can tell. Compare the rule with both sides. If the rule matches the test (\"or more\" means exactly 100.0 gets the discount), the code broke the boundary: fix the code, keep the test. If the rule moved (a backlog item agreed in Sprint Planning), the test is the old one: update it to 90.0 in the same commit and rename it if it names the old percentage."
+  },
+  {
+   "twist_md": "The code and the test changed in the same commit, and CI is green. The diff shows `DISCOUNT_RATE = 0.10` and the test's expected value edited from 95.0 to 90.0, under the message `Fix test`.",
+   "how_md": "Green means nothing until you know the rule changed on purpose, because the test was edited to agree with the code. Ask for the backlog item or the product owner's decision. The better message names the behaviour (`Raise the member discount to 10% and update its test`), and a test name that still says five percent now describes the wrong rule."
+  },
+  {
+   "twist_md": "There is no test, only a user complaint: \"I asked for dining and got a home expense.\" The code does what it was written to do.",
+   "how_md": "This is Q4 with the test missing. Do not close it because the code does what it was written to do, and do not change it on one user's word. Find out what the line should show (backlog, product owner), then pin the rule with a test, written red first if the code must change."
+  },
+  {
+   "twist_md": "The output is an ERROR or `no tests ran` instead of a failure: `fixture 'expense' not found`, an `ImportError` while collecting, or exit code 5.",
+   "how_md": "Nothing has been tested yet, so read the message literally. The fixture is called `expenses` (a typo in the argument), or bare `pytest` ran outside the project (`uv sync`, then `uv run pytest`), or the file is not named `test_*.py`. Fix the set-up. Do not change the code or delete the test."
+  },
+  {
+   "twist_md": "A test passes but looks weak: no `assert` at all, or `assert has_passed(50.0) in (True, False)`, with coverage at 100%.",
+   "how_md": "It proves only that the call did not crash. Coverage counts lines that ran, not answers checked. A real test asserts an exact answer, such as `has_passed(50.0)` is `True` when the rule says 50 or more passes, and you see it fail once. If the code says `>` where `>=` was meant, that assert is the one that exposes it."
+  },
+  {
+   "twist_md": "A function prints or opens a file, and you are asked why it is hard to test: `assert None == 'Ana: pass'`, or a function that reads a CSV, decides pass or fail and prints.",
+   "how_md": "Give two reasons (it needs a file, it returns `None` so there is nothing to assert on) and the split: a pure function with the rule (a number in, pass or fail out) and a thin shell that reads and prints. Then name two tests: one happy path and one on the boundary."
+  },
+  {
+   "twist_md": "The test depends on the machine or on the day. It reads `data/expenses.csv`, which is in `.gitignore`, or it expects today's date in a row written by the `add` command.",
+   "how_md": "Everything the result depends on must be built inside the test: a small list, a file in `tmp_path`, a fixed `--date`. Committing the data file or updating the expected date only moves the failure to another machine or another day."
+  },
+  {
+   "twist_md": "A history question about the TDD commits: `e1b96de` commits five tests with a stub and two fail, `d3df52b` replaces a loop with `dict.fromkeys`, or `Expense` loses `frozen=True`.",
+   "how_md": "Red: failing tests committed on purpose, with the stub `return expenses` so the tests run and fail on behaviour; three pass by luck, because an unchanged list is right when there are no duplicates. Green: the smallest code, a seen-set loop. Refactor: one line, same five tests unedited and still green. Without `frozen=True`, `Expense` is unhashable, so `dict.fromkeys` raises `TypeError` and mypy does not warn."
+  }
+ ],
+ "traps": [
+  "\"The test came first, so the code is wrong\", or \"the change is newer, so update the test.\" Age decides nothing in sample Q4. The agreed rule decides.",
+  "\"Rerun it until it passes\", or \"mark it flaky\". A pure calculation gives the same answer every time, so the failure is real. Never skip a failing test to turn CI green.",
+  "Making the failure go away instead of reading it: widening `pytest.approx` until 90.0 is accepted, copying `30.299999999999997` into the test, deleting the test, `# type: ignore`. Each one changes something that is not broken.",
+  "\"It passes, so it works.\" A test with no `assert`, or one that accepts any answer, passes whatever the code does. You should have seen it fail once.",
+  "\"100% coverage means it is tested.\" Coverage counts lines that ran, not results that were checked. It is a map of what you forgot, not a score.",
+  "\"pytest is green, so CI will be green.\" CI also runs `ruff` and strict `mypy` on `tests/`, so a test without `-> None` turns it red, and `no tests ran` exits with 5, which is not 0.",
+  "\"`tmp_path` tests are pure.\" They are I/O tests, like `CliRunner` and `monkeypatch`. Checkpoint 2 wants most tests on pure functions with plain data and only one or two I/O tests.",
+  "\"A refactoring may need its tests edited.\" If the tests must change to stay green, the behaviour changed. The proof of a refactoring is that the same tests, unedited, still pass."
+ ],
+ "say_md": "- A failing test says the code and the test disagree. It does not say which one is wrong.\n- Check the specification first: the backlog item, the product owner, the commit message.\n- If the rule changed on purpose, update the test in the same commit and say so in the message. If it did not, fix the code and keep the test.\n- Red: a test for behaviour that does not exist yet, seen failing. Green: the smallest code that passes. Refactor: same behaviour, the same tests unedited and still green.\n- Arrange, Act, Assert: build the input, make one call, compare with an answer worked out by hand.\n- Edge cases: empty, zero (the boundary), negative, duplicate, missing. \"Test what could break.\"\n- Only a test exactly on the boundary tells `<` from `<=`.\n- Floats: compare with `pytest.approx`; money in floats needs a tolerance.\n- A pure function takes data and returns data, with no file and no `print`. Split the logic from the reading and printing: functional core, imperative shell.\n- You cannot assert on a print: make the function return.\n- I/O tests (`tmp_path`, `CliRunner`, `monkeypatch`): one or two, chosen on purpose.\n- Coverage is a map, not a score: it counts lines that ran, not answers checked.\n- A test with no `assert` proves only that the call did not crash.\n- A test that reads a file on one laptop passes there and fails in CI: build the data inside the test.",
+ "practice": [
+  "testing-tdd-q01",
+  "testing-tdd-q04",
+  "testing-tdd-q12",
+  "testing-tdd-q14",
+  "testing-tdd-q10",
+  "testing-tdd-q21",
+  "testing-tdd-q33",
+  "testing-tdd-q28",
+  "testing-tdd-q13",
+  "testing-tdd-q41",
+  "testing-tdd-q42",
+  "testing-tdd-q08",
+  "testing-tdd-q23",
+  "testing-tdd-q36"
+ ]
+}

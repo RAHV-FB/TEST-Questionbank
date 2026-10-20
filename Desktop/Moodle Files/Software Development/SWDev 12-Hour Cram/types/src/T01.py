@@ -1,0 +1,408 @@
+"""Cram exercise type T01: Tool errors and project setup.
+
+Run: python3 T01.py   -> writes ../T01.json
+"""
+import json
+import re
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+CRAM = HERE.parent.parent
+OUT = HERE.parent / "T01.json"
+
+TID = "T01"
+
+shape_md = (
+    "Mirrors sample Q1: a few lines of `uv` output and \"what should you do next?\". "
+    "The same shape appears with a `git status`, a rejected push, a CI line or a project tree, "
+    "mostly as multiple choice with one careful reading and three careless moves, "
+    "and sometimes as a short open question."
+)
+
+one_md = (
+    "Read what the tool actually printed, find the file, the place or the state it names, "
+    "and act there. Never act on something the message does not mention."
+)
+
+spot_md = """- The artefact is a few lines of terminal output: `uv`, `git`, `ssh` or a CI log, often with a `$` prompt, a `pwd` or a `git status` above it.
+- The stem asks \"What should you do next?\", \"What is the problem?\", \"What explains the difference?\" or \"Is the key safe now?\".
+- Three options are careless moves: delete `.venv`, reinstall uv, `--upgrade`, `--force`, rerun the job, edit the CI step.
+- The story is \"green on my laptop, red on CI or in a clean clone\". The answer is a lockfile, a file or a package that never left one laptop, or a different Python.
+- The open version shows a project tree, a tag or a leaked key. You name what a stranger would hit and describe the fix in words."""
+
+basics = [
+    {
+        "id": "T01-b1",
+        "heading": "Script, project and the files that make one",
+        "body_md": """A script is a file you run with `python tracker.py`. It has no name, no version, no declared dependencies and no home for tests. A project is the same code with a shape a stranger can install and four people can share. The expense-tracker became one in commit `a953d05`: `uv init --package` and one edit. No code changed. The code became installable.
+
+| File | Its one job |
+|---|---|
+| `pyproject.toml` | single source of truth: name, needs, command, build |
+| `uv.lock` | exact versions, pinned. Committed |
+| `.python-version` | the Python uv uses (3.13) |
+| `.gitignore` | what git never sees: `.venv/`, caches, `data/` |
+| `src/expense_tracker/` | the package, imported as `expense_tracker` |
+| `tests/` | mirrors `src/`, typically not in the build |
+
+`pyproject.toml` answers four questions:
+
+```toml
+[project]                 # identity and needs
+name = "expense-tracker"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = ["typer>=0.12"]
+
+[project.scripts]         # what it installs as a command
+expenses = "expense_tracker.cli:app"
+
+[build-system]            # how it is built
+requires = ["hatchling"]
+```
+
+Read the `expenses` line as command, module, object. Rename either side and the command disappears (`Failed to spawn`). `python -m expense_tracker` is the other door and needs `__main__.py`.
+
+The name has two spellings: `expense-tracker` for the project, `expense_tracker` for the package folder, because Python names cannot contain hyphens.
+
+Why `src/`: without it, `import expense_tracker` finds the folder you stand in, installed or not. With it, the import works only once the project is installed, so the tests exercise what a user gets.""",
+    },
+    {
+        "id": "T01-b2",
+        "heading": "uv: the environment, uv run and the lockfile",
+        "body_md": """A virtual environment is one more directory, `.venv`, that Python is told to look in first. Installing a package means putting it there, not changing the whole computer. `uv sync` builds and fills `.venv` from `pyproject.toml` and `uv.lock`. `uv run` starts Python with `.venv` in its search path. A bare `python3` does not look there.
+
+So `.venv` is a product. The recipe, `pyproject.toml` plus `uv.lock`, is in git. Delete `.venv` and `uv sync` rebuilds the same thing, which is why deleting it is almost never the fix.
+
+`pyproject.toml` gives a range (`typer>=0.12`). `uv.lock` records the exact version chosen for every package, with hashes, and also your project's own name, version and `requires-python`.
+
+| Command | What it does |
+|---|---|
+| `uv sync` | builds `.venv`; if the lockfile is stale, quietly rewrites it |
+| `uv lock` | re-resolves and writes `uv.lock` |
+| `uv sync --locked` | what CI runs: installs the lockfile, refuses if it disagrees with `pyproject.toml` |
+| `uv run <cmd>` | syncs what is missing, then runs `<cmd>` in the environment |
+
+The classic failure. You edit `pyproject.toml` by hand, plain `uv sync` works and rewrites `uv.lock`, you commit only `pyproject.toml`, and CI prints:
+
+```text
+error: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.
+
+hint: To update the lockfile, run `uv lock`.
+```
+
+The fix is the hint: `uv lock`, then commit `uv.lock` with `pyproject.toml`. Command names are not in the lockfile, so renaming one leaves it valid.
+
+uv installs Python itself, so nobody needs the system Python. `.python-version` must fit inside `requires-python`: a pin of 3.12 under `>=3.13` is an error.""",
+    },
+    {
+        "id": "T01-b3",
+        "heading": "Git: where a change lives, and what history keeps",
+        "body_md": """Session 3's git survival kit has one idea: each command records a change in a different place.
+
+| Step | Command | The change now lives in |
+|---|---|---|
+| edit | your editor | the working folder only |
+| stage | `git add <file>` | the next commit |
+| record | `git commit -m "..."` | your laptop's history |
+| send | `git push` | GitHub, where CI sees it |
+| name | `git tag`, then `git push origin <tag>` | a permanent name for one commit |
+
+`git status` changes nothing and tells you which place you are in:
+
+- `Untracked files:` git sees a file nobody ran `git add` on.
+- `Changes not staged for commit:` an edited file is not in the next commit yet.
+- `Your branch is ahead of 'origin/...' by 1 commit.` The commit exists only on your laptop. `git push` sends it.
+- `! [rejected] ... (fetch first)` (lab 00 calls it `non-fast-forward`): a teammate pushed first. Never force over their commit. On setup day you switch to your own branch. In lab 01 everyone is on `main`, so you `git pull`, push again and agree who pushes.
+
+Teammates, CI and the marker see only what you pushed. A clean clone has no `.venv`, no caches and nothing you forgot to commit, so it exposes the file you never added.
+
+Two more facts. Marking is at a tag, and a tag names one commit and never moves by itself. At the partial, red CI on the `v0.5` commit caps Tests at 1, and a later fix counts only when you move the tag onto the green commit and push it.
+
+History is permanent. Deleting a committed key in the next commit leaves it in the earlier commit, and in a public repository anyone can read it. Treat the key as leaked and replace it.""",
+    },
+    {
+        "id": "T01-b4",
+        "heading": "Reading the error: the referee and the usual messages",
+        "body_md": """CI is the referee, not the judge. The `check` workflow runs `ruff`, `mypy` and `pytest` on a machine none of you owns. It is not marked, but red means the submission is not mechanically valid. A green laptop settles nothing. The setup report checks your machine, Actions checks the repository, and a red report line is a ticket.
+
+Read an error in three steps (session 7): where (file, line), what (the message in plain words), what to search for. Then act on the place the message names.
+
+| You see | It means | The fix lives in |
+|---|---|---|
+| `TOML parse error at line 7` | uv cannot read `pyproject.toml` | that file, that line |
+| No `pyproject.toml` found in current directory or any parent directory | you stand in the wrong folder | `cd` into the project |
+| `Failed to spawn` and the name you typed | no command with that name is installed | `[project.scripts]`, or the name you typed |
+| `uv: command not found` after install | this shell started before the installer edited its startup file | open a new terminal |
+| `Permission denied (publickey)` | key not on GitHub, or an `https://` remote | GitHub access |
+| `$'\\r': command not found` | cloned with Git for Windows | re-clone from Ubuntu |
+
+Green on your laptop, red in a clean clone or CI, has four usual causes:
+
+1. The new `uv.lock` was never committed.
+2. A new file was never added (`ModuleNotFoundError` for your own module).
+3. A package was installed by hand and never declared (`ModuleNotFoundError` for a third-party one).
+4. Someone bypasses uv and runs a different Python.
+
+Fix the project. Never bend the referee.""",
+    },
+]
+
+checks = [
+    {
+        "id": "T01-c1",
+        "q_md": "In `expenses = \"expense_tracker.cli:app\"`, which part is the object that the installed command calls?",
+        "options": ["`expenses`", "`expense_tracker.cli`", "`app`"],
+        "answer": 2,
+        "why_md": "`expenses` is the command, `expense_tracker.cli` is the module and `app` is the object inside it. uv writes a small wrapper that imports `app` and calls it.",
+    },
+    {
+        "id": "T01-c2",
+        "q_md": "You delete `.venv` by accident. What gives you the same environment back?",
+        "options": [
+            "Install each package by hand, in the versions you remember",
+            "`uv sync`, because `pyproject.toml` and `uv.lock` hold the recipe",
+            "Clone the repository again, to get the old `.venv` back",
+        ],
+        "answer": 1,
+        "why_md": "`.venv` is a product built from the recipe. It is listed in `.gitignore`, so a clone would not contain it either. `uv sync` rebuilds it from the lockfile.",
+    },
+    {
+        "id": "T01-c3",
+        "q_md": "CI starts with `uv sync --locked`. When does that step fail?",
+        "options": [
+            "When one of the tests fails",
+            "When the project has no `README.md`",
+            "When `uv.lock` no longer matches `pyproject.toml`",
+        ],
+        "answer": 2,
+        "why_md": "`--locked` installs exactly what the lockfile says and refuses if the lockfile and `pyproject.toml` disagree. Tests and the README are checked by other steps or by the marker.",
+    },
+    {
+        "id": "T01-c4",
+        "q_md": "`git status` lists `src/expense_tracker/export.py` under `Untracked files:`. What must happen before a commit includes it?",
+        "options": [
+            "`git push`",
+            "`git add src/expense_tracker/export.py`",
+            "`uv lock`",
+        ],
+        "answer": 1,
+        "why_md": "Untracked means git was never told to include the file. `add` stages it, `commit` records it and `push` sends it. `uv lock` is about packages, not your own files.",
+    },
+    {
+        "id": "T01-c5",
+        "q_md": "`git push` ends with `Permission denied (publickey)`. Where does the fix live?",
+        "options": [
+            "In your SSH key on GitHub, or in an `https://` remote that should be `git@`",
+            "In your code, which has a bug",
+            "In `uv.lock`, which is out of date",
+        ],
+        "answer": 0,
+        "why_md": "Lab 00 §3: the key is not on GitHub, or you cloned with an `https://` URL. The message is about access to GitHub, so nothing in the project files can fix it.",
+    },
+]
+
+method = [
+    "**Read the artefact before the options.** Write down what the message names: a file, a line, a command, a folder, or a state such as `ahead by 1 commit`, `Untracked files` or `modified: uv.lock`.",
+    "**Place the problem.** It lives in the file the message names, the folder you stand in, what the repository holds (a lockfile, a file, a package nobody committed or declared), or your machine (`PATH`, SSH key, a different Python).",
+    "**Cross out the careless moves.** Delete `.venv`, reinstall uv, `--upgrade`, `--force` and \"rerun the job\" act on something the message never mentions.",
+    "**Pick the move that acts on the named place and fixes the repository, not your laptop**: open the file at the line, `uv lock` and commit both files, `git add`, `uv add`, put `.python-version` back.",
+    "**Check it does not bend the referee.** No editing the CI step, no lowering `requires-python`, no force push over a teammate, no \"install it by hand in CI\".",
+    "**For an open answer**, write four things in 5–8 lines: what the output shows, the cause in the course's words, the fix described in words, and the consequence for a stranger or for CI.",
+]
+
+worked = [
+    {
+        "title": "Sample Q1: a TOML parse error",
+        "question_md": """You run `uv sync` in a fresh clone of your group's repo and see:
+
+```console
+$ uv sync
+Using CPython 3.13.1
+error: Failed to parse `pyproject.toml`
+  TOML parse error at line 7, column 12
+```
+
+What should you do next?
+- a) Delete `.venv` and run `uv sync` again
+- b) Open `pyproject.toml` at line 7 and look for the syntax mistake
+- c) Run `uv sync --upgrade` to refresh the packages
+- d) Reinstall uv""",
+        "steps_md": [
+            "Read the artefact. The command was `uv sync`. The message names a file, `pyproject.toml`, and a place, line 7, column 12.",
+            "`Failed to parse` and `TOML parse error` mean uv could not read the file. It stopped there: the output has no `Creating virtual environment` line, so no environment was built or touched.",
+            "Cross out the options that act on something the message never mentions. Option a) deletes `.venv`, which a fresh clone does not have yet. Option c) upgrades packages, which uv never reached. Option d) reinstalls the tool that has just told you exactly where the problem is.",
+            "What remains acts on the place the message names: open the file at line 7.",
+        ],
+        "answer_md": "**b)** Open `pyproject.toml` at line 7 and look for the syntax mistake. The error names the file, the line and the column. It is a typing mistake in that file, so you fix it there and run `uv sync` again.",
+    },
+    {
+        "title": "A red CI step after a hand edit",
+        "question_md": """A teammate added a dependency to `pyproject.toml`, ran `uv sync` on their laptop (everything worked) and pushed. The CI step *Install dependencies from the lockfile* is now red:
+
+```console
+$ uv sync --locked
+Using CPython 3.13.15
+Creating virtual environment at: .venv
+Resolved 20 packages in 5ms
+error: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.
+
+hint: To update the lockfile, run `uv lock`.
+```
+
+What should happen next?
+- a) Run `uv lock` locally, commit the updated `uv.lock` and push it
+- b) Change the CI step to plain `uv sync` so it can update the lockfile itself
+- c) Delete `uv.lock` from the repository so there is nothing to disagree with
+- d) Re-run the CI job, since the lockfile check sometimes fails on a cold cache""",
+        "steps_md": [
+            "Name what the output shows. `--locked` was provided, and uv says the lockfile needs updating. So `uv.lock` and `pyproject.toml` disagree in the repository that CI checked out.",
+            "Ask why it was green on the teammate's laptop. Plain `uv sync` does not refuse a stale lockfile. It rewrites `uv.lock` and carries on. The new lockfile stayed on the laptop, and only `pyproject.toml` was pushed. In `git status` it would show as `modified: uv.lock`.",
+            "Cross out the careless moves. Option b) changes the referee, so CI would install whatever it resolves that day. Option c) leaves nothing for `--locked` to read: it fails with `Unable to find lockfile`. Option d) re-runs a comparison of two committed files, which gives the same answer every time.",
+            "The hint names the fix. Run `uv lock`, then commit `uv.lock` together with `pyproject.toml`.",
+        ],
+        "answer_md": "**a)** Run `uv lock` locally, commit the updated `uv.lock` and push it. The files disagree because the new lockfile never left the teammate's laptop. This is session 4's point: \"works on my machine\" can usually be pinpointed to a lockfile that was never committed.",
+    },
+]
+
+twists = [
+    {
+        "twist_md": "The same shape with noisier output: a `warning:` line, lines of normal `Resolved` and `Installed` output, then an `error:` block that names a file and a line.",
+        "how_md": "The method does not change. Find the `error:` line and read what it names. A `warning:` that repeats the same parse problem is the same fault. Fix the file at that line and run again. `uv lock` would hit the same error, because it has to read `pyproject.toml` first.",
+    },
+    {
+        "twist_md": "`.python-version` says 3.12 while `requires-python` says `>=3.13`, and uv stops with \"incompatible with the project's Python requirement\".",
+        "how_md": "Two files ask for different Pythons. Fix the one that changed: put `.python-version` back to 3.13, because uv installs Python itself. Lowering `requires-python` bends the project to one laptop. Deleting `.venv` changes nothing, because uv stopped before it built anything. The error's own last line points at `uv python pin`.",
+    },
+    {
+        "twist_md": "You pull a teammate's change and `uv run expenses report` prints a traceback whose first frame is `.venv/bin/expenses`. It ends in `ModuleNotFoundError`, or in `ImportError: cannot import name 'app'`.",
+        "how_md": "A traceback that starts in `.venv/bin/` means the command exists, so the left side of `[project.scripts]` is right. The fault is on the right side: `ModuleNotFoundError` points at the module path, `ImportError: cannot import name` at the object after the colon. `Failed to spawn` is the opposite case, where nothing by that name was installed. In both cases `.venv` is not the fault.",
+    },
+    {
+        "twist_md": "A `git status` or `git push` transcript instead of a uv message: `Untracked files`, `ahead of 'origin/...' by 1 commit`, `modified: uv.lock`, or `! [rejected]`.",
+        "how_md": "Name the state first: untracked, edited, staged, committed or pushed. Then give the next command in the chain: `add`, `commit`, `push`. A rejected push means a teammate pushed first. You never overwrite their commit: on setup day you take your own branch, in lab 01 you pull and push again.",
+    },
+    {
+        "twist_md": "Tests pass for the author and fail in a clean clone with `ModuleNotFoundError`. First the missing name is one of your own modules, then it is a third-party package. In both cases `uv sync --locked` succeeded.",
+        "how_md": "Own module: the file was untracked and never added, so `git add`, commit and push. Third-party package: it was installed by hand into one `.venv` and never declared, so `uv add` it and commit `pyproject.toml` and `uv.lock`. `--locked` only checks that the two files agree, not that the code's imports are installed.",
+    },
+    {
+        "twist_md": "Open question: you are shown a project tree with `.venv` committed, a loose `parking.py` instead of `src/parking_lot/`, no `[project.scripts]`, no `uv.lock` and an empty README. \"Name three things that stop a stranger.\"",
+        "how_md": "For each gap give its consequence. No package under `src/` means the build finds nothing to install. No `[project.scripts]` means no command. No lockfile means unpinned versions and a red `uv sync --locked`. A committed `.venv` is built for one machine. Then tie it to CP1: clean-clone install and `--help`, `src/` layout, README.",
+    },
+    {
+        "twist_md": "A public repository, a key committed on Monday, the file deleted on Tuesday. \"Is the key safe now?\"",
+        "how_md": "No. Each commit is a snapshot, and Monday's still contains the key. Anyone can read it with `git show <commit>:<file>`. Treat the key as leaked, replace it with the provider, and keep the new one in an ignored `.env`.",
+    },
+    {
+        "twist_md": "Sunday 23:50. CI was red at the `v0.5` tag. A teammate pushed a fix to `main` and CI is green on the new commit, but `git log --oneline` shows `(tag: v0.5)` on the commit below it.",
+        "how_md": "The marker looks at `main` at the `v0.5` tag, and a tag names one commit and never moves by itself. It still points at the red commit, so Tests is capped at 1. Wait for the green tick on the new commit, move the tag onto it, push the tag and check `git log -1 --oneline v0.5`. The rubric does this with a forced tag push, the one force in these sessions.",
+    },
+]
+
+traps = [
+    "\"Delete `.venv` and sync again\" feels like action. An error about `pyproject.toml` or `uv.lock` happens while uv reads the recipe, before it touches the environment, so a rebuilt `.venv` changes nothing.",
+    "\"It works on my laptop, so the lockfile is fine.\" Plain `uv sync` quietly rewrites `uv.lock`. If that file is never committed, CI's `uv sync --locked` fails.",
+    "\"`--locked` passed, so everything the code imports is installed.\" It checks only that `uv.lock` and `pyproject.toml` agree. A package installed by hand is in neither file.",
+    "\"After `uv sync`, `python3` can import typer.\" A bare `python3` never looks in `.venv`; only `uv run` does. It may also be an older Python than the project requires.",
+    "Making CI pass by changing CI: plain `uv sync` in the workflow, a hand `pip install` step, a lower `requires-python`. That moves the referee. The check exists to prove a clean machine can install and run the project.",
+    "\"A red line on the setup report means CI fails.\" The report checks your machine and Actions checks the repository. Push the report anyway. A red line is a ticket.",
+    "\"I deleted the file, so the key is gone.\" The earlier commit still holds it, and in a public repository anyone can read it.",
+    "\"A fix pushed after the `v0.5` tag counts.\" Marking is at the tag. Until you move the tag onto the green commit and push it, the marker sees the red one.",
+]
+
+say_md = """- uv could not read `pyproject.toml`. The error names the file, the line and the column, so I open it there.
+- `.venv` is a product. `pyproject.toml` and `uv.lock` are the recipe, so deleting `.venv` rebuilds the same environment and does not fix a parse error.
+- `pyproject.toml` states a range. `uv.lock` records the exact version and hash, and it is committed so every teammate and CI install the same versions.
+- `uv sync --locked` fails when the lockfile and `pyproject.toml` disagree, so a forgotten `uv lock` turns CI red instead of going unnoticed.
+- Plain `uv sync` quietly rewrote `uv.lock` and it was never committed. That is \"works on my machine\".
+- The commit exists only on the laptop (ahead by 1 commit). `git push` sends it.
+- The file is untracked, so it exists only on one laptop. `git add`, commit and push it.
+- The package was installed by hand and never declared. `uv add` records it in `pyproject.toml` and `uv.lock`.
+- CI is the referee, not the judge. A machine none of us owns decides whether the submission is mechanically valid.
+- A clean clone has no `.venv`, no caches and nothing I forgot to commit.
+- Without `src/`, `import` finds the folder I stand in, installed or not, so the tests do not exercise what a user installs.
+- Deleting the file does not remove it from history. I treat the key as leaked and replace it.
+- Marking is at the `v0.5` tag. Red CI there caps Tests at 1. I move the tag onto the green commit and push it.
+- CP1 in three items: `uv sync && uv run <app> --help` from a clean clone, `src/` layout with an importable package, a README that says what it does and how to run it."""
+
+practice = [
+    "project-anatomy-q47",   # core: script vs installed command, wrong folder
+    "project-anatomy-q07",   # core: deleting .venv costs nothing
+    "project-anatomy-q12",   # core: red report line, green Actions
+    "sample-paper-q50",      # exam: uv error, pwd shows the wrong folder
+    "sample-paper-q11",      # exam: Failed to spawn, [project.scripts] name
+    "project-anatomy-q10",   # exam: git status ahead by 1 commit
+    "project-anatomy-q27",   # exam: why src/
+    "project-anatomy-q16",   # exam: which setup-day red text needs no fix
+    "project-anatomy-q41",   # exam: key deleted but still in history
+    "project-anatomy-q44",   # exam, open: v0.5 tag red at the deadline
+    "project-anatomy-q38",   # hard: untracked file never added
+    "project-anatomy-q39",   # hard: bare python3 is Python 3.9
+    "project-anatomy-q40",   # hard, open: undeclared package, --locked passes
+    "project-anatomy-q33",   # beyond: which pyproject change keeps --locked green
+]
+
+doc = {
+    "tid": TID,
+    "name": "Tool errors and project setup",
+    "shape_md": shape_md,
+    "minutes": 40,
+    "one_md": one_md,
+    "spot_md": spot_md,
+    "basics": basics,
+    "checks": checks,
+    "method": method,
+    "worked": worked,
+    "twists": twists,
+    "traps": traps,
+    "say_md": say_md,
+    "practice": practice,
+}
+
+
+def words(s: str) -> int:
+    return len(s.split())
+
+
+def lint() -> None:
+    banned = [
+        "delve", "crucial", "vital", "leverage", "robust", "seamless", "journey", "unlock", "empower",
+        "game-changer", "dive into", "deep dive", "it's worth noting", "it is important to note",
+        "worth mentioning", "in today's", "plays a key role", "a testament to", "not only",
+        "honest caveat", "the magic of", "let's", "in summary", "in conclusion", "—", "!",
+    ]
+    text = json.dumps(doc, ensure_ascii=False).lower()
+    # "!" is allowed inside "! [rejected]" (git output); strip that before checking
+    text = text.replace("! [rejected]", "")
+    for b in banned:
+        assert b not in text, f"style: banned phrase {b!r}"
+    assert not re.search(r"[\U0001F300-\U0001FAFF☀-➿]", json.dumps(doc, ensure_ascii=False)), "emoji"
+
+
+def check() -> None:
+    pools = json.load(open(CRAM / "pools.json", encoding="utf-8"))["pools"][TID]
+    pool_ids = {q["id"] for q in pools}
+    assert len(practice) == len(set(practice)), "duplicate practice id"
+    assert 10 <= len(practice) <= 14, len(practice)
+    for qid in practice:
+        assert qid in pool_ids, f"{qid} not in pools[{TID}]"
+    assert 2 <= len(basics) <= 4
+    for b in basics:
+        n = words(b["body_md"])
+        assert 120 <= n <= 320, (b["id"], n)
+    assert 3 <= len(checks) <= 5
+    for c in checks:
+        assert 0 <= c["answer"] < len(c["options"])
+    assert 3 <= len(method) <= 6
+    assert 1 <= len(worked) <= 2
+    assert 4 <= len(twists) <= 8
+    assert 4 <= len(traps) <= 8
+    lint()
+
+
+check()
+OUT.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+print("wrote", OUT)
+for b in basics:
+    print(b["id"], words(b["body_md"]), "words")
