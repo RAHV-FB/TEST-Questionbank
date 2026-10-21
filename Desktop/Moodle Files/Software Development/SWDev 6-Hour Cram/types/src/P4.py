@@ -1,0 +1,196 @@
+"""P4 (same shapes, other topics): tests (TDD, fixtures, parametrize, approx, tmp_path / CliRunner /
+monkeypatch, edge cases) and project setup (uv, uv.lock, src layout, CI as referee). Writes ../P4.json.
+
+Facts from session 8 slides 5-11, 19-24, 28-29, session 4 slides 20-24, session 3 slide 3 and labs/08-tdd.md.
+The coverage table in the worked example is copied from testing-tdd-q35 (a run); nothing is invented.
+Practice: eight multiple-choice questions, core or exam level, none used by S1 to S9.
+"""
+
+import json
+from pathlib import Path
+
+P4 = {
+    "tid": "P4",
+    "name": "Tests and project setup",
+    "minutes": 20,
+    "shape_md": (
+        "Sessions 3, 4 and 8 are on the paper. The samples touch them through Q3 (which fix for a red "
+        "check), Q4 (a failing test) and the last part of Q8 (name one test). Expect pytest output, a test "
+        "file, or a `uv` and `pyproject.toml` transcript."
+    ),
+    "one_md": (
+        "A test or a lockfile is evidence: read what it says, fix the cause, "
+        "and never turn CI green by checking less."
+    ),
+    "spot_md": (
+        "- pytest output with `ERROR at setup`, `fixture 'expense' not found` or `assert 0.30000000000000004 == 0.3` "
+        "is asked like Q1 or Q3: what is the cause or the fix? A typo in a fixture name; floats need "
+        "`pytest.approx`.\n"
+        "- \"Name one test you would add\" is the end of Q8. Answer in words, aimed at an edge: empty, zero "
+        "(the boundary), negative, duplicate, missing.\n"
+        "- A red CI step with a green laptop (a missing `-> None` on a test, a global `pytest` that cannot "
+        "import your package, a stale lockfile) is asked like Q3: fix the cause, not the referee.\n"
+        "- `pyproject.toml` beside `uv.lock`, or a flat layout beside `src/`, is asked like Q4: what does this "
+        "show? The range is in one, the exact version in the other.\n"
+        "- A refactoring commit with unchanged tests is asked like Q2: same behaviour, and the tests that "
+        "still pass are the evidence."
+    ),
+    "basics": [
+        {
+            "id": "P4-b1",
+            "heading": "Tests: red, green, refactor and the tools",
+            "body_md": (
+                "TDD has three steps. Red: write a test for behaviour that does not exist and watch it fail. "
+                "Green: write the smallest code that passes. Refactor: tidy up with the tests as a net. A "
+                "test has Arrange, Act, Assert.\n\n"
+                "| Tool | Use it for |\n|---|---|\n"
+                "| plain list | a pure function; most of your tests |\n"
+                "| `pytest.approx` | floats, because `0.1 + 0.2 == 0.3` is `False` |\n"
+                "| fixture | shared set-up, asked for by name in the parameters |\n"
+                "| `parametrize` | one test with many cases |\n"
+                "| `tmp_path` | the one place a test reads or writes a file |\n"
+                "| `CliRunner` | the command line: exit code and output |\n"
+                "| `monkeypatch` | the working directory or environment, for one test |\n\n"
+                "Choose edge cases on purpose: empty, zero (the boundary), negative, duplicate, missing. "
+                "\"Do not test what feels likely. Test what could break.\" Checkpoint 2 needs at least 8 "
+                "tests, at least 2 on edge cases, and most of them on pure functions."
+            ),
+        },
+        {
+            "id": "P4-b2",
+            "heading": "Project setup: uv, uv.lock, src layout, CI as referee",
+            "body_md": (
+                "`pyproject.toml` states what the project accepts, such as `typer>=0.12`. `uv.lock` records "
+                "the exact version chosen, with its hash. It is committed, so every teammate and CI get the "
+                "same versions, and CI runs `uv sync --locked`, which refuses a lockfile that disagrees. "
+                "`uv run` builds the environment and runs the command inside it; a bare `python3` or "
+                "`pytest` does not see the project's `.venv`. Deleting `.venv` costs nothing, because "
+                "`uv sync` builds it again.\n\n"
+                "With `src/`, `import expense_tracker` works only if the package is installed, so the tests "
+                "exercise what a user gets. Without `src/`, Python finds the folder you stand in.\n\n"
+                "CI is the referee, not the judge: red means not mechanically valid, and the rubric gives "
+                "the marks. CI runs `mypy src tests` in strict mode, so every test needs `-> None`. The "
+                "marker looks at the commit the tag points to."
+            ),
+        },
+    ],
+    "checks": [
+        {
+            "id": "P4-c1",
+            "q_md": "A test fails with `assert 0.30000000000000004 == 0.3`. What is the fix?",
+            "options": [
+                "Copy `0.30000000000000004` into the test",
+                "Compare with `pytest.approx(0.3)`",
+                "Rerun the test",
+            ],
+            "answer": 1,
+            "why_md": "Floats cannot store 0.1 or 0.2 exactly. The code is fine and the comparison is too strict, so give it a tolerance.",
+        },
+        {
+            "id": "P4-c2",
+            "q_md": "`pyproject.toml` says `typer>=0.12` and `uv.lock` says `0.27.2`. Do they disagree?",
+            "options": [
+                "Yes, so CI's locked sync fails",
+                "Yes, and the lockfile overrides the pin",
+                "No: one states a range, the other the exact version chosen",
+            ],
+            "answer": 2,
+            "why_md": "0.27.2 satisfies `>=0.12`. The lockfile records which version in the range was chosen, plus its hash.",
+        },
+    ],
+    "method": [
+        "Read the output before the options. Is it a failure (the test ran), an error (it never started), or a red CI step?",
+        "Say what it names: the two values of an `assert`, a fixture name, a file and a line, a missing `-> None`.",
+        "Cross out the careless moves: rerun, `# type: ignore`, loosen the assert, narrow the CI step, delete the test, reinstall.",
+        "Pick the fix that removes the cause and give the reason in one sentence: floats need a tolerance; the test asks for `expense` but the fixture is `expenses`.",
+        "If the question asks for a test, name one in words: the input, the expected result, and the edge it aims at.",
+    ],
+    "worked": [
+        {
+            "title": "Reading a coverage table, same shape as Q4",
+            "question_md": (
+                "You run coverage on the expense tracker:\n\n"
+                "```console\n"
+                "$ uv run pytest --cov=expense_tracker --cov-report=term-missing\n"
+                "...\n"
+                "Name                              Stmts   Miss  Cover   Missing\n"
+                "---------------------------------------------------------------\n"
+                "src/expense_tracker/__init__.py       0      0   100%\n"
+                "src/expense_tracker/cli.py           33     14    58%   36-39, 49-58\n"
+                "src/expense_tracker/report.py        62      0   100%\n"
+                "---------------------------------------------------------------\n"
+                "TOTAL                                95     14    85%\n"
+                "============================== 24 passed in 0.54s ==============================\n"
+                "```\n\n"
+                "Lines 36-39 of `cli.py` are the normal path of `report`, and lines 49-58 are the body of "
+                "`add`. What can you conclude?\n\n"
+                "- a) 85% of the code is correct and the other 15% contains bugs\n"
+                "- b) No test runs the normal path of `report` or any of `add`; judge which deserves one\n"
+                "- c) `report.py` is fully tested, so no more tests of it are ever needed\n"
+                "- d) CI will stay red until the total reaches 100%"
+            ),
+            "steps_md": [
+                "Coverage lists the lines no test ran. It says nothing about whether the other lines are right.",
+                "The Missing column names the lines: they belong to `report` and `add` in `cli.py`.",
+                "a, c and d treat the number as a score. Coverage is a map, not a score.",
+            ],
+            "answer_md": (
+                "**b.** The Missing column lists lines no test ran, and they are in `cli.py`. Coverage is a "
+                "map for finding what you forgot, not a score to chase."
+            ),
+        }
+    ],
+    "twists": [
+        {
+            "twist_md": "Q1 shape. In a fresh clone, a bare `pytest` ends with `ModuleNotFoundError: No module named 'expense_tracker'`.",
+            "how_md": "A global `pytest` sees neither your package nor its dependencies. Run `uv sync`, then `uv run pytest`. Moving `src/` or installing `typer` globally patches a symptom.",
+        },
+        {
+            "twist_md": "Q3 shape. CI is red at the install step: the lockfile needs to be updated, but `--locked` was provided.",
+            "how_md": "Run `uv lock` locally, check that `uv.lock` changed, commit it and push. Removing `--locked` or deleting the lockfile weakens the referee.",
+        },
+        {
+            "twist_md": "Q8 shape. \"Name one test you would add\" for `apply_discount`, which takes 5% off and raises `ValueError` for a negative price.",
+            "how_md": "Aim at an edge and give input and result: a price of exactly 0.0 returns 0.0, or -1.0 raises `ValueError`.",
+        },
+        {
+            "twist_md": "Q4 shape. Eight of the nine tests write a CSV into `tmp_path`, and all of them pass.",
+            "how_md": "CI is green, but Checkpoint 2 wants most tests on pure functions with plain data. Split the logic out of the file reading and test it with lists.",
+        },
+        {
+            "twist_md": "Q4 shape. With the package moved out of `src/`, `python3 -c \"import expense_tracker\"` works with nothing installed.",
+            "how_md": "Python found the folder you stand in. With `src/`, the import works only through the installed project, so the tests check what a user gets.",
+        },
+    ],
+    "traps": [
+        "\"Rerun it, CI is flaky.\" pytest and mypy are deterministic. The same error appears on your laptop.",
+        "\"Delete `.venv` and `uv.lock` to fix it.\" `uv sync` rebuilds `.venv`, and the lockfile is committed on purpose.",
+        "\"Copy the float noise into the test.\" Money in floats needs a tolerance: `pytest.approx`.",
+        "\"100% coverage means it works.\" Coverage is a map, not a score. It lists the lines no test ran.",
+    ],
+    "say_md": (
+        "- Floats: compare with `pytest.approx`. Red, green, refactor.\n"
+        "- Test edges on purpose: empty, zero (the boundary), negative, duplicate, missing.\n"
+        "- `tmp_path` for the one place a test touches a file, `CliRunner` for the exit code, `monkeypatch` for the working directory.\n"
+        "- `pyproject.toml` has the range, `uv.lock` the exact version and hash. Commit both. CI runs `uv sync --locked`.\n"
+        "- CI is the referee, not the judge. I fix the cause and never rerun, ignore or narrow the check to get green."
+    ),
+    "practice": [
+        "testing-tdd-q12",
+        "testing-tdd-q09",
+        "testing-tdd-q14",
+        "testing-tdd-q31",
+        "testing-tdd-q39",
+        "testing-tdd-q40",
+        "project-anatomy-q31",
+        "project-anatomy-q27",
+    ],
+    "short_answers": {},
+}
+
+if __name__ == "__main__":
+    out = Path(__file__).resolve().parent.parent / "P4.json"
+    with out.open("w", encoding="utf-8") as f:
+        json.dump(P4, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    print(f"wrote {out}")

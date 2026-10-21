@@ -92,15 +92,16 @@ src/report.py:15: error: Item "None" of "Expense | None" has no attribute "categ
 
 `src/report.py:15` is where. The message is what: the value can be `None` and the code asks it for `.category`. `[union-attr]` is the name to search for. Read the first error, fix it, run again.
 
-Session 7 sorts every mypy error into three kinds:
+Session 7 sorts mypy errors into three kinds, and the teacher's official answer to sample Q9 adds a fourth:
 
 | Kind | mypy is asking | Fix |
 |---|---|---|
 | Missing annotation | "what type is this?" | write the hint |
 | Types disagree | "int here, float there" | make them agree |
 | None not handled | "this can be missing" | check it, or change the type |
+| Any leaks in | "I gave up on this value" (`Returning Any`) | give the value a real type: convert it or annotate it |
 
-Read the message, not only the code. Anything that names `None` is the third kind, and it is the one that crashes for a user: "Empty list → None → crash at 2 a.m." A missing annotation crashes nothing by itself; it means mypy cannot check that function.
+Read the message, not only the code. Anything that names `None` is the third kind, and it is the one that crashes for a user: "Empty list → None → crash at 2 a.m." A missing annotation or an `Any` that leaks in crashes nothing by itself; they are weaknesses in the checking. Never file `Returning Any` under types disagree.
 
 **The shortcut question.** A teammate wants CI green and proposes `# type: ignore`, changing a type to `Any`, `strict = false`, or checking `src` only. The answer has one shape: verdict, reason, real fix. "No. The ignore hides the crash on an empty list, and CI is the referee the whole group relies on. Check for `None` before using the value." The shortcut makes the referee quiet, not the code correct.
 
@@ -268,13 +269,13 @@ src/report.py:22: error: Returning Any from function declared to return "float" 
 
 Q9_STEPS = [
     "Read the three parts first: *sort* by the kinds from session 7, *which can crash* and why, *do you accept* with reasoning. The last two are judgements, so each needs a reason, not only a line number or a yes.",
-    "Part 1: read the message, not only the code. Line 8 says *missing a type annotation*: missing annotation. Line 15 names `None`: None not handled. Line 22 says the function is *declared to return* `float` but returns `Any`: types disagree, because the promise and the value do not match. One phrase per line is enough.",
-    "Part 2: only the `None` line crashes by itself. Give the mechanism: the value is `None` when nothing is found, for example an empty list, and asking `None` for `.category` raises `AttributeError`. A missing annotation and an `Any` mean mypy cannot check something; they crash nothing.",
+    "Part 1: read the message, not only the code. Line 8 says *missing a type annotation*: missing annotation. Line 15 names `None`: None not handled. Line 22 says the function is *declared to return* `float` but returns `Any`: Any leaks in (\"I gave up on this value\"), not types disagree, because mypy has no type to compare. One phrase per line is enough.",
+    "Part 2: only the `None` line crashes by itself. Give the mechanism: the value is `None` when nothing is found, for example an empty list or a missing id, and asking `None` for `.category` raises `AttributeError`. A missing annotation and an `Any` that leaks in are weaknesses in the checking; they crash nothing in themselves.",
     "Part 3: verdict, reason, real fix. No: `# type: ignore` silences mypy but the crash on line 15 stays. CI is the shared referee, and a green tick on code that still crashes misleads the whole group. Then name the fix for each cause.",
-    "If time is short, write the three kinds, the crash line with its mechanism, and the verdict with one reason. That is a point in every part.",
+    "If time is short, write the kind of each line, the crash line with its mechanism, and the verdict with one reason. That is a point in every part.",
 ]
 
-Q9_ANSWER = r"""1. Line 8: missing annotation. Line 15: None not handled. Line 22: types disagree (the function promises a `float` but returns `Any`).
+Q9_ANSWER = r"""1. Line 8: missing annotation ("what type is this?"). Line 15: None not handled ("this can be missing"). Line 22: Any leaks in ("I gave up on this value": the function promises a `float` but returns `Any`).
 
 2. Line 15. The value can be `None`, for example for an empty list, and asking `None` for `.category` raises `AttributeError`, which stops the program for a real user. The other two only mean mypy cannot check something.
 
@@ -367,7 +368,7 @@ SAY_MD = r"""**Any open answer**
 
 **Tool output**
 - Where, what, and a name to search for: file and line, message, `[code]`
-- Three kinds: missing annotation, types disagree, None not handled
+- Kinds of mypy error: missing annotation, types disagree, None not handled and, from his Q9 answer, Any leaks in (`Returning Any`)
 - "Empty list → None → crash at 2 a.m.": the None kind crashes for a user
 - "`# type: ignore` makes the referee quiet, not the code correct"
 - "The referee, not the judge": CI is shared, and a green tick on code that still crashes misleads the group

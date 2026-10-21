@@ -1,0 +1,115 @@
+{
+ "tid": "S4",
+ "name": "A test fails: what can you conclude?",
+ "minutes": 15,
+ "shape_md": "Sample Q4: one `FAILED` line after a teammate's change, and \"What can you conclude?\". The right answer says what the failure does not tell you yet.",
+ "one_md": "A failing test says the code and the test disagree, and only the requirement says which one is wrong.",
+ "sample": {
+  "qnum": "Q4",
+  "kind": "mcq",
+  "question_md": "A test fails after a teammate changed `apply_discount`:\n\n```text\nFAILED tests/test_totals.py::test_total_with_discount - assert 90.0 == 95.0\n```\n\nThe test expects 95.0. The function now returns 90.0. What can you conclude?",
+  "options": [
+   "The function is wrong, because the test was written first",
+   "The test is wrong, because the function was changed more recently",
+   "The test is flaky and should be rerun until it passes",
+   "You can't tell yet: check which of the two matches what the discount is supposed to be"
+  ],
+  "answer": 3,
+  "his_answer_md": "**d.** A failing test only says that test and code disagree. Neither being older or newer proves which one is right. Check the requirement (is the discount 10% or 5%?), then fix the one that is wrong.",
+  "decoded_md": "- **The pattern.** One `FAILED` line, a change by a teammate, \"what can you conclude?\". The best answer is a statement about what you cannot conclude yet.\n- **Why d.** The line says the test and the code disagree. The requirement decides. His own example of a requirement: is the discount 10% or 5%?\n- **Why a and b tempt.** Both pick a winner by timing (written first, changed last). His sentence: neither being older or newer proves which one is right.\n- **Why c tempts.** \"Flaky\" sounds careful. But a deterministic assert gives `90.0` every time, so a rerun adds nothing.\n- **Level.** One sentence of principle and one of action: check the requirement, then fix the one that is wrong."
+ },
+ "spot_md": "- A line that starts with `FAILED` and ends in `assert A == B`, or a short pytest block with `E` lines.\n- A teammate changed something, or a commit message such as `Tidy pricing module` hides a change.\n- The stem asks \"What can you conclude?\", \"What should you do?\" or \"What does this tell you?\".\n- Options pick a winner by timing, rerun, skip the test, or change the test to match the code.",
+ "basics": [
+  {
+   "id": "S4-b1",
+   "heading": "Read the failure, then ask who is right",
+   "body_md": "pytest prints one `FAILED` line per failing test: the file, the test name and the two values that disagreed.\n\n```text\nFAILED tests/test_totals.py::test_total_with_discount - assert 90.0 == 95.0\n```\n\nThe course writes `assert result == expected`, so the left value came from the code and the right one is what the test expected. Here the code returned 90.0 and the test expected 95.0.\n\nThe line says they disagree. It does not say which is wrong. The requirement decides: the backlog item, the Product Owner, the commit message.\n\n| What you find | What you do |\n|---|---|\n| the rule is unchanged and the code broke it | fix the code, keep the test |\n| the rule changed on purpose | update the test in the same change and say so in the commit message |\n| nobody wrote the rule down | find out the rule, then pin it with a test |\n\nTiming never decides: not which was written first, not which changed last."
+  },
+  {
+   "id": "S4-b2",
+   "heading": "Other failures he can show",
+   "body_md": "| You see | It means | You do |\n|---|---|---|\n| `assert 30.299999999999997 == 30.3` | float noise, the code is fine | compare with `pytest.approx(30.3)` |\n| a new test that passes the first time | you never saw it fail | break the code once, watch it go red, undo |\n| `At index 0 diff: ('dining', 15.0) != ('clothing', 40.0)` | same totals, different order | read the diff, it usually tells you the bug |\n| `FAILED ...::test_minimum_keeps_amounts_equal_to_it[10.0-expected2]` | one `parametrize` case failed, the others ran | read that case's values |\n| `ERROR at setup`, `fixture 'expense' not found` | a typo, the test never ran | fix the name |\n\nIn TDD a failing test is the first step. Red: a test for behaviour that does not exist yet, seen failing. Green: the smallest code that passes. Refactor: tidy up while the tests stay green. \"Money in floats needs a tolerance.\""
+  }
+ ],
+ "checks": [
+  {
+   "id": "S4-c1",
+   "q_md": "In `assert 90.0 == 95.0`, written as `assert result == expected`, which number did the function return?",
+   "options": [
+    "`95.0`, the right-hand side",
+    "`90.0`, the left-hand side",
+    "The line does not say"
+   ],
+   "answer": 1,
+   "why_md": "The left of `==` is what the code produced. The right is what the test expected."
+  },
+  {
+   "id": "S4-c2",
+   "q_md": "The backlog now says the discount is 10%, agreed in Sprint Planning, and the test still expects 5%. What do you do?",
+   "options": [
+    "Revert the commit, because the test was there first",
+    "Update the test in the same change and say so in the commit message",
+    "Skip the test until someone has time"
+   ],
+   "answer": 1,
+   "why_md": "The rule changed on purpose, so the test is the old side. Skipping it hides a disagreement someone must settle."
+  }
+ ],
+ "method": [
+  "Read the failure: which test, which two values, which one came from the code.",
+  "Say \"they disagree\". Do not say \"the code is wrong\" or \"the test is wrong\" yet.",
+  "Ask for the requirement: backlog item, Product Owner, commit message.",
+  "Rule unchanged: fix the code and keep the test. Rule changed on purpose: update the test in the same change.",
+  "Cross out deciding by timing, rerunning, skipping the test and loosening the assert."
+ ],
+ "worked": [
+  {
+   "title": "Same shape, with the rule in the stem",
+   "question_md": "The backlog says: \"Orders of 100 EUR or more get 5% off.\" A teammate changed `apply_discount` under the message `Simplify discount check`, and CI is red:\n\n```text\n>       assert apply_discount(100.0) == 95.0\nE       assert 100.0 == 95.0\nE        +  where 100.0 = apply_discount(100.0)\n\ntests/test_pricing.py:5: AssertionError\nFAILED tests/test_pricing.py::test_100_gets_the_discount - assert 100.0 == 95.0\n```\n\nWhat can you conclude?\n\n- a) The test is wrong, because the function was changed more recently\n- b) The test is flaky and should be rerun until it passes\n- c) The function is wrong: the rule gives 100 EUR the discount, so fix the function and keep the test\n- d) You can't tell: a failing test never says which side is wrong",
+   "steps_md": [
+    "The function returned 100.0 and the test expected 95.0, so they disagree.",
+    "This time the stem gives the rule: 100 EUR or more gets 5% off. The test follows it, the function does not.",
+    "a) decides by timing and b) treats a fixed failure as luck. d) was right for the sample because the rule was missing there. Here it is given, so you can tell."
+   ],
+   "answer_md": "**c.** The backlog says 100 EUR or more gets 5% off, so the test (95.0) matches the rule and the function returns the full price at exactly 100. Fix the function and keep the test."
+  }
+ ],
+ "twists": [
+  {
+   "twist_md": "The same failure, but the commit message says \"members now get 10% off\" (backlog item 7).",
+   "how_md": "The rule changed on purpose, so the test is out of date. Update it in the same change, and name the new rule in the message."
+  },
+  {
+   "twist_md": "Code and test changed in the same commit, CI is green, and the message is `Fix test`.",
+   "how_md": "Green means nothing until you know the rule changed on purpose. The test may have been edited to agree with the code."
+  },
+  {
+   "twist_md": "The output is `ERROR at setup` or `fixture 'expense' not found`, not a failure.",
+   "how_md": "Nothing has been tested yet. The fixture is called `expenses`: a typo in the argument. Fix the name."
+  },
+  {
+   "twist_md": "`assert 30.299999999999997 == 30.3`.",
+   "how_md": "Float noise. The code is fine and the comparison is too strict: use `pytest.approx(30.3)`."
+  },
+  {
+   "twist_md": "A new test passes at once, or three of five tests pass against a stub that returns its input.",
+   "how_md": "You never saw it red. Break the code on purpose once and watch it fail. Against a stub, passes on empty or duplicate-free lists are luck."
+  }
+ ],
+ "traps": [
+  "\"The test was written first, so the test is right.\" Order in time says nothing about which side matches the rule.",
+  "\"The function changed last, so the test is stale.\" The same mistake the other way round.",
+  "\"Rerun it, it is flaky.\" A deterministic assert fails every time for a reason: 100 times 0.9 is 90 every time.",
+  "\"Change the test to match the code so CI goes green.\" That removes the information the test gave you."
+ ],
+ "say_md": "- A failing test only says that the test and the code disagree. It does not say which one is wrong.\n- Neither being older nor newer proves which is right. I check the requirement (backlog item, Product Owner), then fix the one that is wrong.\n- If the rule changed on purpose, I update the test in the same change and say so in the commit message.\n- Floats: compare with `pytest.approx`. Red, green, refactor.",
+ "practice": [
+  "testing-tdd-q04",
+  "testing-tdd-q05",
+  "testing-tdd-q10",
+  "testing-tdd-q02",
+  "testing-tdd-q18",
+  "sample-paper-q39"
+ ],
+ "short_answers": {}
+}

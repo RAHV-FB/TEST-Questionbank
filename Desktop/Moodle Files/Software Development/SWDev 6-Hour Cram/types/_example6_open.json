@@ -1,0 +1,73 @@
+{
+ "tid": "S7",
+ "name": "Read code and say what is wrong (open)",
+ "minutes": 25,
+ "shape_md": "Sample Q7. A short function, then three parts: what it does, two problems, and how you would change it in words. About 5 to 8 lines in all.",
+ "one_md": "Name the problem, say what a teammate cannot do because of it, and pair each fix with its problem.",
+ "sample": {
+  "qnum": "Q7",
+  "kind": "open",
+  "question_md": "```python\ndef process(rows):\n    total = 0\n    for r in rows:\n        if r[2] == \"food\":\n            total += float(r[1])\n    print(\"Food total:\", total)\n    return total\n```",
+  "parts": [
+   "In one sentence, what does this function do?",
+   "Name two problems a teammate would face when reading, testing or changing it.",
+   "Describe (in words, do not write code) how you would change it, and which of the two problems each change solves."
+  ],
+  "his_answer_md": "1. It adds up the amounts of the rows whose third column is \"food\", prints the total, and returns it.\n2. Any two of:\n   - Names say nothing: `process`, `rows`, `r`, `r[2]`, `r[1]`. The reader must guess that column 2 is the category and column 1 the amount.\n   - It does two jobs, calculating and printing, so a test of the total also prints.\n   - \"food\" is hard-coded. Other categories need a copy of the function.\n   - It trusts the file: a short row or a non-numeric amount crashes with an unhelpful error.\n3. Give the function a descriptive name and name the columns (or use an Expense dataclass) to fix the unclear names. Pass the category as a parameter to fix the hard-coding. Move the print out to the caller so the function only returns the total. This fixes the two jobs.",
+  "decoded_md": "- Part 1 is a plain reading: which rows, what it adds up, what it does with the result.\n- Part 2 wants two problems, each with its cost: guessing what `r[2]` holds, or a test that also prints.\n- Part 3 pairs a change with a problem. Naming the change alone earns half.\n- Do not write code in part 3. He asks for words.\n- Each part is one or two sentences. Always tie it to the line you mean."
+ },
+ "spot_md": "- A code block under \"read code and say what is wrong\".\n- Three numbered parts: what it does, two problems, how to change it.\n- Tuples indexed by number, a `print` inside a calculation, a hard-coded value.\n- The same shape on a different function: a count, a filter, a report.",
+ "basics": [
+  {
+   "id": "S7-b1",
+   "heading": "What counts as a problem",
+   "body_md": "He marks reasons, not terms. A problem is a thing in the code plus what it stops a teammate doing.\n\n- **Unclear names or positions** (`r[2]`): the reader must guess what a value holds. The fix is a descriptive name or a dataclass.\n- **Two jobs in one function** (calculating and printing): a test of the total also prints, and a new output format touches the calculation. The fix is to return the value and print in the caller.\n- **A hard-coded value** (`\"food\"`): another category needs a copy of the function. The fix is a parameter.\n- **Trusting the file**: a short row crashes with an unhelpful error.\n\nPick two, and write the cost after each one."
+  }
+ ],
+ "checks": [],
+ "method": [
+  "Part 1: say which rows, what it adds up and what it does with the result, in one sentence.",
+  "Part 2: pick two problems you can point at in the code and add what each costs a teammate.",
+  "Part 3: for each problem, one change in words, then the words 'this fixes' and the problem.",
+  "Do not write code. Do not list a third problem you cannot explain."
+ ],
+ "worked": [],
+ "twists": [
+  {
+   "twist_md": "The function counts the rows whose fourth field is over 100.",
+   "how_md": "Part 1 changes. Parts 2 and 3 stay: names, print inside the count, the bare `100`."
+  },
+  {
+   "twist_md": "Part 2 asks for one problem with reading and one with testing.",
+   "how_md": "Choose the names for reading and the `print` for testing, and say so."
+  },
+  {
+   "twist_md": "Part 3 asks what you would test first.",
+   "how_md": "Name a case in words, such as a file with no food rows, and the result you expect."
+  }
+ ],
+ "traps": [
+  "\"The names are bad\" is a verdict. Say which names and what a teammate cannot do.",
+  "Writing code in part 3 costs time and earns nothing extra.",
+  "Naming a fix without the problem it solves earns half the marks."
+ ],
+ "say_md": "- it does X, prints it and returns it\n- a reader must guess what `r[2]` holds, so give the columns names\n- the print mixes the calculation with the output, so move it to the caller",
+ "practice": [
+  "clean-code-q17",
+  "clean-code-q03",
+  "clean-code-q14",
+  "clean-code-q21"
+ ],
+ "short_answers": {
+  "clean-code-q17": {
+   "1": "It counts the expenses whose amount (`r[3]`) is over 100, prints the count and returns it.",
+   "2": "The names `check`, `r`, `n` and `r[3]` say nothing, so a reader must trace the code. It also prints inside the count, so every caller gets output it did not ask for.",
+   "3": "Rename it after what it returns and use named fields instead of `r[3]`: that fixes the names. Move the `print` to the caller: that fixes the output."
+  },
+  "clean-code-q03": {
+   "1": "`invoice_total`, because its names say what each value is, so I can see what to change. `calc` has to be decoded first.",
+   "2": "That `i` is the tax rate and `d` the discount rate, and that `p[1] * p[2]` is price times quantity.",
+   "3": "Both are correct, so the difference is cost: code is read far more often than written, and unclear names make every change slower."
+  }
+ }
+}

@@ -1495,7 +1495,7 @@ What is the right fix?
         ],
         "b",
         """
-`Returning Any` is the types-disagree kind, caused by a value mypy cannot see into: `json.load` returns `Any`. The function promises a `float`, and nothing has checked that the file holds one. The fix is to make the promise true where the unknown value enters the program, which `float(...)` does, and it also turns a numeric string into a number. An ignore comment or a wider type would silence the message and leave the promise unchecked. Real run on all four versions with mypy 2.4.0.
+`Returning Any` is the kind his official answer to sample Q9 calls Any leaks in ("I gave up on this value"), not types disagree: `json.load` returns `Any`, mypy cannot see into it, and the `Any` leaks into a function that promises a `float`. Nothing has checked that the file holds one. The fix is to make the promise true where the unknown value enters the program, which `float(...)` does, and it also turns a numeric string into a number. An ignore comment or a wider type would silence the message and leave the promise unchecked. Real run on all four versions with mypy 2.4.0.
 """,
         "S7 slides 8 to 10; labs/07-refactor.md troubleshooting",
         "slides",

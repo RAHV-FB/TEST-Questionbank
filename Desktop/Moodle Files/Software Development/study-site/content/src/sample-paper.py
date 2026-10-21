@@ -328,6 +328,14 @@ Two more facts help. `wc -l expenses.csv` counts the header too: the demo file p
         "body_md": md("""
 Five to eight handwritten lines is about 60–120 words for the whole question, not per part. The marks sit in the numbered parts, so the structure of your answer should copy the structure of the question.
 
+**How he marks.** The teacher published a marking guide with his answers:
+
+- **Full marks:** the right idea, with a reason (the "because").
+- **Partial marks:** the right idea with no reason, or a reason that is half right.
+- **No marks:** an answer that lists terms without connecting them to the code or output.
+
+He adds that the open questions are marked on reasons, not on matching his wording: different phrasing is fine as long as the idea is there. His own answers are one or two sentences per part, always tied to the code or output shown.
+
 **Answer each part separately, with its number.** Write "1.", "2.", "3." in the margin. A marker looks for each part's points in that part's lines, and a good point written under the wrong number is easy to miss.
 
 **Do exactly what the part asks.** "In one sentence" means one sentence. "Name two problems" means two, clearly separated. "Describe in words" means no code: you may name an identifier (`total_by_category`, `Expense`) but never write a block of code.
@@ -353,12 +361,13 @@ Use the course's vocabulary. "Computation is not output", "a tuple is a missing 
 """),
         "key_points": [
             "60–120 words for the whole question; number every part.",
+            "His marking guide: full marks for the idea with a reason (the \"because\"), partial for the idea alone, none for terms listed without connecting them to the code or output.",
             "Problem, consequence for a teammate, change in words.",
             "Judgement parts: verdict first, then the reason, then the real fix.",
             "Name identifiers if you like; never write code.",
         ],
         "exam_note_md": "Each open part is marked on its own, so a short concrete line on every part beats a long answer to one.",
-        "source_ref": "sample Q7–Q9 wording; S8 slide 31; S6 slides 13–24",
+        "source_ref": "sample Q7–Q9 wording; moodle/midterm-sample-answers.md (marking guide); S8 slide 31; S6 slides 13–24",
         "check": [qid(41), qid(48)],
     },
     {
@@ -389,7 +398,7 @@ def process(rows):
     return total
 ```
 
-Part 1 wants one sentence: it adds up the amounts of the rows whose third field is `"food"`, prints that total and returns it. Part 2 wants two problems with consequences: the positions `r[1]` and `r[2]` and the name `process` hide what the data is; the `print` mixes computation with output, so every call writes to the screen and the total cannot be reused quietly. The function also returns the total, so "a test cannot check it" would be the wrong reason. Part 3 wants a change per problem: an `Expense` with named fields and a name that says what it returns, then a function that only returns while the CLI prints.
+Part 1 wants one sentence: it adds up the amounts of the rows whose third column is `"food"`, prints that total and returns it. Part 2 wants two problems, each with its consequence. His official answer lists four, and any two earn full marks: names that say nothing (`process`, `rows`, `r`, `r[1]`, `r[2]`), so the reader must guess which column is the amount; two jobs, calculating and printing, so a test of the total also prints; `"food"` hard-coded, so another category needs a copy of the function; and trusting the file, so a short row or a non-numeric amount crashes with an unhelpful error. The function also returns the total, so "a test cannot check it" would be the wrong reason: the cost is the output. Part 3 wants a change for each problem you named, and which problem it solves: a descriptive name and named columns (or an `Expense` dataclass) for the names, the category as a parameter for the hard-coding, and the `print` moved out to the caller so the function only returns the total.
 
 Running it shows two quieter problems. With no food rows it returns `0`, an `int`, and `mypy --strict` reports `Incompatible types in assignment (expression has type "float", variable has type "int")`, session 7's "int here, float there". And `ruff check` prints `All checks passed!`: a linter checks style and simple mistakes, not design. Two problems named precisely beat seven named vaguely.
 """),
@@ -411,9 +420,9 @@ The second open shape shows a diff and asks what changed, which commit message i
 
 **Reading a diff.** Lines starting with `-` were removed, lines with `+` were added, lines starting with a space are unchanged context. `@@ -22,7 +27,16 @@` says where the hunk sits. Read the removed and added lines as a pair: what did the code do before, and what does it do now?
 
-**Part 1: what the change does.** Answer in behaviour, for a concrete input: "a file with a negative amount now raises `ValueError`; files without one load as before". Then decide whether behaviour changed. Session 7's rule: change the structure, keep the behaviour, and "if the output changes, it was not a refactoring". Session 6 checked it with `diff before.txt after.txt`: nothing printed means you are safe. One identical report is not proof, though. In the demo history, extracting `largest_expense` (commit `9d6c607`) gives the same report on `expenses.csv` and a different one on a file that contains only refunds. The slides still list this extraction as a refactoring move; the lesson is that one run is evidence, not proof.
+**Part 1: what the change does.** Answer in behaviour, for a concrete input: "a file with a negative amount now raises `ValueError` naming the file; before, negative amounts went through silently". Then decide whether behaviour changed. Session 7's rule: change the structure, keep the behaviour, and "if the output changes, it was not a refactoring". Session 6 checked it with `diff before.txt after.txt`: nothing printed means you are safe. One identical report is not proof, though. In the demo history, extracting `largest_expense` (commit `9d6c607`) gives the same report on `expenses.csv` and a different one on a file that contains only refunds. The slides still list this extraction as a refactoring move; the lesson is that one run is evidence, not proof.
 
-**Part 2: which message is better.** Take the point of view of the reader six months later, scrolling `git log --oneline`. They see one line per commit. A good message says what the change does, in words they would search for. The demo history is full of good models:
+**Part 2: which message is better.** Take the point of view of the reader six months later, scrolling `git log --oneline`. They see one line per commit. A good message says what changed in behaviour and what it covers, in words they would search for: someone asking "why do negative amounts fail?" should find it. The demo history is full of good models:
 
 ```text
 5e9466d Replace magic numbers with named constants
@@ -442,17 +451,18 @@ d3df52b Use dict.fromkeys to drop duplicates in order
         "body_md": md("""
 The third shape gives you a log and asks for three judgements: sort the errors, find the real danger, and decide whether a shortcut is acceptable.
 
-**Sort by kind.** Session 7 grouped mypy's errors into three kinds:
+**Sort by kind.** Session 7 (slide 10) grouped mypy's errors into three kinds. His official answer to sample Q9 adds a fourth, so learn four:
 
 | Kind | mypy is asking | Typical codes | Fix |
 |---|---|---|---|
 | Missing annotation | "what type is this?" | `[no-untyped-def]`, `[var-annotated]`, `[type-arg]`, `[no-untyped-call]` | write the hint |
-| Types disagree | "int here, float there" | `[assignment]`, `[arg-type]`, `[return-value]`, `[no-any-return]` | make them agree (`0.0`, `float(...)`) |
+| Types disagree | "int here, float there" | `[assignment]`, `[arg-type]`, `[return-value]` | make them agree (`0.0`, `float(...)`) |
 | None not handled | "this can be missing" | `[union-attr]`, `[operator]` with `None` | check it, or change the type |
+| Any leaks in | "I gave up on this value" | `[no-any-return]` | give the value a real type: convert it or annotate it |
 
-Codes help, but read the message: anything that names `None` is the third kind, and "missing a type annotation" is the first. `Returning Any from function declared to return "float"` sits with types disagree: the function promises a `float` and mypy sees `Any`, usually a value from `json` or `csv`. Sample Q9 confirms it by design: three errors, three kinds, and lines 8 and 15 are clearly the other two. Lab 07 also offers annotating the variable as a fix, so the model answer here also accepts "missing annotation" when you explain where the `Any` comes from; only converting with `float(...)` turns a `"900"` into `900.0`.
+Codes help, but read the message: anything that names `None` is the third kind, and "missing a type annotation" is the first. `Returning Any from function declared to return "float"` is the fourth, **Any leaks in**: a value was already `Any`, usually from `json` or a function with no signature, mypy stopped checking it, and it leaked into a function that promised a `float`. Never file it under types disagree. mypy has not seen two types that clash; it has seen no type at all. Sample Q9 has three errors of three different kinds: line 8 is a missing annotation, line 15 is None not handled and line 22 is Any leaks in. The fix is to give the value a real type where it enters: converting with `float(...)` turns a `"900"` into `900.0`, and annotating the variable states what you expect.
 
-**Find the crash.** None not handled is the kind that crashes for a real user: "Empty list → None → crash at 2 a.m." Running the code behind sample Q9 with an empty list ends in `AttributeError: 'NoneType' object has no attribute 'category'`. A types-disagree error can crash too when the wrong thing is passed, for example a path where a list was expected. A missing annotation crashes nothing by itself; it means mypy cannot check what goes into or out of that function.
+**Find the crash.** None not handled is the kind that crashes for a real user: "Empty list → None → crash at 2 a.m." Running the code behind sample Q9 with an empty list ends in `AttributeError: 'NoneType' object has no attribute 'category'`. A types-disagree error can crash too when the wrong thing is passed, for example a path where a list was expected. Missing annotations and Any leaking in crash nothing by themselves. In his words they are weaknesses in the checking, not crashes: mypy cannot check what goes into or out of that code.
 
 **Judge the shortcut.** The proposals vary (`# type: ignore`, change the type to `Any`, `strict = false`, run `mypy src` instead of `mypy src tests`) and the answer has the same shape each time: they make the referee quiet, not the code correct. With three `# type: ignore` comments the sample Q9 code passes:
 
@@ -460,10 +470,10 @@ Codes help, but read the message: anything that names `None` is the third kind, 
 Success: no issues found in 2 source files
 ```
 
-and still crashes on an empty list. CI is the referee every group shares, and a green check is in every Definition of Done; forcing it green ships the bug with a tick. Say no, then name the real fix for each line.
+and still crashes on an empty list. CI is the referee every group shares, and a green check is in every Definition of Done; forcing it green ships the bug with a tick. Say no, then name the real fix for each line. His answer allows one exception: an ignore is acceptable only for a rare case that is understood, commented and deliberately accepted.
 """),
         "key_points": [
-            "Three kinds: missing annotation, types disagree, None not handled.",
+            "Four kinds: missing annotation, types disagree and None not handled (slide 10), plus Any leaks in (`Returning Any`, his answer to Q9).",
             "None not handled is the kind that crashes for a user.",
             "`# type: ignore`, `Any`, `strict = false`: a quiet referee, the same bug.",
             "Answer judgement parts with a verdict, a reason and the real fix.",
@@ -492,7 +502,7 @@ Two rules protect your marks. **Never let one question eat another's time**: if 
 
 1. Redo the nine sample questions on paper, timed, without notes. Then compare with the model answers and mark your reasons, not your letters.
 2. Walk the expense-tracker history from `3e0834f` to `v0.4`: for each commit, say what changed and which session's idea it shows.
-3. Revise the tables you must apply without thinking: the three kinds of mypy error, the refactoring moves, the edge-case questions (empty, zero, negative, duplicate, missing), argument versus option, exit codes and the pipe idioms from session 10.
+3. Revise the tables you must apply without thinking: the four kinds of mypy error, the refactoring moves, the edge-case questions (empty, zero, negative, duplicate, missing), argument versus option, exit codes and the pipe idioms from session 10.
 4. Revise what the sample never asks about. Its nine questions draw almost entirely on sessions 3–10, and "the topics are not a full list". Still in scope: the seven lifecycle phases and bugs, features, refactor and tech debt (session 1); Waterfall against Agile and the manifesto's four values (session 2); Scrum's roles, artifacts and their commitments, events and time-boxes, and the Definition of Done (session 4); paths, "permission denied" and `644` against `755` (session 9).
 5. Sleep. A tired reader skips the one line in the output that matters.
 
@@ -532,8 +542,9 @@ terms = [
     ("Refactoring", "Change the structure, keep the behaviour. \"If the output changes, it was not a refactoring.\"", 7),
     ("Commit message", "The line a reader sees in `git log --oneline`. A good one says what the change does, in words someone would search for six months later.", 7),
     ("Missing annotation", "Session 7's first kind of mypy error: \"what type is this?\". Fix: write the hint, including `-> None` on tests.", 8),
-    ("Types disagree", "Session 7's second kind: \"int here, float there\", or a promised `float` that returns `Any`. Fix: make them agree.", 8),
+    ("Types disagree", "Session 7's second kind: \"int here, float there\", two known types that clash. Fix: make them agree.", 8),
     ("None not handled", "Session 7's third kind: \"this can be missing\". The one that crashes for a user. Fix: check it, or change the type.", 8),
+    ("Any leaks in", "The fourth kind of mypy error, from his official answer to sample Q9: \"I gave up on this value\". `Returning Any from function declared to return \"float\"`: the value was already `Any`, so mypy stopped checking it. Fix: give it a real type, by converting it or annotating it.", 8),
     ("`# type: ignore`", "A comment that tells mypy to stop reporting a line. It hides the error; it never fixes the code.", 8),
     ("The referee, not the judge", "How the course describes CI: it does not mark you, but a red check means the work is not valid. Bending the referee to go green defeats it.", 8),
 ]
@@ -585,11 +596,12 @@ cards = [
     ("When is a change not a refactoring?", "When behaviour changes: the output, the exit code, the command-line interface. \"If the output changes, it was not a refactoring.\"", "concept", 7),
     ("What makes a commit message good for a reader six months later?", "The log line alone says what changed, in words they would search for: `Reject negative amounts when loading expenses`, not `Fix stuff in loader`.", "concept", 7),
     ("How do you describe a test in words?", "Input, action, expected result: \"a CSV with one negative amount; `load_expenses` raises `ValueError`\".", "concept", 7),
-    ("Session 7's three kinds of mypy error, and their fixes?", "Missing annotation: write the hint. Types disagree: make them agree. None not handled: check it, or change the type.", "recall", 8),
-    ("Which kind is `Returning Any from function declared to return \"float\"`, and the fix?", "Types disagree (sample Q9 has one error per kind): promised `float`, got `Any` (from `json` or `csv`). Convert it with `float(...)`; lab 07 also allows annotating the variable, but only the conversion turns a `\"900\"` into `900.0`.", "reading", 8),
+    ("The kinds of mypy error, and their fixes (three on slide 10, a fourth in his answer to Q9)?", "Missing annotation: write the hint. Types disagree: make them agree. None not handled: check it, or change the type. Any leaks in: give the value a real type (convert it or annotate it).", "recall", 8),
+    ("Which kind is `Returning Any from function declared to return \"float\"`, and the fix?", "Any leaks in (\"I gave up on this value\"), never types disagree. The `Any` comes from something untyped such as `json`, and mypy stopped checking it. Give it a real type: `float(...)` turns a `\"900\"` into `900.0`, or annotate the variable.", "reading", 8),
     ("Why refuse `# type: ignore` \"to get CI green\"?", "It silences the referee; the `None` crash still ships. Fix the causes instead.", "concept", 8),
     ("Eight minutes left: an untouched open question and two dotted multiple-choice answers. Order?", "One or two concrete lines on each open part first, then a final look at the dotted ones.", "concept", 9),
     ("What did the teacher say to prepare with?", "The session slides and the expense-tracker history on GitHub; answer the sample on paper first, then check your reasons.", "recall", 9),
+    ("How does the teacher mark an open answer?", "Full marks: the right idea with a reason (the \"because\"). Partial: the idea with no reason, or a half-right reason. None: terms listed without connecting them to the code or output.", "recall", 5),
 ]
 
 # ---------------------------------------------------------------------------
@@ -623,7 +635,9 @@ What should you do next?
             "uv works: it read the file and told you where the problem is. Reinstalling the tool that gave you the right answer only costs time."),
     ],
     """
-Read the error before acting. uv stopped while parsing `pyproject.toml`, the project's single source of truth, and it says where: line 7, column 12. That is a typing mistake (a missing `=`, quote or bracket), so the next step is to open the file at that line. The three distractors are the "turn it off and on again" family: they all act on something the message never mentions. The real uv output is even more helpful than the trimmed version on the paper: it prints the offending line, a caret under column 12 and what it expected (`missing assignment between key-value pairs, expected =`).
+**Teacher's official answer: b (letters as on his paper).** The error names the file and the line. Read it and fix the syntax. Deleting `.venv`, upgrading or reinstalling uv can't fix a malformed file.
+
+Read the error before acting. uv stopped while parsing `pyproject.toml`, the project's single source of truth, and it says where: line 7, column 12. That is a typing mistake (a missing `=`, quote or bracket), so the next step is to open the file at that line. The three distractors are the "turn it off and on again" family: they all act on something the message never mentions.
 """,
     3, "sample Q1; S4 slides 21, 24; S7 slide 9", "teacher-sample", "run",
     dissection="""
@@ -662,6 +676,8 @@ questions.append(mcq(
             "Changing the storage format changes what the program reads and writes: every existing CSV file stops working. Session 1 used \"refactor\" for swapping components, but session 7's definition decides here: the behaviour changed."),
     ],
     """
+**Teacher's official answer: c (letters as on his paper).** A refactoring changes structure and keeps behaviour, and unchanged tests passing is the evidence. (a) is a feature, (b) a bug fix, (d) a design change.
+
 Session 7 defines it: refactoring changes the structure and keeps the behaviour, and "if the output changes, it was not a refactoring". Session 1 already separated bugs (unintended behaviours) from features (new behaviour); a refactoring is neither. Only option c changes structure alone, and it brings its own proof: the tests, which pin the behaviour, pass without being edited. The others are a feature (a), a bug fix (b) and a change of storage format that every existing data file would notice (d).
 """,
     7, "sample Q2; S7 slide 5; S1 slide 19", "teacher-sample", "source",
@@ -705,6 +721,8 @@ Which fix is most appropriate?
             "Without annotations mypy no longer knows that the function can return `None`, so this warning disappears and `--strict` complains about the missing annotations instead. The crash remains; you have only blinded the tool."),
     ],
     """
+**Teacher's official answer: b (letters as on his paper).** The error says the value can be None. Handle that case. `# type: ignore` and `Any` hide the problem and keep the crash. Removing annotations makes the checker blind.
+
 This is the "None not handled" kind from session 7, the one that crashes for a real user: an id that does not exist gives `None`, and `None.amount` raises `AttributeError`. Running the snippet confirms it ends in `AttributeError: 'NoneType' object has no attribute 'amount'`. The fix is to handle the `None` before using the value: a guard clause that skips or reports the missing expense, or a change to `find_expense` so it cannot return `None`. Options a, c and d all make mypy quiet without making the program correct.
 """,
     8, "sample Q3; S7 slides 8, 10; labs/07-refactor.md troubleshooting", "teacher-sample", "run",
@@ -745,6 +763,8 @@ The test expects 95.0. The function now returns 90.0. What can you conclude?
             "The failure proves only that the code and the test disagree. Which one is right depends on the specification: is the discount 5% or 10%?", True),
     ],
     """
+**Teacher's official answer: d (letters as on his paper).** A failing test only says that test and code disagree. Neither being older or newer proves which one is right. Check the requirement (is the discount 10% or 5%?), then fix the one that is wrong.
+
 A failing test is information, not a verdict. `assert 90.0 == 95.0` says the function returned 90.0 and the test expected 95.0; it cannot say which of the two describes the business rule. So look outside the code: the backlog item, the Product Owner, the commit message of the teammate's change. If the discount is now 10%, the test is out of date and is updated in the same change; if it is still 5%, the function has a bug and the test just caught it. Options a and b pick a winner by timing, and c treats a deterministic failure as luck.
 """,
     4, "sample Q4; S8 slides 5, 7", "teacher-sample", "run",
@@ -780,6 +800,8 @@ questions.append(mcq(
             "Type hints are contracts that mypy and teammates read; there is no such thing as too many. The description says nothing about hints."),
     ],
     """
+**Teacher's official answer: b (letters as on his paper).** One function with several jobs is hard to test (you can't check the total without printing) and hard to change (a new output format touches the calculation).
+
 Session 6's test: can you describe the function without the word "and"? This one reads a file and validates each row and calculates totals and prints a report: the Single Responsibility Principle broken four times. The consequences are what a teammate feels: you cannot test the calculation without a file on disk and captured output, and any change to one job risks the others. The course's fix is the demo's own path: commit `9d6c607` took the reading and the formatting out of `run()` (`read_expenses`, `format_report`, next to the existing `total_by_category`) on the way to v0.2, and `15836e1` moved the remaining printing into the CLI for v0.3.
 """,
     6, "sample Q5; S6 slides 18, 20", "teacher-sample", "source",
@@ -814,6 +836,8 @@ grep "food" expenses.csv | wc -l
             "That would be counting words in the whole file. Here `wc` only sees the lines `grep` let through, and `-l` counts lines."),
     ],
     """
+**Teacher's official answer: a (letters as on his paper).** grep keeps the lines that contain food. `wc -l` counts lines. Two matches on one line count once, so (b) is wrong. grep alone would give (c).
+
 Read a pipeline stage by stage. `grep "food" expenses.csv` prints the lines that contain the text `food`. The `|` sends that output to the next command instead of the screen. `wc -l` counts the lines it receives and prints the number; on the course's Linux machines that is just a number, such as `5`. One precision for later questions: `grep` matches the letters anywhere in the line, so a merchant such as `Seafood Shack` would be counted too, and so would the header if it contained the text. "Lines that contain the word food" is still the best of the four descriptions.
 """,
     4, "sample Q6; S9 slide 6 and take-aways", "teacher-sample", "run",
@@ -852,28 +876,37 @@ def process(rows):
 """,
     [
         part("1", "In one sentence, what does this function do?", 1,
-             "It adds up the amounts (second field) of the rows whose third field is \"food\", prints that food total and returns it.",
-             ["Says it totals the amounts of only the rows whose category (`r[2]`) is \"food\", and that it both prints and returns the total"],
+             "It adds up the amounts of the rows whose third column is \"food\", prints the total, and returns it.",
+             ["Says it totals the amounts of only the rows whose category (third column, `r[2]`) is \"food\", and that it both prints and returns the total"],
              "\"It processes the rows\" repeats the name and says nothing. \"It calculates the total\" misses that only food rows count. \"It prints the food total\" misses that it also returns it, which matters for part 2. One sentence, three facts: which rows, what it adds up, what it does with the result."),
         part("2", "Name two problems a teammate would face when reading, testing or changing it.", 2,
-             "Reading: `r[1]` and `r[2]` (and the name `process`) say nothing, so a teammate must guess which is the amount. Changing: the `print` runs on every call, so the total cannot be reused quietly, and changing the wording means editing the arithmetic.",
+             """
+Any two of:
+
+- Names say nothing: `process`, `rows`, `r`, `r[2]`, `r[1]`. The reader must guess that column 2 is the category and column 1 the amount.
+- It does two jobs, calculating and printing, so a test of the total also prints.
+- "food" is hard-coded. Other categories need a copy of the function.
+- It trusts the file: a short row or a non-numeric amount crashes with an unhelpful error.
+""",
              [
-                 "Names the vague name or the positions (`process`, `r[1]`, `r[2]`) and says a reader must guess what they hold (a tuple is a missing type)",
-                 "Names the `print` inside the calculation and says every call produces output, so the total cannot be reused quietly and the wording is tied to the arithmetic (computation is not output). Not \"a test cannot check the total\": the function returns it",
-                 "Names the hard-coded `\"food\"`: another category needs a copy of the function",
-                 "Names the missing type hints: `mypy --strict` rejects it, and `total = 0` starts as an `int`",
+                 "Names say nothing (`process`, `rows`, `r`, `r[2]`, `r[1]`): the reader must guess that column 2 is the category and column 1 the amount (a tuple is a missing type)",
+                 "Two jobs, calculating and printing: a test of the total also prints, and every call writes to the screen (computation is not output). Not \"a test cannot check the total\": the function returns it",
+                 "`\"food\"` is hard-coded: another category needs a copy of the function",
+                 "It trusts the file: a short row or a non-numeric amount crashes with an unhelpful error",
+                 "A different problem with a real consequence for a teammate, for example the missing type hints (`mypy --strict` rejects the function): he marks reasons, not his exact list",
              ],
-             "\"The names are bad\" or \"it is not clean code\" are verdicts without evidence: which names, and what can a teammate not do because of them? \"There are no comments\" contradicts the course: a comment that explains what code does is a failure of naming. Two problems in one breath may score, but each needs its consequence: guessing the columns, or output on every call that nobody can switch off. Careful: \"a test cannot check the total\" is wrong here, because the function returns it."),
+             "Any two of his four earn the marks, but each needs its reason (the \"because\"). \"The names are bad\" or \"it is not clean code\" lists a term without connecting it to the code: which names, and what can a teammate not do because of them? \"There are no comments\" contradicts the course: a comment that explains what code does is a failure of naming. Careful with the `print`: \"a test cannot check the total\" is wrong here, because the function returns it. His wording is that a test of the total also prints; the cost is output on every call."),
         part("3", "Describe (in words, do not write code) how you would change it, and which of the two problems each change solves.", 2,
-             "Use an `Expense` dataclass so `r[1]` becomes `expense.amount`, and a name that says what it returns, such as `food_total`: that solves the reading problem. Remove the `print` and let the CLI print the result: that solves the output problem, because the CLI decides the wording and the function can be reused or tested without printing.",
+             "Give the function a descriptive name and name the columns (or use an Expense dataclass) to fix the unclear names. Pass the category as a parameter to fix the hard-coding. Move the print out to the caller so the function only returns the total. This fixes the two jobs.",
              [
-                 "A change for the names: a name that says what it returns and named fields (a dataclass) instead of positions, explicitly linked to the reading problem",
-                 "A change for the output: return only and print in the caller (the shell), explicitly linked to the output problem from part 2",
+                 "A change for the unclear names: a descriptive function name and named columns (or an `Expense` dataclass), explicitly linked to the names problem",
+                 "A change for the hard-coding: the category passed as a parameter, explicitly linked to that problem",
+                 "A change for the two jobs: the `print` moved out to the caller so the function only returns the total, explicitly linked to that problem",
              ],
-             "Writing the new function in code ignores the instruction and costs time. \"Make it cleaner\" or \"use better names\" without naming the change (a dataclass with named fields, return instead of print) scores nothing. The most common miss is the second half of the question: say which problem each change solves."),
+             "Writing the new function in code ignores the instruction and costs time. \"Make it cleaner\" or \"use better names\" without naming the change (named columns or a dataclass, a parameter, return instead of print) scores nothing. The most common miss is the second half of the question: say which problem each change solves, as his answer does with \"to fix the unclear names\", \"to fix the hard-coding\", \"this fixes the two jobs\"."),
     ],
     """
-The function's job is easy to state, which is the point: part 1 checks that you read it correctly, including that it both prints and returns. Parts 2 and 3 test session 6's vocabulary used as consequences. `r[1]` and `r[2]` are a tuple used where a type belongs, so a teammate must guess which field is which; the `print` mixes computation with output, so every call prints and the report wording is welded to the arithmetic (a test can still assert on the returned total). The changes mirror the demo's path to v0.3: an `Expense` dataclass with named fields, a name that says what it returns, a function that only returns, and printing in the CLI. Linking each change to its problem is half of part 3.
+The function's job is easy to state, which is the point: part 1 checks that you read it correctly, including that it both prints and returns. Parts 2 and 3 test session 6's vocabulary used as consequences, and his answer lists four problems, any two of which earn the marks: unclear names, two jobs, a hard-coded `"food"` and trusting the file. `r[1]` and `r[2]` are a tuple used where a type belongs, so a teammate must guess which field is which; the `print` mixes computation with output, so every call prints (a test can still assert on the returned total, but it prints too). The changes mirror the demo's path to v0.3: an `Expense` dataclass with named fields, a name that says what it returns, the category as a parameter, and a function that only returns while the CLI prints. Linking each change to its problem is half of part 3.
 """,
     6, "sample Q7; S6 slides 13–24; S7 slides 5, 10", "teacher-sample", "run",
     dissection="""
@@ -890,7 +923,7 @@ src/report.py:5: error: Incompatible types in assignment (expression has type "f
 
 The second is session 7's "int here, float there": `total = 0` makes the function return the `int` `0` when there are no food rows. (A precise note: strict mode still reads the body of an unannotated function, which is how it spots this; what it cannot check is anything that comes from `rows`.)
 
-**Full marks.** One sentence for part 1; two problems with consequences for part 2 (positions and names; the `print` inside the calculation); two changes, each tied to its problem, for part 3. See the model answers.
+**Full marks.** One sentence for part 1; any two of his four problems, each with its consequence, for part 2 (unclear names, two jobs, the hard-coded `"food"`, trusting the file); one change per problem named, each tied to the problem it solves, for part 3. The model answers are his official ones.
 
 **How he could make it harder.** A longer function with three problems, one of which only shows when you run it (a division by zero on an empty list). Or failure handling: a bare `except` that returns `-1`, so a wrong number flows silently into a total.
 """,
@@ -919,22 +952,22 @@ Two candidate commit messages:
 """,
     [
         part("1", "What does this change do?", 2,
-             "After building the list, `load_expenses` now checks the amounts: if any expense is negative it raises a `ValueError` naming the file, so the whole file is rejected. Files with no negative amounts load as before, and zero is still accepted.",
+             "After loading the expenses, it checks whether any amount is negative and, if so, raises an error that names the file. Previously negative amounts went through silently.",
              [
-                 "Says it now raises `ValueError` (with the path in the message) when any amount is negative",
-                 "Says the whole load fails (nothing is returned), while files without negative amounts behave as before",
+                 "Says it now raises an error (`ValueError`, with the file path in the message) when any amount is negative",
+                 "Says what was true before: negative amounts went through silently, so the whole file is now refused where it used to load (files without a negative amount behave as before)",
              ],
-             "\"It adds error handling\" or \"it validates the data\" does not say what happens. The marker wants the behaviour: a negative amount makes the whole load fail with `ValueError`, and files without one load as before. \"It removes negative expenses\" misreads the diff: nothing is filtered out, the whole file is refused."),
+             "\"It adds error handling\" or \"it validates the data\" lists a term without saying what happens. The marker wants the behaviour: a negative amount makes the load fail with an error that names the file, where before it went through silently. \"It removes negative expenses\" misreads the diff: nothing is filtered out, the whole file is refused."),
         part("2", "Which message is better, and why? Answer from the point of view of someone reading the history six months later.", 2,
-             "B. In `git log` it tells that reader what behaviour changed (negative amounts are now rejected at load time), so someone wondering why a file with a refund suddenly fails can find this commit from the one line. A says neither what was fixed nor that behaviour changed; the reader has to open the diff.",
+             "B. It says what changed in behaviour and what it covers. Someone searching the history for \"why do negative amounts fail?\" will find it. A says nothing: the reader must open the diff to learn anything.",
              [
-                 "Chooses B and says it states what the change does (rejects negative amounts when loading)",
-                 "Explains the future reader's benefit: they can find or understand the change from the log line without opening the diff, while A says nothing about what or why",
+                 "Chooses B, because it says what changed in behaviour and what it covers (rejects negative amounts when loading)",
+                 "Gives the future reader's reason: they can find the change by searching the history (\"why do negative amounts fail?\") without opening the diff, while A says nothing",
              ],
-             "\"B, because it is more detailed\" is true but answers a different question. The question names the reader: someone six months later, scanning one line per commit. Say what B allows them to do (find when negative amounts started being rejected, without opening the diff) and what A fails to say (what was fixed, and that behaviour changed)."),
+             "\"B, because it is more detailed\" is true but answers a different question, and without the reason it earns partial marks. The question names the reader: someone six months later, scanning one line per commit. Say what B allows them to do (find when negative amounts started being rejected, without opening the diff) and what A fails to say."),
         part("3", "Name one test you would add for this change, in words.", 1,
-             "Write a small CSV with one negative amount in `tmp_path`, call `load_expenses` on it and check that it raises `ValueError`.",
-             ["Describes an input with a negative amount and the expected result, `load_expenses` raises `ValueError` (also accepted: a file of positive amounts still loads; an amount of exactly 0 is accepted)"],
+             "Any one of: a file with one negative amount raises ValueError; a file with only non-negative amounts still loads; a zero amount is accepted (edge case).",
+             ["Describes an input and the expected result, as one of his three: a file with one negative amount raises `ValueError`; a file with only non-negative amounts still loads; a zero amount is accepted (edge case)"],
              "\"Test that the function works\" or \"test negative numbers\" names no input and no expected result. A test in words has three parts: the input (a CSV with one negative amount), the action (call `load_expenses`), and the expected result (it raises `ValueError`). Writing the test in code is not asked for and costs time."),
     ],
     """
@@ -967,34 +1000,34 @@ src/report.py:22: error: Returning Any from function declared to return "float" 
 """,
     [
         part("1", "Sort the three errors into the kinds we discussed in session 7.", 3,
-             "Line 8: missing annotation. Line 15: None not handled. Line 22: types disagree, because the function promises a `float` but returns `Any` from something untyped.",
+             "Line 8 is a missing annotation (\"what type is this?\"). Line 15 is a None not handled (\"this can be missing\"). Line 22 is Any leaks in (\"I gave up on this value\").",
              [
-                 "Line 8 (`no-untyped-def`): missing annotation",
-                 "Line 15 (`union-attr`): None not handled",
-                 "Line 22 (`no-any-return`): types disagree, declared `float` but returns `Any` (accept \"missing annotation\" only if the student explains the `Any` comes from an untyped source such as `json`)",
+                 "Line 8 (`no-untyped-def`): missing annotation (\"what type is this?\")",
+                 "Line 15 (`union-attr`): None not handled (\"this can be missing\")",
+                 "Line 22 (`no-any-return`): Any leaks in (\"I gave up on this value\"), not types disagree. Different wording is fine if the idea is there: the value is `Any`, mypy cannot check it, and it leaks into a function that promised a `float`",
              ],
-             "Copying the codes (`no-untyped-def`, `union-attr`) without naming the kinds misses the question: it asks for session 7's categories. Another weak pattern puts all three under \"types are wrong\". Line 22 is where students hesitate: the promise says `float`, mypy sees `Any`, so the two sides disagree."),
+             "Copying the codes (`no-untyped-def`, `union-attr`) lists terms without naming the kinds, which is what the question asks for. Another weak pattern puts all three under \"types are wrong\". Line 22 is where students slip: they file `Returning Any` under types disagree because the promise says `float` and mypy sees `Any`. His answer is the fourth kind, Any leaks in: mypy has not seen two types that clash, it has seen no type at all."),
         part("2", "Which one points to a bug that could crash the program for a real user, and why?", 2,
-             "Line 15. The value can be `None` (for example when the list of expenses is empty), and asking `None` for `.category` raises `AttributeError`, which stops the program. The other two mean mypy cannot check something; they do not crash anything by themselves.",
+             "Line 15. If `Expense | None` is None at runtime (an empty list or a missing id), the program crashes with an AttributeError for a real user. The other two are weaknesses in the checking, not crashes in themselves.",
              [
                  "Picks line 15 (`union-attr`)",
-                 "Explains the mechanism: a missing value (`None`, for example an empty list) is asked for `.category`, raising `AttributeError`, and the program crashes",
+                 "Gives the reason: `Expense | None` is `None` at runtime (an empty list or a missing id), so asking it for `.category` raises `AttributeError` and the program crashes; the other two are weaknesses in the checking, not crashes in themselves",
              ],
-             "Choosing line 8 because a missing annotation sounds serious, or line 22 because `Any` sounds dangerous: neither crashes by itself. Naming line 15 without the mechanism earns half: say when the value is `None` (an empty list, nothing found) and what happens next (`AttributeError`, the program stops)."),
+             "Choosing line 8 because a missing annotation sounds serious, or line 22 because `Any` sounds dangerous: neither crashes by itself. Naming line 15 without the reason earns partial marks: say when the value is `None` (an empty list, a missing id) and what happens next (`AttributeError`, the program stops)."),
         part("3", "Your teammate proposes silencing all three with `# type: ignore` \"to get CI green\". Do you accept? Give your reasoning.", 2,
-             "No. `# type: ignore` silences mypy but does not change the program: line 15 still crashes on an empty list, now behind a green tick from the team's referee. Fix the causes instead: hints on line 8, a `None` check before line 15, `float(...)` on line 22.",
+             "No. `# type: ignore` hides the warning without removing the problem. The line 15 crash stays, and now CI no longer shows it. The honest fixes are to annotate line 8, handle None on line 15 (check it, or change the type), and give line 22 a real return type. `# type: ignore` is acceptable only for a rare case that is understood, commented and deliberately accepted. (For line 22, that means making the value a real `float` where it enters, for example with `float(...)`.)",
              [
-                 "Says no, because the ignore hides the problem without fixing it (line 15 still crashes)",
-                 "Says what to do instead (fix each cause: add the hints, handle the `None`, convert the `Any`), or explains that CI is the shared referee or Definition of Done that a forced green defeats",
+                 "Says no, with the reason: the ignore hides the warning without removing the problem, so the line 15 crash stays and CI no longer shows it",
+                 "Says what to do instead (annotate line 8, handle the `None` on line 15, give line 22 a real type), or that an ignore is acceptable only for a rare case that is understood, commented and deliberately accepted",
              ],
-             "\"Yes, temporarily, to meet the deadline\" accepts a green tick on code that still crashes. \"No, because ignores are bad practice\" gives a verdict without the reason. The reason the marker wants: `# type: ignore` hides the crash on line 15 without fixing it, and CI is the shared referee. Better still, name the real fix for each line."),
+             "\"Yes, temporarily, to meet the deadline\" accepts a green tick on code that still crashes. \"No, because ignores are bad practice\" gives a verdict without the reason, which earns partial marks. The reason the marker wants: `# type: ignore` hides the crash on line 15 without fixing it, and CI no longer shows it. Better still, name the real fix for each line, and the one narrow case where an ignore is acceptable."),
     ],
     """
-Session 7 named three kinds: missing annotation (line 8: no hints, so mypy cannot check what goes in or comes out), types disagree (line 22: the function promises a `float` and returns `Any` from something untyped, such as `json`), and None not handled (line 15). Only the third crashes by itself: when the list is empty the value is `None`, and `.category` raises `AttributeError`. We reproduced all three lines with `uv run mypy --strict src` and confirmed the crash. Silencing them with `# type: ignore` gives `Success` and keeps the crash. CI is the referee every group relies on and a green check is in every Definition of Done, so you refuse and fix the three causes, each a line or two.
+Session 7 named three kinds, and his official answer uses a fourth for line 22. Line 8 is a missing annotation (no hints, so mypy cannot check what goes in or comes out). Line 15 is None not handled. Line 22 is Any leaks in (the function promises a `float` and returns `Any` from something untyped, such as `json`: "I gave up on this value"). Only line 15 crashes by itself: when the list is empty the value is `None`, and `.category` raises `AttributeError`. We reproduced all three lines with `uv run mypy --strict src` and confirmed the crash. Silencing them with `# type: ignore` gives `Success` and keeps the crash. CI is the referee every group relies on and a green check is in every Definition of Done, so you refuse and fix the three causes, each a line or two.
 """,
     8, "sample Q9; S7 slides 8–11; labs/07-refactor.md troubleshooting; moodle/project-pages.md", "teacher-sample", "run",
     dissection="""
-**What it really tests.** Session 7's three kinds of mypy error, the one kind that crashes for a user, and a judgement about the CI referee. It is the paper's "harder" question because it combines reading output with a decision.
+**What it really tests.** Session 7's kinds of mypy error (three on the slide, and Any leaks in from his answer), the one kind that crashes for a user, and a judgement about the CI referee. It is the paper's "harder" question because it combines reading output with a decision.
 
 **The code behind it.** This file (imports and a constant omitted) produces the three lines in the question under `mypy --strict`:
 
@@ -1020,7 +1053,7 @@ With an empty list, `category_of_largest` ends in `AttributeError: 'NoneType' ob
 
 **The trap.** In part 2, choosing line 8 because "missing" sounds serious; a missing annotation only means mypy cannot check how the function is used. In part 3, "yes, just for now": a green tick on a crashing program is the referee misleading the whole group.
 
-**Full marks.** See the model answers. For line 22, "types disagree" is the intended kind (declared `float`, got `Any`); naming the untyped source (`json`) shows you understand why.
+**Full marks.** See the model answers, which are his. For line 22 the kind is Any leaks in ("I gave up on this value"), never types disagree; naming the untyped source (`json`) shows you understand why. For part 3, his one exception to "no" is a rare case that is understood, commented and deliberately accepted.
 
 **How he could make it harder.** A real log of seven errors across `src` and `tests`, with two crashes of different likelihood and a test missing `-> None`. Or a different shortcut: changing the CI step to `mypy src`, so the tests are no longer checked.
 """,
@@ -1263,7 +1296,7 @@ Which fix is most appropriate?
             "Under `--strict` a missing return type is its own error (`Function is missing a return type annotation`), and the contract that told callers what they get is gone."),
     ],
     """
-This is the types-disagree kind with a twist: the function promises a `float`, but the value comes from `json.load`, which returns `Any`, so mypy cannot check it. Lab 07's troubleshooting table gives the fix: the value came from something untyped, so convert it or annotate it. Running it shows why this matters: with `{"monthly_budget": "900"}` in the file, the original returns the string `'900'` from a function that says `float`, and a later subtraction would crash far from the cause. Options b, c and d move, hide or replace the error without making the value a float. Option c is the worst-case distractor because naming the code looks professional.
+This is the kind his answer to sample Q9 calls Any leaks in ("I gave up on this value"): the function promises a `float`, but the value comes from `json.load`, which returns `Any`, so mypy cannot check it. Lab 07's troubleshooting table gives the fix: the value came from something untyped, so convert it or annotate it. Running it shows why this matters: with `{"monthly_budget": "900"}` in the file, the original returns the string `'900'` from a function that says `float`, and a later subtraction would crash far from the cause. Options b, c and d move, hide or replace the error without making the value a float. Option c is the worst-case distractor because naming the code looks professional.
 """,
     8, "labs/07-refactor.md troubleshooting; S7 slide 10", "teacher-variant", "run", variant_of=3,
 ))
@@ -2000,15 +2033,15 @@ This is sample Q9 at full size, from a real `mypy --strict` run on a broken copy
 
 questions.append(sort_q(
     34, "exam", ["read-tool-output", "concept"],
-    "Sample Q9, part 1, as a sorting exercise, with more errors from real runs. Put each mypy error into the kind of problem it reports.",
-    [("missing", "Missing annotation"), ("disagree", "Types disagree"), ("none", "None not handled")],
+    "Sample Q9, part 1, as a sorting exercise, with more errors from real runs. Put each mypy error into the kind of problem it reports: the three of session 7 slide 10, and the fourth that his official answer adds.",
+    [("missing", "Missing annotation"), ("disagree", "Types disagree"), ("none", "None not handled"), ("leaks", "Any leaks in")],
     [
         ("`src/report.py:8: error: Function is missing a type annotation  [no-untyped-def]`", "missing",
          "mypy does not know the types of this function's parameters or result, so it cannot check how the function is called or what it returns."),
         ("`src/report.py:15: error: Item \"None\" of \"Expense | None\" has no attribute \"category\"  [union-attr]`", "none",
          "The value can be `None`, and the code asks it for `.category`: the crash-at-2-a.m. kind."),
-        ("`src/report.py:22: error: Returning Any from function declared to return \"float\"  [no-any-return]`", "disagree",
-         "Promised `float`, returns `Any` from something untyped such as `json`. Sample Q9 has one error of each kind, so types disagree is the intended answer, even though lab 07 also allows annotating the variable."),
+        ("`src/report.py:22: error: Returning Any from function declared to return \"float\"  [no-any-return]`", "leaks",
+         "\"I gave up on this value\": promised `float`, but the value is `Any` from something untyped such as `json`, so mypy cannot check it. His official answer files it as Any leaks in, not types disagree."),
         ("`tests/test_report.py:4: error: Function is missing a return type annotation  [no-untyped-def]`", "missing",
          "A test function without `-> None`; strict mode wants every function annotated, tests included."),
         ("`src/expense_tracker/report.py:20: error: Need type annotation for \"totals\" (hint: \"totals: dict[<type>, <type>] = ...\")  [var-annotated]`", "missing",
@@ -2023,7 +2056,7 @@ questions.append(sort_q(
          "The right side can be `None` (mypy's note says `float | None`), and subtracting `None` crashes."),
     ],
     """
-Read the message, not only the code. "Missing ... annotation", "Need type annotation" and "Missing type arguments" are all mypy asking "what type is this?". "Incompatible", "incompatible type" and "Returning Any ... declared to return" are two sides that do not match. Any message that names `None` is the third kind. The first three items are the three lines of sample Q9. In the exam, a phrase per error is enough: the line number and the kind.
+Read the message, not only the code. "Missing ... annotation", "Need type annotation" and "Missing type arguments" are all mypy asking "what type is this?". "Incompatible" and "incompatible type" are two known types that do not match. "Returning Any ... declared to return" is the fourth kind from his answer, Any leaks in: the value is already `Any`, so there is no type to compare. Any message that names `None` is the third kind. The first three items are the three lines of sample Q9. In the exam, a phrase per error is enough: the line number and the kind.
 """,
     8, "S7 slide 10; labs/07-refactor.md troubleshooting; sample Q9", "teacher-variant", "run", variant_of=9,
 ))
@@ -2426,6 +2459,7 @@ module: dict[str, Any] = {
     "predicted": False,
     "sources": [
         "moodle/midterm-sample-questions.md",
+        "moodle/midterm-sample-answers.md",
         "moodle/session6-midterm-slide.md",
         "slides-session-1",
         "slides-session-2",
@@ -2445,13 +2479,13 @@ module: dict[str, Any] = {
         "expense-tracker v0.0..v0.4",
     ],
     "summary_md": md("""
-This module takes the teacher's nine sample questions, answers each one fully, and explains what it really tests, where the trap is and how the teacher could make it harder within his own limits. Each original then gets two or three variants, most of them built from real runs of the course's tools: the same idea at its worst, and one small step beyond. The sections teach exam technique for this paper: how it works, how to answer multiple choice with no penalty, how to read tool output fast, how to write a 5–8 line answer, the three open-question shapes, and a plan for the hour and for the night before.
+This module takes the teacher's nine sample questions, gives his official answer to each one, extends it, and explains what it really tests, where the trap is and how the teacher could make it harder within his own limits. Each original then gets two or three variants, most of them built from real runs of the course's tools: the same idea at its worst, and one small step beyond. The sections teach exam technique for this paper: how it works, how to answer multiple choice with no penalty, how to read tool output fast, how to write a 5–8 line answer, the three open-question shapes, and a plan for the hour and for the night before.
 """),
     "exam_focus_md": md("""
 - The real paper keeps the sample's shapes: a scenario, an artefact (uv, mypy, ruff or pytest output, a shell pipeline, code, a diff) and a judgement.
 - Multiple choice asks what to do next, what you can conclude, which fix is right or what a command prints; the distractors are careless moves.
 - Open questions come in three shapes: read code and say what is wrong, compare a diff and two commit messages, read tool output and judge a shortcut.
-- Answers are judged on reasons, in the course's terms: refactoring keeps behaviour; one function, one job; computation is not output; the three kinds of mypy error.
+- Answers are judged on reasons, in the course's terms: refactoring keeps behaviour; one function, one job; computation is not output; the kinds of mypy error (three on the slide, and Any leaks in from his answer to Q9).
 - Expect worse artefacts than the sample: longer logs, noisier pytest output, real commits from the expense-tracker history.
 - No code writing, no flag recall, no syntax tricks: you describe changes in words.
 """),

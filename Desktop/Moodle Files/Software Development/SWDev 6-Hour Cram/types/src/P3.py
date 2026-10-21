@@ -1,0 +1,184 @@
+"""P3 (same shapes, other topics): the CLI (typer arguments and options, exit codes), functional core /
+imperative shell, failing well. Writes ../P3.json.
+
+Facts from session 5 slides 4-9, session 7 slides 5, 13-20 and labs/01-scaffold.md. The usage line is
+copied from cli-program-q16 (a run); nothing is invented. Practice: eight multiple-choice questions,
+core or exam level, none used by S1 to S9.
+"""
+
+import json
+from pathlib import Path
+
+P3 = {
+    "tid": "P3",
+    "name": "The CLI, core and shell, failing well",
+    "minutes": 20,
+    "shape_md": (
+        "Sessions 5 and 7 are on the paper. The samples touch them through Q5 (a function with several jobs) "
+        "and Q9 (what crashes a real user). Expect typer output, a function that prints, or an `except` that "
+        "hides a bug."
+    ),
+    "one_md": (
+        "Keep the world at the edge: the core takes values and returns values, "
+        "and the shell prints, catches and exits with the right code."
+    ),
+    "spot_md": (
+        "- typer help or an error (`Got unexpected extra argument(s)`, `Failed to spawn`) is asked like Q1: "
+        "what is the cause or the fix? A default makes an option, and the left side of `[project.scripts]` "
+        "is the command.\n"
+        "- A pytest failure on a function that prints (`assert None == 70.0`) is asked like Q4: what can you "
+        "conclude? The sum is right and the function returns nothing.\n"
+        "- A function that reads a file, calculates and prints is asked like Q5: name the problem. Several "
+        "jobs, so it is hard to test and hard to change.\n"
+        "- `print` then `return`, a bare `except`, or `return -1` is asked like Q3: which fix? The fix "
+        "removes the cause: exit non-zero, catch only what you expect, return `None` so mypy makes the "
+        "caller decide.\n"
+        "- Open, like Q7 or Q8: a function or a diff, then \"what is wrong, how would you change it, which "
+        "problem does each change solve?\""
+    ),
+    "basics": [
+        {
+            "id": "P3-b1",
+            "heading": "typer: arguments, options and exit codes",
+            "body_md": (
+                "typer reads the type hints. A parameter with no default is an argument, given by position. "
+                "A parameter with a default is an option, given by name. A default turns an argument into an "
+                "option, even when you meant it to stay positional. The command's name is the left side of "
+                "`[project.scripts]`, and the right side points at the `app` object.\n\n"
+                "```text\n Usage: parking-lot park [OPTIONS] {plate}\n```\n\n"
+                "This is the usage line of `park(plate: str, hours: int = 1)`: `plate` is required and "
+                "positional, `--hours` is an option.\n\n"
+                "The exit code is how the shell, `&&` and CI learn what happened. 0 is success, anything else "
+                "is failure. After an error, write the message to stderr with `typer.echo(..., err=True)` and "
+                "then `raise typer.Exit(code=1)`. A program that prints an error and exits 0 is a program "
+                "that lies."
+            ),
+        },
+        {
+            "id": "P3-b2",
+            "heading": "Core and shell, and failing well",
+            "body_md": (
+                "The core takes values and returns values: no `open`, no `print`, no `sys.exit`. The shell is "
+                "`cli.py`, the only place that reads files, prints and exits. A core function is tested with "
+                "a list and no file, and you cannot assert on a `print`.\n\n"
+                "| Situation | What happens |\n|---|---|\n"
+                "| the caller cannot carry on | the core raises |\n"
+                "| a normal \"no result\" | the core returns `None` or an empty list |\n"
+                "| the error reaches the user | the shell catches it, prints to stderr, exits non-zero |\n\n"
+                "Never `return -1` and hope somebody checks. Typing the result as `float | None` makes mypy "
+                "force the caller to decide. Catch only what you expect, such as `except (OSError, "
+                "ValueError)`: a bare `except` turns a typo into \"could not read\". `print` is for the "
+                "program's output; `logging` is its diary, with levels you can silence."
+            ),
+        },
+    ],
+    "checks": [
+        {
+            "id": "P3-c1",
+            "q_md": "`def park(plate: str, hours: int = 1)`. Which call does typer accept?",
+            "options": [
+                "`park 1234ABC 3`",
+                "`park 1234ABC --hours 3`",
+                "`park --plate 1234ABC`",
+            ],
+            "answer": 1,
+            "why_md": "`plate` has no default, so it is positional. `hours` has one, so it is the option `--hours`.",
+        },
+        {
+            "id": "P3-c2",
+            "q_md": "A core function receives a negative amount it cannot accept. What does it do?",
+            "options": [
+                "Prints an error and calls `sys.exit(1)`",
+                "Returns -1",
+                "Raises an exception, and the shell turns it into an exit code",
+            ],
+            "answer": 2,
+            "why_md": "The core never prints or exits. The shell catches the exception, writes to stderr and exits non-zero.",
+        },
+    ],
+    "method": [
+        "Say in one sentence what the code does. If you need \"and\" twice, it has several jobs.",
+        "Find where the world is touched: `open`, `print`, `sys.exit`, an `except`. Those lines belong in the shell.",
+        "Read the output for the clue: `Got unexpected extra argument(s)` means a default made an option; `assert None ==` means a function that prints; exit code 0 after an error means a lie.",
+        "Pick the fix that removes the cause: return the value, raise in the core, catch at the edge, exit non-zero. Cross out `# type: ignore`, a comment, `-1` and a rerun.",
+        "Say what each change solves: easier to test, easier to change, or honest to the tools that read the exit code.",
+    ],
+    "worked": [
+        {
+            "title": "Where does the except live? Same shape as Q3",
+            "question_md": (
+                "A library group's `load_books(path)` can raise `OSError` (no such file) or `ValueError` (a "
+                "bad row). The user must see `could not read books.csv` on stderr, and the command must exit "
+                "with 1. Where should the `try`/`except` that does this live?\n\n"
+                "- a) Inside `load_books`, which prints the message and returns an empty list\n"
+                "- b) In the `overdue` command in `cli.py`, around the call to `load_books`\n"
+                "- c) Around the whole program in `__main__.py`, as one bare `except` that prints "
+                "\"something went wrong\"\n"
+                "- d) Inside `overdue_report`, where the books are finally used"
+            ),
+            "steps_md": [
+                "The core raises when the caller cannot carry on. It never prints or exits.",
+                "The shell is the only place that talks to the user, so it catches the two errors it expects, writes to stderr and exits 1.",
+                "a hides the failure as an empty list, c hides every bug, and d is core code.",
+            ],
+            "answer_md": (
+                "**b.** The core raises and the shell catches: `overdue` in `cli.py` prints to stderr and exits "
+                "with code 1. A message plus an empty list in the core would make a failed read look like "
+                "success."
+            ),
+        }
+    ],
+    "twists": [
+        {
+            "twist_md": "Q1 shape. `uv run parking-lot park 1234ABC` works, but `uv run python -m parking_lot park 1234ABC` ends with `No module named 'app'`.",
+            "how_md": "Two doors. The command reads `[project.scripts]`; the `-m` door runs `__main__.py`, which still imports the old `app`. Change that import.",
+        },
+        {
+            "twist_md": "Q3 shape. After a function becomes `-> float | None`, mypy reports `Unsupported operand types for + (\"float\" and \"None\")`.",
+            "how_md": "The checker is doing its job. Decide in the caller what a missing price means: skip it and report it, or raise. `# type: ignore` hides the decision.",
+        },
+        {
+            "twist_md": "Q6 shape. At v0.2, `uv run expenses report nosuch.csv > report.txt` leaves the error message inside `report.txt`.",
+            "how_md": "v0.2 used `print`, which writes to stdout, so `>` captured it. Writing to stderr with `err=True` keeps the error on the screen.",
+        },
+        {
+            "twist_md": "Open, like Q8. A diff moves the `try`/`except` out of `load_books` and into the `overdue` command.",
+            "how_md": "A bad file now gives a message on stderr and exit code 1; the old bare `except` returned an empty list. The better commit message names that. One test: `CliRunner` on a missing file, exit code 1.",
+        },
+        {
+            "twist_md": "Open, like Q7. A function has `print(\"DEBUG ...\")` lines, and a test that compares the command's output starts failing.",
+            "how_md": "Two problems: the output is polluted and the test breaks. Use `logging`, configured once in the shell. `print` or `typer.echo` stays for the real output.",
+        },
+    ],
+    "traps": [
+        "\"Print the error and `return`: the user can read it.\" Tools read the exit code. The shell, `&&` and CI all see success.",
+        "\"A bare `except` is safe.\" It turns a typo into \"could not read\" and swallows Ctrl-C.",
+        "\"Return -1 for not found.\" The caller may add it to a total and nothing complains. Return `None` and let mypy force the decision.",
+        "\"Give `amount` a default to make it optional.\" A default makes the option `--amount`, and the positional value has no slot.",
+    ],
+    "say_md": (
+        "- No default: an argument, by position. A default: an option, by name. A default turns an argument into an option.\n"
+        "- The left side of `[project.scripts]` is the command. The right side is `module:object`.\n"
+        "- A program that prints an error and exits 0 is a program that lies. I raise `typer.Exit(code=1)` so `echo $?` is non-zero.\n"
+        "- The core takes values and returns values. The shell reads, prints, catches and exits. You cannot assert on a `print`.\n"
+        "- The core raises, the shell catches, prints to stderr and exits non-zero. Catch only what you expect."
+    ),
+    "practice": [
+        "cli-program-q16",
+        "cli-program-q17",
+        "cli-program-q23",
+        "cli-program-q06",
+        "core-shell-failing-q07",
+        "core-shell-failing-q10",
+        "core-shell-failing-q16",
+        "core-shell-failing-q22",
+    ],
+    "short_answers": {},
+}
+
+if __name__ == "__main__":
+    out = Path(__file__).resolve().parent.parent / "P3.json"
+    with out.open("w", encoding="utf-8") as f:
+        json.dump(P3, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    print(f"wrote {out}")

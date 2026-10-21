@@ -1,0 +1,194 @@
+"""P1 (same shapes, other topics): lifecycle, Agile, Scrum, backlog, Definition of Done. Writes ../P1.json.
+
+Facts from session 1 slides 5-8, 15-19, session 2 slides 4-14 and session 4 slides 5-12, 16-17, 30.
+No tool output is shown in this stop. Practice: seven multiple-choice questions and one short open
+question (scrum-q39, backlog read like Q7). Levels core or exam only; no id used by S1 to S9.
+"""
+
+import json
+from pathlib import Path
+
+P1 = {
+    "tid": "P1",
+    "name": "Process: lifecycle, Agile, Scrum, backlog, Definition of Done",
+    "minutes": 20,
+    "shape_md": (
+        "None of the nine samples is about the lifecycle, Agile or Scrum, but sessions 1, 2 and 4 are on "
+        "the paper. Expect the same shapes with a team, a backlog or a Sprint in the story."
+    ),
+    "one_md": (
+        "Name the situation in the course's words and give the rule the slides give for it, "
+        "not the quick or senior option."
+    ),
+    "spot_md": (
+        "- A short story of a team going wrong (nobody agreed an order, a push broke everyone, it only runs "
+        "on one laptop) is asked like Q5: name the failure. Session 1 pairs each failure with its answer.\n"
+        "- A change in a project (a library swap, a hard-coded shortcut, a crash on an empty list) is asked "
+        "like Q2: which kind of change is it? Same behaviour and unchanged tests means refactoring.\n"
+        "- A Scrum scenario (a request from outside mid-Sprint, a red CI check the day before the Review, a "
+        "Retrospective that turns into blame) is asked like Q4: what follows? The answer states the rule.\n"
+        "- A pasted backlog or Definition of Done is asked like Q7: name two problems, say how you would "
+        "change it, say which problem each change solves. One or two sentences per part.\n"
+        "- \"Which approach fits?\" (Waterfall, Scrum, Kanban, XP) is asked like Q1: match the situation "
+        "and cross out the rest."
+    ),
+    "basics": [
+        {
+            "id": "P1-b1",
+            "heading": "Lifecycle, failures, Waterfall and Agile",
+            "body_md": (
+                "The lifecycle has seven phases: Idea, Analysis, Design, Development, Testing, Deployment, "
+                "Maintenance. Development comes late and Maintenance never ends. After launch the cycle "
+                "restarts at Design for one of four kinds of change: a bug (unintended behaviour), a feature "
+                "(new behaviour), a refactor (same behaviour, new structure) or tech debt (a known, "
+                "deliberate shortcut).\n\n"
+                "| A failure from slide 6 | What slide 8 answers |\n|---|---|\n"
+                "| no shared plan, four people build four corners | Agile, Scrum |\n"
+                "| nobody can read it; change one thing, three others break | clean code, testing, TDD |\n"
+                "| a teammate's change breaks the build | version control, code reviews, CI |\n"
+                "| works on my machine | containerisation, automatic deployment |\n\n"
+                "Waterfall is linear: each phase is finished before the next, and the gate is an approved "
+                "document. It suits fixed scope and fixed price. For software, requirements change (normal, "
+                "not a failed analysis), feedback comes late and integration risk piles up. Agile runs the "
+                "same phases in every short cycle, on a small slice."
+            ),
+        },
+        {
+            "id": "P1-b2",
+            "heading": "Scrum on one page",
+            "body_md": (
+                "The Product Owner owns and orders the backlog, and is one person. The Scrum Master makes the "
+                "process work and removes impediments, and is not a manager. Developers build the Increment "
+                "and decide how.\n\n"
+                "| Artifact | Its commitment |\n|---|---|\n"
+                "| Product Backlog | Product Goal |\n"
+                "| Sprint Backlog | Sprint Goal |\n"
+                "| Increment | Definition of Done |\n\n"
+                "For a two-week Sprint: Refinement about 4 h, Planning 1 h, Daily 15 min, Review 1 h, "
+                "Retrospective 1 h. The Daily is not a status report. The Review gathers feedback that "
+                "changes the backlog. The Retrospective asks how the team worked, without blame.\n\n"
+                "A backlog item is an outcome a user gets, ordered by value and detailed only near the top. "
+                "A Definition of Done line must be checkable, and \"done except for tests\" is not done. "
+                "In this course it is a green CI check."
+            ),
+        },
+    ],
+    "checks": [
+        {
+            "id": "P1-c1",
+            "q_md": "Which Scrum artifact commits to the Definition of Done?",
+            "options": ["The Product Backlog", "The Sprint Backlog", "The Increment"],
+            "answer": 2,
+            "why_md": "Product Backlog to Product Goal, Sprint Backlog to Sprint Goal, Increment to Definition of Done.",
+        },
+        {
+            "id": "P1-c2",
+            "q_md": "How long is the Daily in a two-week Sprint?",
+            "options": ["15 minutes", "1 hour", "About 4 hours"],
+            "answer": 0,
+            "why_md": "Fifteen minutes. The 4 hours belong to Refinement and the hour to Planning, Review and Retrospective.",
+        },
+    ],
+    "method": [
+        "Name the situation in the course's words: a failure from slide 6, a kind of change, a ceremony, a role, a backlog item.",
+        "Recall the rule the slides give for it. The stem usually quotes the situation from the slide.",
+        "Cross out options that decide by speed, seniority or size: \"quick win first\", \"the director asked\", \"three tests pass\".",
+        "Pick the option that states the rule, and give the reason in one sentence.",
+        "Open, with a pasted backlog or Definition of Done: two problems (a task, a standard, a wish), the rewrite, which problem each change solves.",
+    ],
+    "worked": [
+        {
+            "title": "A Definition of Done question, same shape as Q4",
+            "question_md": (
+                "Two days before the Sprint Review, the flashcard-trainer group has the Leitner-box item in "
+                "the Done column. Their Definition of Done says: \"The CI check is green. The README says "
+                "how to use the new behaviour.\" CI is green, but the README still has the old text. Ana "
+                "says: \"The code works, so it is done.\" What follows from the Definition of Done?\n\n"
+                "- a) The item is done: the code works, and the README is a detail for later\n"
+                "- b) The item is not done and does not ship until the README line is met\n"
+                "- c) The item is done, and the README goes into the next Sprint\n"
+                "- d) The item is 80% done, so the Review shows it with that label"
+            ),
+            "steps_md": [
+                "The Definition of Done is one bar for every item. Its lines are checks: green CI, README updated.",
+                "One line is not met, so the item misses the bar.",
+                "a, c and d all invent a middle state. The slide has none: \"done except for\" is not admissible.",
+            ],
+            "answer_md": (
+                "**b.** The README line of the Definition of Done is not met, so the item is not done. An item "
+                "that misses the Definition of Done does not ship, whatever the code does."
+            ),
+        }
+    ],
+    "twists": [
+        {
+            "twist_md": "Q4 shape. On day 6 of a Sprint, a director outside the team asks two developers for a PDF export \"for Friday\".",
+            "how_md": "It goes to the Product Owner, who orders the backlog. Nobody outside decides how much goes into a Sprint.",
+        },
+        {
+            "twist_md": "Q1 shape. Two people maintain a tool and get small, varied requests every day; fixed two-week sprints keep breaking.",
+            "how_md": "Kanban: a board, a limit on work in progress, pull the next item when there is capacity. Scrum suits feature work, XP is about how code is written.",
+        },
+        {
+            "twist_md": "Q7 shape. A backlog line says \"Tests\", another says \"Make it good\", another \"Do the database part\".",
+            "how_md": "\"Tests\" is a standard for every item, so it belongs in the Definition of Done. \"Make it good\" cannot be checked. \"Do the database part\" is a task: nobody can tell when it is done.",
+        },
+        {
+            "twist_md": "Q4 shape. The Retrospective spends forty minutes on who broke CI and ends with an apology.",
+            "how_md": "That is blame, and nothing changes. A Retrospective covers how the team worked and what to change next Sprint, and ends with a concrete rule.",
+        },
+        {
+            "twist_md": "Q5 shape. A client sees the first version after nine months and wants something different. The manager says the analysis failed.",
+            "how_md": "Changing requirements are normal, not a failed analysis. The answer is working software sooner and frequent user involvement.",
+        },
+    ],
+    "traps": [
+        "\"Three of four tests pass, so it is nearly done.\" There is no mostly done. An item that misses the Definition of Done is not done and does not ship.",
+        "\"Quick wins first build momentum.\" The backlog is ordered by value, not by what is easiest to start.",
+        "\"The Scrum Master assigns the tasks.\" The Scrum Master is not a manager. The Developers decide who does what, and the Product Owner decides the order.",
+        "\"We value working software over documentation, so skip the README.\" The right side still has value. Working software is ranked above it, not instead of it.",
+    ],
+    "say_md": (
+        "- Name the failure, then the course's answer: no shared plan, Agile and Scrum; nobody can read it, clean code and TDD; a change breaks the build, version control, review and CI; works on my machine, containers and deployment.\n"
+        "- A refactoring changes the structure and keeps the behaviour. A bug fix, a feature and tech debt do not.\n"
+        "- An item that misses the Definition of Done is not done and does not ship.\n"
+        "- The Product Owner orders the backlog by value. Nobody outside decides what goes into a Sprint.\n"
+        "- Review: feedback that changes the backlog. Retrospective: how the team worked, without blame."
+    ),
+    "practice": [
+        "sdlc-agile-q05",
+        "sdlc-agile-q14",
+        "sdlc-agile-q22",
+        "scrum-q18",
+        "scrum-q06",
+        "scrum-q28",
+        "scrum-q12",
+        "scrum-q39",
+    ],
+    "short_answers": {
+        "scrum-q39": {
+            "1": (
+                "Line 2, \"Do the database part\", is a task, not an outcome: nobody can tell when it is done. "
+                "Line 3, \"Write tests for pricing\", is a standard every item must meet, so it belongs in the "
+                "Definition of Done."
+            ),
+            "2": (
+                "Line 4: \"As a driver, I can see the price when I leave, so that I pay the right amount.\" "
+                "Line 2: \"As an attendant, I can reopen the program and see today's tickets, so that no car "
+                "is lost overnight.\""
+            ),
+            "3": (
+                "Issuing a ticket goes first because it is the parking lot's core value: the backlog is "
+                "ordered by value, not ease. Only the top three need detail because the lower items will "
+                "change before they are built."
+            ),
+        }
+    },
+}
+
+if __name__ == "__main__":
+    out = Path(__file__).resolve().parent.parent / "P1.json"
+    with out.open("w", encoding="utf-8") as f:
+        json.dump(P1, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    print(f"wrote {out}")

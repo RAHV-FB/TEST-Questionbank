@@ -1128,15 +1128,15 @@ Found 6 errors in 1 file (checked 1 source file)
             [
                 part(
                     "1",
-                    "Sort the six errors by line into the three kinds of session 7 (missing annotation, types disagree, None not handled). Which of them are repeats of an earlier error?",
+                    "Sort the six errors by line into the kinds of session 7 (missing annotation, types disagree, None not handled, Any leaks in). Which of them are repeats of an earlier error?",
                     2,
-                    "Line 12 is the missing annotation, and both errors on line 24 repeat it: they vanish once it is annotated. Line 17 is None not handled. Lines 23 and 28 are types disagree.",
+                    "Line 12 is the missing annotation, and both errors on line 24 repeat it: they vanish once it is annotated. Of the two, `Returning Any` is Any leaks in (the `Any` comes from the untyped `weekly_cap`) and the untyped call is the missing annotation seen from the caller. Line 17 is None not handled. Lines 23 and 28 are types disagree.",
                     [
                         "Line 12 is a missing annotation",
-                        "Both errors on line 24 are consequences of line 12 and vanish when it is annotated (accept types disagree for the no-any-return error if the student says the Any comes from the untyped weekly_cap; seeing that line 12 is the root matters more than the sort)",
+                        "Both errors on line 24 are consequences of line 12 and vanish when it is annotated: the no-any-return error is Any leaks in (the Any comes from the untyped weekly_cap) and the untyped call is a missing annotation seen from the caller (seeing that line 12 is the root matters more than the label)",
                         "Line 17 is None not handled, and lines 23 and 28 are types disagree",
                     ],
-                    'Counting six separate causes misses that the first error is the root of the two on line 24: annotate line 12 and the log shrinks from six errors to three. Sorting the `no-any-return` error under "types disagree" is acceptable only if the answer notes where the `Any` comes from.',
+                    'Counting six separate causes misses that the first error is the root of the two on line 24: annotate line 12 and the log shrinks from six errors to three. Filing the `no-any-return` error under "types disagree" is the slip: mypy saw no clashing types there, only an `Any` that leaked in from the untyped `weekly_cap`.',
                 ),
                 part(
                     "2",

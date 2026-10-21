@@ -1,0 +1,130 @@
+{
+ "stops": [
+  {
+   "kind": "intro",
+   "ref": "intro",
+   "title": "How he marks",
+   "minutes": 10,
+   "note": "How he marks, the answer formula and a 60-minute plan. Read it once."
+  },
+  {
+   "kind": "type",
+   "ref": "S1",
+   "title": "Q1 Tool error: what do you do next?",
+   "minutes": 15,
+   "note": "A tool error and four moves. Try his question first, then read why."
+  },
+  {
+   "kind": "type",
+   "ref": "S2",
+   "title": "Q2 Is it a refactoring?",
+   "minutes": 15,
+   "note": "Behaviour stays the same and the tests still pass. That is the whole test."
+  },
+  {
+   "kind": "type",
+   "ref": "S3",
+   "title": "Q3 A mypy error: which fix?",
+   "minutes": 15,
+   "note": "One mypy error and the fix that removes the cause, not the warning."
+  },
+  {
+   "kind": "type",
+   "ref": "S4",
+   "title": "Q4 A test fails: what can you conclude?",
+   "minutes": 15,
+   "note": "A failing test says the test and the code disagree. It does not say which one is wrong."
+  },
+  {
+   "kind": "type",
+   "ref": "S5",
+   "title": "Q5 Name the clean-code problem",
+   "minutes": 15,
+   "note": "A function with several jobs. Name the problem and what a teammate cannot do."
+  },
+  {
+   "kind": "type",
+   "ref": "S6",
+   "title": "Q6 What does this command print?",
+   "minutes": 15,
+   "note": "Read a pipe and say what it prints. Count lines, not words."
+  },
+  {
+   "kind": "type",
+   "ref": "S7",
+   "title": "Q7 Read code and say what is wrong (open)",
+   "minutes": 25,
+   "note": "Open: say what the code does, name two problems, say how you would change it."
+  },
+  {
+   "kind": "type",
+   "ref": "S8",
+   "title": "Q8 Compare a diff and two commit messages (open)",
+   "minutes": 25,
+   "note": "Open: say what the diff does, pick the better message, name one test in words."
+  },
+  {
+   "kind": "type",
+   "ref": "S9",
+   "title": "Q9 Read tool output (open, harder)",
+   "minutes": 25,
+   "note": "Open: sort the mypy errors, say which one crashes, answer the `# type: ignore` question."
+  },
+  {
+   "kind": "break",
+   "ref": "break1",
+   "title": "Break",
+   "minutes": 10,
+   "note": "Away from the screen. Water, food, a short walk. No notes."
+  },
+  {
+   "kind": "type",
+   "ref": "P1",
+   "title": "Same shapes, other topics: lifecycle, Agile, Scrum, backlog, Definition of Done",
+   "minutes": 20,
+   "note": "The same question shapes on process: lifecycle, Agile, Scrum, the backlog and the Definition of Done."
+  },
+  {
+   "kind": "type",
+   "ref": "P2",
+   "title": "Same shapes, other topics: the terminal, paths, permissions, pipes, scripts, exit codes",
+   "minutes": 20,
+   "note": "The same shapes on the terminal: paths, permissions, pipes, scripts and exit codes."
+  },
+  {
+   "kind": "type",
+   "ref": "P3",
+   "title": "Same shapes, other topics: the CLI, functional core / imperative shell, failing well",
+   "minutes": 20,
+   "note": "The same shapes on typer arguments and options, exit codes, functional core and imperative shell, and failing well."
+  },
+  {
+   "kind": "type",
+   "ref": "P4",
+   "title": "Same shapes, other topics: tests and project setup",
+   "minutes": 20,
+   "note": "The same shapes on TDD, fixtures, parametrize, approx, tmp_path, CliRunner and monkeypatch, edge cases, uv, uv.lock, the src layout and CI as referee."
+  },
+  {
+   "kind": "paper",
+   "ref": "paper-a",
+   "title": "Paper A",
+   "minutes": 60,
+   "note": "Sit it as on the day: 60 minutes, pen and paper for the open answers, no notes."
+  },
+  {
+   "kind": "review",
+   "ref": "paper-a",
+   "title": "Mark and review Paper A with his marking guide",
+   "minutes": 25,
+   "note": "Mark the open answers with his three levels, then read the explanation of every question you missed."
+  },
+  {
+   "kind": "final",
+   "ref": "say",
+   "title": "The answer formula, final check",
+   "minutes": 5,
+   "note": "The answer formula and the phrases to write, type by type. Read it once."
+  }
+ ]
+}

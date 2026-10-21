@@ -1,0 +1,169 @@
+"""P2 (same shapes, other topics): the terminal, paths, permissions, pipes, scripts, exit codes. Writes ../P2.json.
+
+Facts from session 9 slides 5-22 and session 10 slides 5, 12-19, and labs 09 and 10. The console blocks
+are copied from bank questions that were run (terminal-files-q31, pipes-bash-q58); nothing is invented.
+Practice: eight multiple-choice questions, core or exam level, none used by S1 to S9.
+"""
+
+import json
+from pathlib import Path
+
+P2 = {
+    "tid": "P2",
+    "name": "The terminal: paths, permissions, pipes, scripts, exit codes",
+    "minutes": 20,
+    "shape_md": (
+        "Sessions 9 and 10 are on the paper, and Q6 is the only sample that touches them. Expect the same "
+        "shapes with a transcript: a path error, an `ls -l` line, a script and its exit code."
+    ),
+    "one_md": (
+        "Read the transcript the way the shell does: where am I, who has which letters, "
+        "and what exit code did the program return."
+    ),
+    "spot_md": (
+        "- A `$` transcript with `No such file or directory`, `Permission denied` or `command not found` is "
+        "asked like Q1: what do you do next? The message names the cause: the folder you are in, a missing "
+        "`x`, a missing `./`.\n"
+        "- A permission string such as `-rw-rw-r--`, or a chain of `cd` commands, is asked like Q6: what "
+        "does it say or print? Read it piece by piece, or track `pwd` after each `cd`.\n"
+        "- A script and its `echo $?` is asked like Q4: what can you conclude? The exit code is what `&&`, "
+        "`set -e` and CI read, not what appears on the screen.\n"
+        "- A check script that prints an error and still exits 0 is asked like Q5: name the problem. `;` runs "
+        "everything and exits with the last command's code.\n"
+        "- Open, like Q9: a transcript, then \"what is wrong, what do you type next, why not `chmod 777`?\""
+    ),
+    "basics": [
+        {
+            "id": "P2-b1",
+            "heading": "Paths, permissions and the missing x",
+            "body_md": (
+                "The shell reads what you type; the terminal is only the window. Most \"file not found\" errors "
+                "are the wrong current directory, so run `pwd` first. A path that starts with `/` is "
+                "absolute. One that does not is relative to where you stand. `..` is the parent folder, "
+                "`cd -` goes back to where you were, and `cd` alone goes home.\n\n"
+                "`ls -l` starts each line with ten characters: the type (`-` file, `d` folder), then owner, "
+                "group and everyone else, each as `rwx`. For a folder, `x` means permission to enter it. "
+                "With r=4, w=2, x=1, 755 is `rwxr-xr-x` and 644 is `rw-r--r--`.\n\n"
+                "```console\n$ ./run.sh\nbash: ./run.sh: Permission denied\n```\n\n"
+                "A new file has no `x`: nobody said it is a program. `chmod +x run.sh` says so. The `./` is "
+                "needed because the current folder is not in `PATH`. `chmod 777` makes the error go away and "
+                "the problem worse. `rm` has no bin."
+            ),
+        },
+        {
+            "id": "P2-b2",
+            "heading": "stdout, stderr and exit codes",
+            "body_md": (
+                "Every program has stdout (the result) and stderr (the problems). `>` redirects stdout only, "
+                "and `|` carries stdout only, so an error still reaches the screen. The exit code is a "
+                "separate number, and `echo $?` shows it: 0 is success, anything else is failure. CI reads "
+                "that number.\n\n"
+                "```console\n$ ./top.sh; echo $?\nusage: ./top.sh FILE\n2\n```\n\n"
+                "In a script, `set -euo pipefail` makes failures loud. `-e` stops at the first failing "
+                "command, `-u` stops on a variable that was never set, and `pipefail` fails if any stage of "
+                "a pipe fails. A `;` between commands runs them all, and the script exits with the last "
+                "one's code. `&&` runs the next command only after success. Quote `\"$1\"`, because paths "
+                "contain spaces."
+            ),
+        },
+    ],
+    "checks": [
+        {
+            "id": "P2-c1",
+            "q_md": "`ls -l` shows `drwxr-xr-x` for `src`. What does the first character tell you?",
+            "options": ["It is a script", "It is a folder", "It is hidden"],
+            "answer": 1,
+            "why_md": "The first character is the type: `-` is a file and `d` is a folder. Whether a script can run depends on the `x` letters.",
+        },
+        {
+            "id": "P2-c2",
+            "q_md": "Which stream does `>` redirect?",
+            "options": ["stdout only", "stderr only", "stdout and stderr together"],
+            "answer": 0,
+            "why_md": "stdout only. `2>` redirects stderr, so an error message still reaches the screen after a plain `>`.",
+        },
+    ],
+    "method": [
+        "Read the transcript from the top. Note the folder (`pwd`) and the last exit code (`echo $?`).",
+        "Say what the message names: a path, a missing `x`, a bare name without `./`, an unquoted value.",
+        "Cross out the careless moves: `chmod 777`, `sudo`, reinstalling, editing code that works, deleting and re-creating the file.",
+        "For a script or a pipe, follow it line by line. Only stdout goes through `>` and `|`, and the script's exit code is the last command's unless `set -e` stops it.",
+        "Open version: say what happened, name the one-letter or one-folder cause, describe the fix, and say why the careless fix is wrong.",
+    ],
+    "worked": [
+        {
+            "title": "A command-not-found question, same shape as Q1",
+            "question_md": (
+                "You make `run.sh` executable and it works. Then you type the bare name:\n\n"
+                "```console\n$ chmod +x run.sh\n$ ./run.sh\nreport ready\n$ run.sh\nrun.sh: command not found\n```\n\n"
+                "What should you do next?\n\n"
+                "- a) Run `chmod +x run.sh` again, because the permission wore off\n"
+                "- b) Type `./run.sh`: without `./` the shell only searches `PATH`, and this folder is not in it\n"
+                "- c) Reinstall bash, because it cannot find its own scripts\n"
+                "- d) Rename the file to `run`, because `.sh` names are not commands"
+            ),
+            "steps_md": [
+                "`./run.sh` printed `report ready`, so the `x` is set and the script is fine.",
+                "`command not found` is about the name. A bare name is searched in `PATH`; `./` means this folder.",
+                "a, c and d change something the message never mentions.",
+            ],
+            "answer_md": (
+                "**b.** The script ran with `./run.sh`, so the permission is fine. A bare name is looked up in "
+                "`PATH`, which does not include this folder, so type `./run.sh`."
+            ),
+        }
+    ],
+    "twists": [
+        {
+            "twist_md": "Q1 shape. `cd` and then `cd expense-tracker` ends with `No such file or directory`.",
+            "how_md": "A plain `cd` goes home, and the project is inside `code`. Check with `pwd` and `ls`, then `cd ~/code/expense-tracker`.",
+        },
+        {
+            "twist_md": "Q6 shape. A teammate runs `ls` in a clone, sees no `.git`, and wants to run `git init`.",
+            "how_md": "`ls` hides names that start with a dot. `ls -a` shows `.git`. The clone is fine, and `git init` would start a new history.",
+        },
+        {
+            "twist_md": "Q4 shape. A teammate adds `2> /dev/null` \"to keep the output clean\", and `echo $?` still prints 1.",
+            "how_md": "It hides the reason, not the failure. The exit code still reaches `&&`, `set -e` and CI.",
+        },
+        {
+            "twist_md": "Q6 shape. `mkdir notes`, `touch`, `cp`, `cp -r notes notes-old`, `mv`, `rm`: what do the two folders hold?",
+            "how_md": "Follow the files, not the commands. `cp -r` copies the folder as it is at that moment, and the later `mv` and `rm` only touch `notes`.",
+        },
+        {
+            "twist_md": "Open, like Q9. `./run.sh` says `Permission denied`, and a teammate found `chmod 777` online.",
+            "how_md": "The `ls -l` line shows no `x`. Fix it with `chmod +x`. 777 also gives everyone write permission: it makes the error go away and the problem worse.",
+        },
+    ],
+    "traps": [
+        "\"`chmod 777` fixes any permission error.\" It adds the missing `x` and gives everyone write permission as well.",
+        "\"`>` sends everything to the file.\" It sends stdout only. An error written to stderr still shows on the screen.",
+        "\"`sudo` is a bigger hammer for the same problem.\" Nobody said the file is a program. Who runs it does not change that.",
+        "\"The script printed an error, so it failed.\" Failure is the exit code. A script that joins its checks with `;` prints the error and exits 0.",
+    ],
+    "say_md": (
+        "- The message names the cause: the folder I am in (`pwd`), a missing `x` (`chmod +x`), a bare name without `./`.\n"
+        "- `ls -l`: type, then owner, group, everyone else. For a folder, `x` means enter it. 755 is `rwxr-xr-x`.\n"
+        "- `>` and `|` carry stdout only. Errors go to stderr, so they still reach the screen.\n"
+        "- The exit code is what `&&`, `set -e` and CI read: 0 is success, anything else is failure.\n"
+        "- `;` runs everything and exits with the last command's code. `set -e` stops at the first failure."
+    ),
+    "practice": [
+        "terminal-files-q30",
+        "terminal-files-q12",
+        "terminal-files-q27",
+        "terminal-files-q07",
+        "terminal-files-q21",
+        "pipes-bash-q02",
+        "pipes-bash-q20",
+        "pipes-bash-q30",
+    ],
+    "short_answers": {},
+}
+
+if __name__ == "__main__":
+    out = Path(__file__).resolve().parent.parent / "P2.json"
+    with out.open("w", encoding="utf-8") as f:
+        json.dump(P2, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    print(f"wrote {out}")

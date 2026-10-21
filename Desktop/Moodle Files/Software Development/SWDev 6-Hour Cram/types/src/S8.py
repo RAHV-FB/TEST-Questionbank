@@ -1,0 +1,309 @@
+"""Stop S8 of the 6-hour cram: sample Q8, compare a diff and two commit messages (open).
+
+Writes types/S8.json in the shape given by CRAM6_SPEC.md. The teacher's answer is copied verbatim
+from study-site/sources/moodle/midterm-sample-answers.md.
+"""
+
+import json
+from pathlib import Path
+
+QUESTION = (
+    "A teammate shows you this diff from the expense-tracker history:\n\n"
+    "```diff\n"
+    " def load_expenses(path):\n"
+    "     with open(path) as file:\n"
+    "         rows = list(csv.reader(file))\n"
+    "-    return [Expense(row[0], float(row[1])) for row in rows]\n"
+    "+    expenses = [Expense(row[0], float(row[1])) for row in rows]\n"
+    "+    if any(expense.amount < 0 for expense in expenses):\n"
+    "+        raise ValueError(\"Negative amount in \" + path)\n"
+    "+    return expenses\n"
+    "```\n\n"
+    "Two candidate commit messages:\n\n"
+    "- A: `Fix stuff in loader`\n"
+    "- B: `Reject negative amounts when loading expenses`"
+)
+
+HIS_ANSWER = (
+    "1. After loading the expenses, it checks whether any amount is negative and, if so, raises an error that "
+    "names the file. Previously negative amounts went through silently.\n"
+    "2. B. It says what changed in behaviour and what it covers. Someone searching the history for \"why do "
+    "negative amounts fail?\" will find it. A says nothing: the reader must open the diff to learn anything.\n"
+    "3. Any one of: a file with one negative amount raises ValueError; a file with only non-negative amounts "
+    "still loads; a zero amount is accepted (edge case)."
+)
+
+DECODED = (
+    "- **The pattern.** A diff, two messages (one vague, one specific), three short parts: what the change "
+    "does, which message and why, one test in words. Read-diff, then compare, then judgement.\n"
+    "- **Part 1: the behaviour, not the lines.** After loading, a negative amount now raises an error that names "
+    "the file. The second half of his answer is the contrast, \"previously negative amounts went through "
+    "silently\". When behaviour changes, say what it was before.\n"
+    "- **Part 2: B, and the reason is the later reader.** B says what changed in behaviour and what it covers, "
+    "so a search for \"negative\" finds it. A makes the reader open the diff. \"B is longer\" is not a reason. "
+    "The reason is what the reader can do without the diff.\n"
+    "- **Part 3: any one test, concrete.** A bad file raises `ValueError`, or a good file still loads, or a zero "
+    "amount is accepted (the edge). Each has an input and an expected result. He asks for one, not three.\n"
+    "- **Level.** One or two sentences per part, and the test is a sentence, not code."
+)
+
+SPOT = (
+    "- A diff of 5 to 25 lines, sometimes with a trimmed hunk, followed by \"Two candidate commit messages\" "
+    "labelled A and B.\n"
+    "- A is vague (`Fix stuff in loader`, `Update report.py`, `Refactor`, `Make the tests pass`). B names the "
+    "behaviour or the structure that changed.\n"
+    "- The words \"six months later\" and \"name one test you would add, in words\".\n"
+    "- The diff may add a check, a command or an option, move code with the output unchanged (a refactoring), or "
+    "be one step of red, green, refactor."
+)
+
+BASICS = [
+    {
+        "id": "S8-b1",
+        "heading": "What a good message tells the reader",
+        "body_md": (
+            "Someone reading `git log --oneline` six months later sees only the subject line. A good subject says "
+            "what changed in behaviour, in the imperative, so a search for the right word finds it.\n\n"
+            "| Message | Why it fails the later reader |\n"
+            "|---|---|\n"
+            "| `Update report.py` | names the file, which the diff already shows |\n"
+            "| `Fix stuff in loader` | claims a bug and names nothing |\n"
+            "| `Refactor` | names a kind of change and fits almost any commit |\n"
+            "| `Add y and z to calculate_totals` | describes the mechanics in names that mean nothing out of "
+            "context |\n\n"
+            "The demo's own subjects are the model: `Filter by category and ignore small amounts`, `Separate "
+            "reading and printing from the calculation`, `Replace magic numbers with named constants`. \"B is "
+            "longer\" is never the reason. The reason is what the reader gets from B without opening the diff."
+        ),
+    },
+    {
+        "id": "S8-b2",
+        "heading": "Part 1 and part 3: the change and the test",
+        "body_md": (
+            "Part 1 asks for the effect, not a reading of each line. Say what the program does now and, if "
+            "behaviour changed, what it did before: \"it now raises an error that names the file; before, "
+            "negative amounts went through silently\". If the output does not change, say so: it is a "
+            "refactoring.\n\n"
+            "Part 3 wants one test in words: a concrete input and the expected result, aimed at what the change "
+            "could break. Session 8 gives the questions to ask: empty, zero (the boundary), negative, duplicate, "
+            "missing. For a new check the natural tests are a bad input that raises, a good input that still "
+            "loads, and the boundary.\n\n"
+            "\"Test that it works\" has no input and no result, so there is nothing to mark. If the test needs a "
+            "file, say it uses a fresh temporary folder (`tmp_path`), never the real data file."
+        ),
+    },
+]
+
+CHECKS = [
+    {
+        "id": "S8-c1",
+        "q_md": "Part 1 of Q8, for a diff that raises `ValueError` on a negative amount. Which opening is best?",
+        "options": [
+            "It improves error handling in the loader.",
+            "After loading, it raises an error that names the file if any amount is negative; before, negative "
+            "amounts went through silently.",
+            "It adds `any(...)` and a `raise` after the list comprehension.",
+        ],
+        "answer": 1,
+        "why_md": (
+            "The first is too vague to mark. The third narrates lines. The second says what the program does "
+            "now and what it did before."
+        ),
+    },
+    {
+        "id": "S8-c2",
+        "q_md": "Which test is concrete enough for part 3?",
+        "options": [
+            "A file with one negative amount raises `ValueError`.",
+            "Test that loading works.",
+            "Run the program and look at the result.",
+        ],
+        "answer": 0,
+        "why_md": "It has an input (one negative amount) and an expected result (`ValueError`). The others have neither.",
+    },
+]
+
+METHOD = [
+    "Part 1: say the effect in one or two sentences. Before and after if behaviour changed, \"behaviour "
+    "unchanged\" if it did not.",
+    "Part 2: write the letter, then the reason. B names the behaviour or structure that changed. A makes the "
+    "reader open the diff.",
+    "Part 3: one test with an input and an expected result, aimed at the new failure or the boundary.",
+    "Do not narrate lines, and do not judge a message by its length or its tone.",
+]
+
+WORKED = [
+    {
+        "title": "Same shape, other topic: a parking fee",
+        "question_md": (
+            "A teammate shows you this diff (trimmed: the hunk that defines the constants, which hold 60, 2.50 "
+            "and 1.80, is not shown). The existing tests pass before and after, unedited.\n\n"
+            "```diff\n"
+            " def fee(minutes: int) -> float:\n"
+            "-    if minutes <= 60:\n"
+            "-        return 2.50\n"
+            "-    return 2.50 + (minutes - 60) / 60 * 1.80\n"
+            "+    if minutes <= FREE_MINUTES:\n"
+            "+        return BASE_FEE\n"
+            "+    return BASE_FEE + (minutes - FREE_MINUTES) / 60 * RATE_PER_HOUR\n"
+            "```\n\n"
+            "- A: `Update fee`\n"
+            "- B: `Replace magic numbers in fee with named constants`\n\n"
+            "1. What does this change do?\n"
+            "2. Which message is better, and why? Answer from the point of view of someone reading the history "
+            "six months later.\n"
+            "3. Name one test you would add, in words."
+        ),
+        "steps_md": [
+            "Part 1: the effect. The numbers 60, 2.50 and 1.80 now have names and the fees do not change.",
+            "Part 2: the later reader wants to know what and where. B says it. A makes them open the diff.",
+            "Part 3: a refactoring needs a test that pins the old behaviour. Aim at the boundary, exactly 60 "
+            "minutes.",
+        ],
+        "answer_md": (
+            "1. It replaces the numbers 60, 2.50 and 1.80 in `fee` with named constants. The fees do not change: "
+            "a refactoring.\n"
+            "2. B. It says what kind of change it is and where, so the reader expects no change in behaviour. A "
+            "makes them open the diff.\n"
+            "3. A ticket of exactly 60 minutes still costs 2.50, and 120 minutes costs 4.30: the boundary and the "
+            "rate."
+        ),
+    }
+]
+
+TWISTS = [
+    {
+        "twist_md": "The diff only renames and extracts a function, and the tests pass unedited.",
+        "how_md": (
+            "Part 1: say what moved and that behaviour is unchanged. Part 2: B names what moved and where, such as "
+            "`Extract is_wanted from total_by_category`. Part 3: a test the new structure makes easy, such as "
+            "calling the extracted function directly."
+        ),
+    },
+    {
+        "twist_md": "The diff adds a command or an option, such as `add` or `--month`.",
+        "how_md": (
+            "Say what a user can now do. For the test, run the command with `CliRunner` inside a fresh temporary "
+            "folder (`tmp_path` with `monkeypatch.chdir`) and check the file it should produce."
+        ),
+    },
+    {
+        "twist_md": "The diff replaces a bare `except` with specific exceptions and an exit code.",
+        "how_md": (
+            "Behaviour: a failure that used to disappear now ends with a message on stderr and a non-zero exit. "
+            "Test: `CliRunner` on a missing file expects exit code 1."
+        ),
+    },
+    {
+        "twist_md": "The two messages are `Refactor` and `Make the tests pass`.",
+        "how_md": (
+            "Both fit almost any commit. Choose the one that names the behaviour or the structure that changed, "
+            "and say the other tells the reader nothing without the diff."
+        ),
+    },
+    {
+        "twist_md": "The commit mixes a rename with a new option.",
+        "how_md": (
+            "Suggest two commits. A refactoring is checked by unchanged output, but this commit changes the "
+            "output, so nobody can tell whether the renames were safe."
+        ),
+    },
+]
+
+TRAPS = [
+    "\"B, because it is longer.\" Length is not a reason. Say what B lets the reader do: find the commit by its "
+    "behaviour without opening the diff.",
+    "Reading the diff line by line in part 1. Say what the program does now, and what it did before.",
+    "\"Test that it works.\" Give an input and an expected result, aimed at the boundary or the new failure.",
+    "Calling a behaviour change a refactoring, or the other way round. If the output changes, it is not a "
+    "refactoring.",
+]
+
+SAY = (
+    "- \"It now ...; before, ...\" for the change.\n"
+    "- \"B. It says what changed in behaviour, so the log line is enough. A makes the reader open the diff.\"\n"
+    "- \"With <input>, the function <raises / returns> <result>.\" Aim at the boundary or the new failure.\n"
+    "- \"The output is unchanged, so it is a refactoring.\" When it is."
+)
+
+PRACTICE = [
+    "history-q40",
+    "history-q10",
+    "history-q39",
+    "history-q15",
+    "clean-code-q44",
+]
+
+SHORT_ANSWERS = {
+    "history-q10": {
+        "1": "The report can now be limited to one category and can skip amounts below a minimum: "
+        "`calculate_totals` skips other categories and small amounts, and the header says which filters are on.",
+        "2": "B. It says what the program can now do in a user's words, so a search for \"filter\" finds it. A uses "
+        "the names `y` and `z`, which mean nothing out of context, so the reader must open the diff.",
+        "3": "An expense exactly equal to the minimum is kept: with dining amounts 10 and 5 and a minimum of 10, "
+        "the dining total is 10. That is the boundary, the place this code can be wrong.",
+    },
+    "history-q15": {
+        "1": "It adds an `add` command that appends an expense to `data/expenses.csv`, writing the header only for "
+        "a new file and defaulting the date to today, and it git-ignores `data/`.",
+        "2": "B. It says what a user can now do, so someone asking when `add` arrived or why `data/` exists finds it "
+        "in the log. A names a file that changes in many commits, so the reader must open the diff.",
+        "3": "In an empty temporary folder, run `add \"Bar Ramon\" dining 12.50` with the command-line runner and "
+        "check that `data/expenses.csv` has the header and one row ending in 12.50. The real data file is never "
+        "touched.",
+    },
+    "clean-code-q44": {
+        "1": "It introduces a frozen `Expense` dataclass and makes `total_by_category` read `expense.category` and "
+        "`expense.amount` instead of tuple positions. What the function computes does not change, so it is a "
+        "refactoring.",
+        "2": "B. It says what changed and why it matters, so someone scanning `git log` finds this step without "
+        "opening the diff. A only names the file, which the diff already shows.",
+        "3": "Save the report's output before and after the change (the dining report with minimum 20) and run "
+        "`diff` on the two files. If it prints nothing, the output is identical, so behaviour is unchanged.",
+    },
+}
+
+S8 = {
+    "tid": "S8",
+    "name": "Compare a diff and two commit messages (open)",
+    "minutes": 25,
+    "shape_md": (
+        "Sample Q8: a short diff from the expense-tracker history, two commit messages (A vague, B specific) and "
+        "three parts. What does the change do, which message is better for someone reading the history six months "
+        "later, and one test you would add, in words."
+    ),
+    "one_md": (
+        "A good message tells a later reader which behaviour changed, so the log line is enough and nobody has to "
+        "open the diff."
+    ),
+    "sample": {
+        "qnum": "Q8",
+        "kind": "open",
+        "question_md": QUESTION,
+        "parts": [
+            "What does this change do?",
+            "Which message is better, and why? Answer from the point of view of someone reading the history six "
+            "months later.",
+            "Name one test you would add for this change, in words.",
+        ],
+        "his_answer_md": HIS_ANSWER,
+        "decoded_md": DECODED,
+    },
+    "spot_md": SPOT,
+    "basics": BASICS,
+    "checks": CHECKS,
+    "method": METHOD,
+    "worked": WORKED,
+    "twists": TWISTS,
+    "traps": TRAPS,
+    "say_md": SAY,
+    "practice": PRACTICE,
+    "short_answers": SHORT_ANSWERS,
+}
+
+if __name__ == "__main__":
+    out = Path(__file__).resolve().parent.parent / "S8.json"
+    with out.open("w", encoding="utf-8") as handle:
+        json.dump(S8, handle, ensure_ascii=False, indent=1)
+        handle.write("\n")
+    print(f"wrote {out}")

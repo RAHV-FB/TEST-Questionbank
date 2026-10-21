@@ -60,15 +60,16 @@ Found 4 errors in 2 files (checked 3 source files)
 
 Four errors, all one kind: two functions without a signature and the two calls to them. Add the signatures and a second kind appears, because `d[e[2]] = 0` and `grand = 0` start a total as an `int` and then receive float amounts. The hints did not create those errors. They let mypy see them.
 
-The slide sorts every strict error into three kinds:
+The slide sorts strict errors into three kinds. The teacher's official answer to sample Q9 adds a fourth, so learn four:
 
 | Kind | Words to look for | Fix | Crash for a user? |
 |---|---|---|---|
 | Missing annotation ("what type is this?") | "missing a type annotation", "untyped", "Need type annotation", "Missing type arguments" | write the hint | no |
-| Types disagree (`int` here, `float` there) | "Incompatible types", "incompatible type", "Returning Any" | make them agree (`0.0`) | not by itself: Python adds a float to an `int` |
+| Types disagree (`int` here, `float` there) | "Incompatible types", "incompatible type" | make them agree (`0.0`) | not by itself: Python adds a float to an `int` |
 | None not handled ("this can be missing") | `Item "None" of` | check it, or change the type | yes: `AttributeError` when the value is missing |
+| Any leaks in ("I gave up on this value") | "Returning Any from function declared to return" | give the value a real type: convert it or annotate it | not by itself: a weakness in the checking |
 
-"We work the kinds, not every line." Sort the log first, then fix one kind at a time. Only the third kind predicts a crash."""
+"We work the kinds, not every line." Sort the log first, then fix one kind at a time. Only None not handled predicts a crash. Never file `Returning Any` under types disagree: mypy has not seen two types that clash, it has seen no type at all."""
 
 B3 = r"""The lab ends with a table of the messages strict mode produces most often. Learn the pairs: message, kind, fix.
 
@@ -78,7 +79,7 @@ B3 = r"""The lab ends with a table of the messages strict mode produces most oft
 | `Function is missing a type annotation for one or more parameters` | missing | hint every parameter and the return |
 | `Missing type arguments for generic type "dict"` | missing | `dict[str, float]`, not `dict` (same for `list`, `tuple`) |
 | `Need type annotation for "totals"` | missing | an empty `{}` has no type yet: `totals: dict[str, float] = {}` |
-| `Returning Any from function declared to return "float"` | types disagree | the value came from something untyped (`json`): convert it, `float(...)`, or annotate the variable |
+| `Returning Any from function declared to return "float"` | Any leaks in | the value came from something untyped (`json`, or a function with no signature): convert it, `float(...)`, or annotate the variable |
 | `Item "None" of "… \| None" has no attribute "…"` | None not handled | a real bug: check for `None` first, or make the function unable to return it |
 | `Untyped decorator makes function untyped` | missing | hint the decorator; for a library, upgrade it (`uv lock --upgrade-package typer`) |
 | `Library stubs not installed for "…"` | missing | `uv add --dev types-<name>`; the message gives the exact name |
@@ -112,7 +113,7 @@ AttributeError: 'Expense' object has no attribute 'amout'. Did you mean: 'amount
 
 So ask one question of any fix: **does it change what happens when the value is missing, or only what mypy says?** A real fix for `Item "None"` decides what the program does with no result. It skips the line, shows a message, or changes the function so it cannot return `None`, as `format_report` does with `if largest is not None:`.
 
-`Any` also spreads. A label built from an `Any` value is `Any`, and strict then reports `Returning Any` where the function promised `str`. Hiding one problem can create another message."""
+`Any` also spreads. A label built from an `Any` value is `Any`, and strict then reports `Returning Any` where the function promised `str`: Any leaks in. Hiding one problem can create another message."""
 
 CHECKS = [
     {
@@ -173,7 +174,7 @@ CHECKS = [
 ]
 
 METHOD = [
-    "**Read the line, then the words.** File and line say where, the message says what, `[code]` is what you search for. Decide the kind from the words: \"missing a type annotation\" or \"untyped\" (missing annotation), \"Incompatible\" or `Returning Any` (types disagree), `Item \"None\" of` (None not handled).",
+    "**Read the line, then the words.** File and line say where, the message says what, `[code]` is what you search for. Decide the kind from the words: \"missing a type annotation\" or \"untyped\" (missing annotation), \"Incompatible\" (types disagree), `Item \"None\" of` (None not handled), `Returning Any` (Any leaks in: \"I gave up on this value\").",
     "**Find the cause, from the top.** Read the first error. One untyped function is reported at its definition, at every typed call and wherever its unknown result is returned, so one fix can remove several lines. The cause can sit above the line mypy reports (`total = 0`).",
     "**Ask who gets hurt.** Only `Item \"None\" of` points to a crash on ordinary input. Name the input in your answer: an empty list, an id that does not exist, a merchant with no expenses.",
     "**Pick the option that changes the program or its honest types.** Write the hint, make the types agree (`0.0`), convert or annotate the untyped value, handle the `None`, or `uv add --dev types-<name>`. Reject every option that only changes what mypy says: `# type: ignore`, return type `Any`, deleting the annotations, wrapping the line in `try`/`except`, a weaker CI step.",
@@ -225,19 +226,19 @@ src/report.py:22: error: Returning Any from function declared to return "float" 
 2. Which one points to a bug that could crash the program for a real user, and why?
 3. Your teammate proposes silencing all three with `# type: ignore` "to get CI green". Do you accept? Give your reasoning.""",
         "steps_md": [
-            "Part 1: sort by the message words. \"Missing a type annotation\" is missing annotation. `Item \"None\" of` is None not handled. `Returning Any from function declared to return \"float\"` is types disagree: the function promises a `float` and returns an unknown value from something untyped, such as `json`.",
+            "Part 1: sort by the message words. \"Missing a type annotation\" is missing annotation. `Item \"None\" of` is None not handled. `Returning Any from function declared to return \"float\"` is Any leaks in (\"I gave up on this value\"): the function promises a `float` and returns an unknown value from something untyped, such as `json`. Not types disagree.",
             "Part 2: only the `None` kind predicts a crash. Name the line, the mechanism and the input: `.category` is asked of `None`, for example when the list of expenses is empty, and `AttributeError` stops the program. The other two mean mypy cannot check something.",
             "Part 3: refuse, and say why. `# type: ignore` changes what mypy reports, not what Python runs, so line 15 would still crash, now behind a green tick. Then give the real fixes: hints on line 8, a `None` check before line 15, `float(...)` on line 22.",
             "Keep each part to one or two lines. The whole answer is 5–8 lines.",
         ],
-        "answer_md": "1. Line 8 is a missing annotation. Line 15 is None not handled. Line 22 is types disagree: the function promises a `float` but returns an `Any` from an untyped source.\n2. Line 15. The value can be `None`, for example for an empty list, and asking `None` for `.category` raises `AttributeError` and stops the program. The other two do not crash anything by themselves.\n3. No. `# type: ignore` hides the report but the code still crashes on an empty list, and the green CI would be misleading. I would fix the causes: add the hints, handle the `None`, and convert the value with `float(...)`.",
+        "answer_md": "1. Line 8 is a missing annotation (\"what type is this?\"). Line 15 is None not handled (\"this can be missing\"). Line 22 is Any leaks in (\"I gave up on this value\"): the function promises a `float` but returns an `Any` from an untyped source.\n2. Line 15. The value can be `None`, for example for an empty list, and asking `None` for `.category` raises `AttributeError` and stops the program. The other two do not crash anything by themselves.\n3. No. `# type: ignore` hides the report but the code still crashes on an empty list, and the green CI would be misleading. I would fix the causes: add the hints, handle the `None`, and convert the value with `float(...)`.",
     },
 ]
 
 TWISTS = [
     {
         "twist_md": "Same shape as Q3, but the error is `Returning Any from function declared to return \"float\"` and the value comes from `json.load`. The options include `# type: ignore[no-any-return]`, `-> Any` and deleting `-> float`.",
-        "how_md": "The value came from something untyped. Convert it (`float(...)`) or annotate the variable (`budgets: dict[str, float] = json.load(handle)`). Naming the exact code inside the ignore looks careful and is still only silence.",
+        "how_md": "That is Any leaks in: the value came from something untyped. Convert it (`float(...)`) or annotate the variable (`budgets: dict[str, float] = json.load(handle)`). Naming the exact code inside the ignore looks careful and is still only silence.",
     },
     {
         "twist_md": "The error is `Missing type arguments for generic type \"dict\"` or `Need type annotation for \"totals\"`.",
@@ -261,7 +262,7 @@ TWISTS = [
     },
     {
         "twist_md": "A pull request called \"Fix mypy\" changes the return type of `find_expense` from `Expense | None` to `Any`. mypy goes green. What do you say?",
-        "how_md": "Green means mypy stopped looking, not that the `None` went away: `find_expense` still returns `None` for an id that does not exist, and `.amount` still crashes. `Any` also spreads. A `str` built from the result becomes `Any`, and strict then reports `Returning Any` where the function promised `str`. Ask for honest types, a decision for each missing case, and a test for each.",
+        "how_md": "Green means mypy stopped looking, not that the `None` went away: `find_expense` still returns `None` for an id that does not exist, and `.amount` still crashes. `Any` also spreads. A `str` built from the result becomes `Any`, and strict then reports `Returning Any` (Any leaks in) where the function promised `str`. Ask for honest types, a decision for each missing case, and a test for each.",
     },
     {
         "twist_md": "A decorator copied from a blog gives `Untyped decorator makes function \"total\" untyped` plus two missing-annotation errors in the file that defines it.",
@@ -281,7 +282,7 @@ TRAPS = [
 ]
 
 SAY_MD = """- "mypy follows the types through the code and finds the problem before the program runs. ruff only checks how the code is written."
-- The three kinds by name: **missing annotation**, **types disagree**, **None not handled**, each with the words from the message that show it.
+- The kinds by name: **missing annotation**, **types disagree**, **None not handled** and, from his answer to Q9, **Any leaks in** ("I gave up on this value", for `Returning Any`), each with the words from the message that show it.
 - "Plain mypy does not look inside a function with no signature. `--strict` does."
 - "The hints did not create the errors. They let mypy see them."
 - "`# type: ignore` changes what mypy reports, not what Python runs. The crash is still there."
@@ -320,7 +321,7 @@ T05 = {
     "spot_md": "- The artefact is a few lines of Python plus mypy output in the form `file:line: error: message  [code]`, often with a count line such as `Found 3 errors in 1 file`.\n- Multiple-choice wording: \"Which fix is most appropriate?\", \"Which kind of error is it?\", \"What do you expect to see after this change?\", \"What happens when the program runs?\".\n- Open wording: \"Sort the errors into the kinds we discussed in session 7\", \"Which one could crash a user, and why?\", \"Do you accept `# type: ignore` to get CI green?\".\n- The wrong options are the careless moves: `# type: ignore`, change the type to `Any`, delete the annotations, catch everything, make CI check less.\n- A second scene: CI red at **Types** while the laptop is green, or a missing `types-` package.",
     "basics": [
         {"id": "T05-b1", "heading": "Who checks what, and how to read one mypy error", "body_md": B1},
-        {"id": "T05-b2", "heading": "--strict and the three kinds of error", "body_md": B2},
+        {"id": "T05-b2", "heading": "--strict and the kinds of error", "body_md": B2},
         {"id": "T05-b3", "heading": "The troubleshooting table: message, kind, fix", "body_md": B3},
         {"id": "T05-b4", "heading": "Fixes that only change what mypy says", "body_md": B4},
     ],

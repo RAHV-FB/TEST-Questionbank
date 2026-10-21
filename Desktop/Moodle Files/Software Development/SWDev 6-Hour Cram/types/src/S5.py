@@ -1,0 +1,198 @@
+"""S5 (sample Q5): name the clean-code problem. Writes ../S5.json.
+
+Facts from session 6 slides 11-24 and the bank (clean-code). Practice ids are mcq only, core or exam.
+"""
+
+import json
+from pathlib import Path
+
+S5 = {
+    "tid": "S5",
+    "name": "Name the clean-code problem",
+    "minutes": 15,
+    "shape_md": (
+        "Sample Q5: a function described in one sentence, and four named problems. You pick the one it "
+        "describes best. Expect it again with another function, or with a short code excerpt."
+    ),
+    "one_md": (
+        "Match what you see to the course's named problem and say what it costs the next reader: "
+        "several jobs, a vague name, a magic number, a comment that says what, a tuple."
+    ),
+    "sample": {
+        "qnum": "Q5",
+        "kind": "mcq",
+        "question_md": (
+            "A function called `process(rows)` reads a file, validates each row, calculates totals and prints "
+            "a report. Which clean-code problem does this describe best?"
+        ),
+        "options": [
+            "The function name is too long",
+            "The function does several jobs at once, so it is hard to test and to change",
+            "The function repeats the same code in several places",
+            "The function uses too many type hints",
+        ],
+        "answer": 1,
+        "his_answer_md": (
+            "**b.** One function with several jobs is hard to test (you can't check the total without "
+            "printing) and hard to change (a new output format touches the calculation)."
+        ),
+        "decoded_md": (
+            "- **The pattern.** A description in words, four named problems. There is no code to read, so the "
+            "verbs are the clue: reads, validates, calculates, prints.\n"
+            "- **Why b.** Four verbs in one function is several jobs (the course's test: describe it without the "
+            "word \"and\"). His two costs are the because: hard to test, hard to change.\n"
+            "- **His costs are concrete.** You can't check the total without printing. A new output format "
+            "touches the calculation. Copy that habit: name the problem, then say what a teammate cannot do.\n"
+            "- **Why the others tempt.** a) naming is a clean-code topic, but `process` is short and vague, not "
+            "long, and a longer name would only list the jobs. c) nothing in the description repeats. d) a hint "
+            "states a contract and never separates jobs.\n"
+            "- **Level.** One sentence naming the problem, with the two costs tied to the description."
+        ),
+    },
+    "spot_md": (
+        "- A function described in one sentence of verbs, or a short excerpt of code with a `print`, a tuple or a bare number.\n"
+        "- The stem asks \"Which clean-code problem does this describe best?\" or \"Name two problems\".\n"
+        "- The options are the named problems: several jobs, names, repeated code, magic numbers, comments, hints.\n"
+        "- ruff and mypy may pass. Passing tools say nothing about design."
+    ),
+    "basics": [
+        {
+            "id": "S5-b1",
+            "heading": "The problems to name, and what each costs",
+            "body_md": (
+                "| What you see | Problem | Cost to the next reader | Fix in words |\n|---|---|---|---|\n"
+                "| reads, validates, totals, prints | several jobs | hard to test, hard to change | one function per job |\n"
+                "| `print` inside a calculation | computation mixed with output | the result can only be looked at | return it, print in the caller |\n"
+                "| `d`, `process`, a `get_total` that prints | a name that does not say what it holds or returns | you must trace the code | name it for what it holds or returns |\n"
+                "| a bare `0.85` or `40` | magic number | you must guess what it means | a named constant, `RULE_WIDTH = 40` |\n"
+                "| `# add the amount` above `total += amount` | a comment that says what | repeats the line, goes stale | rename, then delete the comment |\n"
+                "| `row[2]`, `e[3]` | a tuple is a missing type | nobody knows what position 3 holds | `@dataclass(frozen=True)` with named fields |\n"
+                "| `if` inside `if` inside `if` | pyramid | you hold every condition in your head | guard clauses |\n\n"
+                "The test for one job: describe the function without the word \"and\"."
+            ),
+        },
+        {
+            "id": "S5-b2",
+            "heading": "Return, do not print; names promise; comments say why",
+            "body_md": (
+                "Computation is not output. \"A function that returns can be tested, reused and read on its own. "
+                "A function that prints can only be looked at.\" So return the value and let the caller print.\n\n"
+                "A function name is a promise about what it returns. `get_total` promises a number. If it only "
+                "prints, the caller receives `None` and crashes on `None > 100.0`. A variable says what it holds, a "
+                "boolean reads as a yes/no question (`is_paid`), a module says what it is for (`storage.py`).\n\n"
+                "A comment that explains what the code does is a failure of naming: rename, then delete it. A "
+                "comment that says why stays, such as a note that the bank's export sometimes ends with a short "
+                "summary row."
+            ),
+        },
+    ],
+    "checks": [
+        {
+            "id": "S5-c1",
+            "q_md": "Which description passes the one-job test?",
+            "options": [
+                "Reads the bookings file and returns the bookings of one member",
+                "Returns the total spent per category for a list of expenses",
+                "Prints the total spent per category for a list of expenses",
+            ],
+            "answer": 1,
+            "why_md": (
+                "The first has an \"and\": reading and filtering. The third has no \"and\" but two jobs, "
+                "computing and printing."
+            ),
+        },
+        {
+            "id": "S5-c2",
+            "q_md": "Which comment would the course keep?",
+            "options": [
+                "`# add the amount` above `total += amount`",
+                "`# finance nets refunds into the monthly total` above `total += expense.amount`",
+                "`# loop over the expenses` above a `for` loop",
+            ],
+            "answer": 1,
+            "why_md": "It says why, a business rule the code cannot show. The other two repeat the line.",
+        },
+    ],
+    "method": [
+        "List what the function does as verbs: reads, validates, calculates, prints.",
+        "Match them to the named problems. Several verbs joined by \"and\" means several jobs.",
+        "Say the cost for a teammate: what can they not test, and what would a change touch?",
+        "Cross out options about things the description never mentions: name length, repeated code, type hints.",
+        "If it is open: name the problem, then the fix in words (one function per job, return the value, print in the caller).",
+    ],
+    "worked": [
+        {
+            "title": "Same shape, other topic: the gradebook",
+            "question_md": (
+                "A function called `grade_report(path)` reads a CSV of grades, works out each student's weighted "
+                "average, decides pass or fail and writes the result to a file. Which clean-code problem does this "
+                "describe best?\n\n"
+                "- a) The function uses a magic number\n"
+                "- b) The function does several jobs at once, so it is hard to test and to change\n"
+                "- c) A comment explains what the code does instead of why\n"
+                "- d) The function repeats the same code in several places"
+            ),
+            "steps_md": [
+                "The verbs are reads, works out, decides, writes: four jobs.",
+                "a), c) and d) name a number, a comment and repeated code, and the description mentions none of them.",
+                "The cost: you cannot test pass or fail without a real file, and a new output format touches the rule.",
+            ],
+            "answer_md": (
+                "**b.** The function reads, calculates, decides and writes, which is four jobs. It is hard to test "
+                "(you can't check pass or fail without a real file) and hard to change (a new output format touches the rule)."
+            ),
+        }
+    ],
+    "twists": [
+        {
+            "twist_md": "The question shows code: a `print` inside the loop and a `return` at the end, like sample Q7.",
+            "how_md": "Computation mixed with output. Every call prints, so a test of the total prints too. Return the value, print in the caller.",
+        },
+        {
+            "twist_md": "ruff and mypy pass and the function has one job, but it is called `check` and returns the refunds.",
+            "how_md": "A vague name. A caller who writes `if check(expenses):` is misled. Name it for what it returns, such as `refunds`.",
+        },
+        {
+            "twist_md": "`# price after the student discount` above `p = b * 0.85`.",
+            "how_md": "Rename `p` and `b`, name the `0.85`, then delete the comment: `price_after_discount = base_price * (1 - STUDENT_DISCOUNT)`.",
+        },
+        {
+            "twist_md": "`if e[3] < z:` in a function that builds its rows as tuples.",
+            "how_md": "A tuple is a missing type: nobody can tell what `e[3]` holds. Use an `Expense` with named fields, and call `z` `minimum`.",
+        },
+        {
+            "twist_md": "A comment explains why a check exists, such as the bank's summary row.",
+            "how_md": "Keep it. It says something the code cannot. The rule removes comments that say what.",
+        },
+    ],
+    "traps": [
+        "\"The function is long, so that is the problem.\" Length is not the cost. Several jobs are.",
+        "\"It needs more type hints.\" A hint states a contract. It does not separate jobs.",
+        "\"A comment above unclear code is good documentation.\" A comment that says what is a failure of naming. Rename instead.",
+        "\"Delete every comment.\" A comment that says why the code does something stays.",
+    ],
+    "say_md": (
+        "- The function does several jobs at once, so it is hard to test and hard to change.\n"
+        "- I cannot describe it without the word \"and\".\n"
+        "- Computation is not output: it should return the value and the caller prints it.\n"
+        "- A name says what it holds or returns. A comment that says what is a failure of naming. A comment that says why stays.\n"
+        "- A tuple is a missing type: use a dataclass with named fields."
+    ),
+    "practice": [
+        "clean-code-q25",
+        "clean-code-q12",
+        "clean-code-q14",
+        "clean-code-q49",
+        "clean-code-q05",
+        "clean-code-q07",
+        "clean-code-q21",
+    ],
+    "short_answers": {},
+}
+
+if __name__ == "__main__":
+    out = Path(__file__).resolve().parent.parent / "S5.json"
+    with out.open("w", encoding="utf-8") as f:
+        json.dump(S5, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    print(f"wrote {out}")

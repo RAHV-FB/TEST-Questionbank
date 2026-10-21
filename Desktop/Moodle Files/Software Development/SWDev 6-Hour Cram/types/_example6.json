@@ -1,0 +1,98 @@
+{
+ "tid": "S3",
+ "name": "A mypy error: which fix?",
+ "minutes": 15,
+ "shape_md": "Sample Q3. One `mypy --strict` error under a few lines of code, and four fixes. Expect one of these on the paper, with a different error.",
+ "one_md": "Read the bracket at the end of the error, name the kind, and pick the fix that removes the cause.",
+ "sample": {
+  "qnum": "Q3",
+  "kind": "mcq",
+  "question_md": "`mypy --strict` reports this error on the code below:\n\n```python\ndef find_expense(expenses: list[Expense], expense_id: int) -> Expense | None: ...\n\nexpense = find_expense(expenses, 3)\ntotal += expense.amount\n```\n\n```text\nerror: Item \"None\" of \"Expense | None\" has no attribute \"amount\"  [union-attr]\n```\n\nWhich fix is most appropriate?",
+  "options": [
+   "Add `# type: ignore` to the line",
+   "Handle the `None` case before using `expense.amount`",
+   "Change the return type of `find_expense` to `Any`",
+   "Delete the type annotations from the function"
+  ],
+  "answer": 1,
+  "his_answer_md": "**b.** The error says the value can be None. Handle that case. `# type: ignore` and `Any` hide the problem and keep the crash. Removing annotations makes the checker blind.",
+  "decoded_md": "- The pattern: one error line, one fix to pick. The bracket `[union-attr]` says \"this can be missing\".\n- b is right because it removes the cause. After a `None` check the crash cannot happen.\n- a, c and d are the careless moves. They silence mypy, give up on the value, or switch the checker off. The crash stays.\n- His reason is three short sentences: what the error says, what to do, why the others fail. That is the length to aim for."
+ },
+ "spot_md": "- One `error:` line from `mypy --strict`, with a code in square brackets.\n- Four fixes, and two of them are `# type: ignore` or `Any`.\n- The question says \"most appropriate\" or \"which fix\".\n- On a different topic: the same error on a `dict.get`, a search that finds nothing, or an optional argument.",
+ "basics": [
+  {
+   "id": "S3-b1",
+   "heading": "Four kinds of mypy error, four honest fixes",
+   "body_md": "mypy reports one line per problem. The code in square brackets tells you the kind, and the kind tells you the fix.\n\n| What mypy says | Kind | Honest fix |\n|---|---|---|\n| `Function is missing a type annotation` | missing annotation | write the types in the signature |\n| `Item \"None\" of ... has no attribute` | None not handled | check for `None` before using the value |\n| `Incompatible types in assignment` | types disagree | make both sides the same type, such as `0.0` for a float |\n| `Returning Any from function declared to return \"float\"` | Any leaks in | give the value a real type, such as `float(...)` |\n\nThe careless moves are the same every time. `# type: ignore` hides the line. `Any` says you gave up on the value. Deleting annotations switches the checker off. None of them removes the crash, so none of them is the fix."
+  }
+ ],
+ "checks": [
+  {
+   "id": "S3-c1",
+   "q_md": "mypy says `Item \"None\" of \"Expense | None\" has no attribute \"amount\"`. What can happen when the program runs?",
+   "options": [
+    "Nothing: it is only a style warning",
+    "An `AttributeError` when no expense is found",
+    "The program prints the wrong amount"
+   ],
+   "answer": 1,
+   "why_md": "If `find_expense` returns `None`, asking it for `.amount` raises `AttributeError`."
+  },
+  {
+   "id": "S3-c2",
+   "q_md": "Which of these removes the cause of the error?",
+   "options": [
+    "`# type: ignore` on the line",
+    "An `if expense is None` check before the line",
+    "Changing the return type to `Any`"
+   ],
+   "answer": 1,
+   "why_md": "Only the check makes the crash impossible. The other two keep it and hide it."
+  }
+ ],
+ "method": [
+  "Read the error line and the bracket at the end. Say the kind in your own words.",
+  "Ask what could go wrong when the program runs: a `None`, a wrong type, a missing hint.",
+  "Reject the careless options: `# type: ignore`, `Any`, deleting annotations, upgrading.",
+  "Pick the option that removes the cause, and say why in one sentence."
+ ],
+ "worked": [
+  {
+   "title": "The same shape on another topic",
+   "question_md": "`mypy --strict` reports this error:\n\n```python\ntotal = 0\nfor expense in expenses:\n    total += expense.amount\n```\n\n```text\nerror: Incompatible types in assignment (expression has type \"float\", variable has type \"int\")  [assignment]\n```\n\nWhich fix is most appropriate?\n\n- a) Add `# type: ignore`\n- b) Start the total at `0.0`\n- c) Declare `total: Any`\n- d) Remove the type hints from the file",
+   "steps_md": [
+    "The bracket says `assignment`: the variable was an `int` and now receives a `float`.",
+    "a, c and d silence or switch off the check. The types still disagree.",
+    "b makes the variable a `float` from the start."
+   ],
+   "answer_md": "**b.** The amounts are floats, so `0.0` makes both sides agree. The other options hide the mismatch."
+  }
+ ],
+ "twists": [
+  {
+   "twist_md": "The error is `Missing positional argument` or `Function is missing a type annotation`.",
+   "how_md": "Name the kind first. A missing annotation is fixed in the signature, not with `# type: ignore`."
+  },
+  {
+   "twist_md": "The return type of `find_expense` is `Expense`, and the fix offered is `if expense is None`.",
+   "how_md": "That check is dead code. Say the declared type already promises a value."
+  },
+  {
+   "twist_md": "One option is `Optional[Expense]` on the caller's variable.",
+   "how_md": "It declares the problem instead of handling it. The crash stays."
+  }
+ ],
+ "traps": [
+  "`# type: ignore` is tempting because CI goes green. The crash stays, and now nobody sees it.",
+  "`Any` feels like a fix. It means mypy stops checking that value.",
+  "Deleting the annotations makes the error disappear and the checker blind."
+ ],
+ "say_md": "- the error says the value can be `None`, so handle that case\n- `# type: ignore` and `Any` hide the problem and keep the crash\n- name the kind: missing annotation, None not handled, types disagree, Any leaks in",
+ "practice": [
+  "refactor-types-q30",
+  "refactor-types-q28",
+  "refactor-types-q29",
+  "refactor-types-q17",
+  "refactor-types-q33"
+ ]
+}

@@ -636,7 +636,9 @@ The slide sorts strict errors into **three kinds**:
 | Types disagree | "`int` here, `float` there" | make them agree (`0.0`) |
 | None not handled | "this can be missing" | check it, or change the type |
 
-"We work the kinds, not every line." Sort the log first, then fix one kind at a time. Missing annotations usually come first, because until a function has a signature mypy cannot check what happens inside it with real types. The words of the message are the clue: "missing a type annotation" or "untyped", "Incompatible types", `Item "None" of`."""
+A fourth kind comes from the teacher's official answer to sample Q9, not from the slide: **Any leaks in** ("I gave up on this value"). It is the kind of `Returning Any from function declared to return "float"`: the value was already `Any` (from `json.load`, or from a function with no signature), so mypy stopped checking it, and it leaked into a function that promised a real type. Section 9 shows it in the troubleshooting table.
+
+"We work the kinds, not every line." Sort the log first, then fix one kind at a time. Missing annotations usually come first, because until a function has a signature mypy cannot check what happens inside it with real types. The words of the message are the clue: "missing a type annotation" or "untyped", "Incompatible types", `Item "None" of`, `Returning Any`."""
 )
 
 S7_BODY = (
@@ -712,7 +714,7 @@ You **name** these and do not test or fix them yet. Fixing them changes behaviou
 )
 
 S9_BODY = (
-    r"""The lab ends with a troubleshooting table: the messages strict mode produces most often, and what each one means. The third column is not in the lab: it is our mapping of each row to the session 7 kinds.
+    r"""The lab ends with a troubleshooting table: the messages strict mode produces most often, and what each one means. The third column is not in the lab: it is our mapping of each row to the kinds. Three come from slide 10 (missing annotation, types disagree, None not handled). The fourth, **Any leaks in**, comes from the teacher's official answer to sample Q9.
 
 | Symptom | What it means | Kind |
 |---|---|---|
@@ -720,13 +722,15 @@ S9_BODY = (
 | `Function is missing a type annotation for one or more parameters` | hint every parameter and the return | missing annotation |
 | `Missing type arguments for generic type "dict"` | write `dict[str, float]`, not `dict` (same for `list`, `tuple`) | missing annotation |
 | `Need type annotation for "totals"` | an empty `{}` or `[]` has no type yet: `totals: dict[str, float] = {}` | missing annotation |
-| `Returning Any from function declared to return "float"` | the value came from something untyped (`csv`, `json`): convert it, `float(row[3])`, or annotate the variable | types disagree |
+| `Returning Any from function declared to return "float"` | the value came from something untyped (`json`, or a function with no signature): convert it, `float(...)`, or annotate the variable | Any leaks in |
 | `Item "None" of "… \| None" has no attribute "…"` | a real bug: check for `None` first, or make the function unable to return it | None not handled |
 | `Untyped decorator makes function untyped` | a decorator without hints, usually fixed by upgrading the library (`uv lock --upgrade-package typer`) | missing annotation |
 | `Library stubs not installed for "…"` | `uv add --dev types-<name>`; the message gives the exact name | missing annotation |
 | CI red at **Types**, green locally | you ran `mypy src`; CI runs `mypy src tests` | wrong command |
 
-One precise note on the `Returning Any` row: `json.load` really returns `Any`, but a field from `csv.reader` is already typed `str`, so returning it where a `float` was promised gives `Incompatible return value type (got "str", expected "float")` instead (we ran it). The fix is the same: `float(row[3])`.
+**Any leaks in** is the one row that is not "types disagree". His official answer to sample Q9 puts `Returning Any` in its own kind: "I gave up on this value". Somewhere upstream a value became `Any` (`json.load` returns `Any`, and so does a call to a function with no signature), mypy stopped checking it, and the `Any` leaked into a function that promised a `float`. mypy has not seen two types that clash. It has seen no type at all. The fix is to give the value a real type where it enters: convert it, or annotate the variable.
+
+One precise note: a field from `csv.reader` is already typed `str`, so returning it where a `float` was promised gives `Incompatible return value type (got "str", expected "float")` instead (we ran it). That one is types disagree, because both types are known. The fix is the same: `float(row[3])`.
 
 Two "fixes" make any message disappear, and both are distractors on the sample paper. `# type: ignore` tells mypy not to report a line; the code is unchanged. A return type of `Any` tells mypy "this could be anything, do not check it", so every use of the value goes unchecked, typos included. We ran both on a lookup that returns `Expense | None`:
 
@@ -825,9 +829,10 @@ sections = [
             "Without `--strict`, mypy does not look inside a function with no signature, so untyped code can say `Success`.",
             "On `v0.1`: four errors, all missing annotations. Add signatures and a second kind, types disagree, appears.",
             "Missing annotation → write the hint; types disagree → make them agree; None not handled → check it, or change the type.",
+            "His official answer to sample Q9 adds a fourth kind: Any leaks in (`Returning Any`, \"I gave up on this value\").",
             "Work the kinds, not every line.",
         ],
-        "exam_note_md": "Sample Q9 part 1 is this table: sort errors into the three kinds. Give the kind and a reason from the message, not just a label.",
+        "exam_note_md": "Sample Q9 part 1 is this table: sort errors into the kinds (his answer uses four). Give the kind and a reason from the message, not just a label.",
         "source_ref": "S7 slide 10; expense-tracker v0.1 run with mypy 2.4.0",
         "check": [q(15), q(18), q(37)],
     },
@@ -864,7 +869,7 @@ sections = [
         "body_md": S9_BODY,
         "key_points": [
             "Most strict messages are missing hints: `-> None` on tests, parameter hints, `dict[str, float]`, an annotated empty `{}`.",
-            "`Returning Any` means the value came from something untyped: convert it or annotate it.",
+            "`Returning Any` is the fourth kind, Any leaks in (\"I gave up on this value\"): the value came from something untyped, so convert it or annotate it.",
             "`# type: ignore` and `Any` change what mypy says, not what Python does.",
             "A real fix for `Item \"None\"` decides what the program does when there is no result.",
         ],
@@ -898,6 +903,7 @@ terms = [
     ("Edge case", "An input at the boundary of what the code expects (an empty list, a discount above 100%, a zero price) where it may crash or surprise.", 8),
     ("`# type: ignore`", "A comment that tells mypy not to report a line. It changes nothing at run time.", 9),
     ("`Any`", "The type that switches checking off: mypy accepts any use of a value typed `Any`, typos included.", 9),
+    ("Any leaks in", "The fourth kind of mypy error, from the teacher's answer to sample Q9: `Returning Any from function declared to return \"float\"`. A value was already `Any` (from `json` or an untyped function), mypy gave up on it, and it leaked into a function that promised a real type. Fix: convert it or annotate it.", 9),
     ("Library stubs", "A separate package of type hints for a library that ships without them, installed with `uv add --dev types-<name>`.", 9),
 ]
 terms_out = [{"term": t, "definition_md": d, "section_ref": s(n)} for t, d, n in terms]
@@ -916,6 +922,7 @@ traps = [
     "\"Changing the return type to `Any` is a safe way to satisfy mypy.\" `Any` switches checking off for every use of the value, so even a typo like `.amout` is no longer reported.",
     "\"Fix the errors from the bottom of the log, one line at a time.\" Read the first error and fix its cause; later errors are often the same one repeating, and the cause can sit above the reported line.",
     "\"Green on my laptop means green in CI.\" Only if you run the same command. CI runs `mypy src tests`; `mypy src` never opens the tests.",
+    "\"`Returning Any` is a types-disagree error.\" His official answer to sample Q9 files it as its own kind, Any leaks in (\"I gave up on this value\"): mypy saw no type at all, not two types that clash.",
 ]
 
 # ---------------------------------------------------------------------------
@@ -955,8 +962,8 @@ cards_raw = [
      "Without `--strict`, mypy does not look inside a function with no signature, and `report.py` had none.", "concept", 6),
     ("`--strict` on `v0.1`: what kind were the four errors, and what happened after adding signatures?",
      "All missing annotations (`no-untyped-def`, `no-untyped-call`). With signatures, mypy looked inside and found a second kind: types disagree (`0` then float amounts).", "reading", 6),
-    ("The three kinds of strict error and their fixes",
-     "Missing annotation → write the hint. Types disagree → make them agree (`0.0`). None not handled → check it, or change the type.", "recall", 6),
+    ("The kinds of strict error and their fixes (three on slide 10, a fourth in his answer to Q9)",
+     "Missing annotation → write the hint. Types disagree → make them agree (`0.0`). None not handled → check it, or change the type. Any leaks in (`Returning Any`) → give the value a real type: convert it or annotate it.", "recall", 6),
     ("`Incompatible types in assignment (expression has type \"float\", variable has type \"int\")`: kind and usual fix?",
      "Types disagree. Make them agree: start the total at `0.0`, not `0`.", "reading", 6),
     ("What replaced `check_untyped_defs = true` in `[tool.mypy]` in session 7?",
@@ -973,8 +980,8 @@ cards_raw = [
      "Fixing them changes behaviour, so it is not part of a refactoring. Friday (testing) turns the list into tests.", "concept", 8),
     ("`Need type annotation for \"totals\"`: fix?",
      "An empty `{}` has no type yet. Write `totals: dict[str, float] = {}`.", "reading", 9),
-    ("`Returning Any from function declared to return \"float\"`: where does `Any` come from, and what do you do?",
-     "From something untyped such as `json.load`. Convert the value (`float(...)`) or annotate the variable with the type you expect.", "reading", 9),
+    ("`Returning Any from function declared to return \"float\"`: which kind is it, where does `Any` come from, and what do you do?",
+     "Any leaks in (\"I gave up on this value\"), not types disagree. The `Any` comes from something untyped such as `json.load`. Convert the value (`float(...)`) or annotate the variable with the type you expect.", "reading", 9),
     ("What does `# type: ignore` change when the program runs?",
      "Nothing. mypy stops reporting the line, and the program still crashes on the `None`.", "concept", 9),
     ("`Library stubs not installed for \"yaml\"`: `pip install` from the hint, or `uv add --dev`?",
@@ -1359,7 +1366,7 @@ src/tracker/budget.py:21: error: Returning Any from function declared to return 
         opt("`\"float\"`, because it is the type that went wrong",
             "The type is part of the message, and it appears in hundreds of unrelated errors. It does not identify the check."),
     ],
-    "The slide splits an error into three parts: file and line (where), message (what is wrong, in plain words) and `[code]` (what to search for). When the message is unclear, the code is the search term: `no-any-return` leads straight to mypy's explanation, and to the lab's troubleshooting row \"Returning Any from function declared to return float\": the value came from something untyped; convert it or annotate the variable.",
+    "The slide splits an error into three parts: file and line (where), message (what is wrong, in plain words) and `[code]` (what to search for). When the message is unclear, the code is the search term: `no-any-return` leads straight to mypy's explanation, and to the lab's troubleshooting row \"Returning Any from function declared to return float\": the value came from something untyped; convert it or annotate the variable. His name for this kind is Any leaks in.",
 )
 
 # q13 ------------------------------------------------------------------------
@@ -1381,7 +1388,7 @@ mcq(
         opt("No errors: all eight came from the missing signature",
             "`spent = 0` followed by float amounts, and the `None` from `find_by_merchant`, have nothing to do with `parse_amount`."),
     ],
-    "We made the change and ran mypy again: two errors left, line 27 (`Incompatible types in assignment`) and line 39 (`Item \"None\" of \"Expense | None\"`). An untyped function is reported where it is defined (`no-untyped-def`), at every typed call (`no-untyped-call`, three times), and wherever its unknown result is returned (`Returning Any`, twice). That is \"later errors are often the same one repeating\". Reading the first error and fixing its cause removed six lines; the two left are a types-disagree (`0.0`) and a real crash for an unknown merchant.",
+    "We made the change and ran mypy again: two errors left, line 27 (`Incompatible types in assignment`) and line 39 (`Item \"None\" of \"Expense | None\"`). An untyped function is reported where it is defined (`no-untyped-def`), at every typed call (`no-untyped-call`, three times), and wherever its unknown result is returned (`Returning Any`, twice: the kind he calls Any leaks in, because the `Any` from the untyped call leaks into a function that promised a `bool` or a `float`). That is \"later errors are often the same one repeating\". Reading the first error and fixing its cause removed six lines; the two left are a types-disagree (`0.0`) and a real crash for an unknown merchant.",
 )
 
 # q14 ------------------------------------------------------------------------
@@ -1491,7 +1498,7 @@ mcq(
         opt("None not handled → add `-> None` to the function's signature",
             "`-> None` says a function returns nothing, as tests do. It does nothing about a value that might be `None`."),
     ],
-    "The table has three rows. Missing annotation (\"what type is this?\") → write the hint. Types disagree (\"`int` here, `float` there\") → make them agree, as with `0.0`. None not handled (\"this can be missing\") → check it, or change the type. The distractors mix up `-> None`, which is the hint for a function that returns nothing, with a value that can be `None`, and offer `Any` or `# type: ignore`, which only silence the checker.",
+    "The slide's table has three rows. Missing annotation (\"what type is this?\") → write the hint. Types disagree (\"`int` here, `float` there\") → make them agree, as with `0.0`. None not handled (\"this can be missing\") → check it, or change the type. The distractors mix up `-> None`, which is the hint for a function that returns nothing, with a value that can be `None`, and offer `Any` or `# type: ignore`, which only silence the checker. His answer to sample Q9 adds a fourth kind that is not a row of the table: Any leaks in (`Returning Any`).",
 )
 
 # q19 ------------------------------------------------------------------------
@@ -1741,7 +1748,7 @@ budgets_bad.py:6: error: Returning Any from function declared to return "dict[st
             "The lab's fix: annotate the variable. It writes down what you expect the file to hold, so callers keep their checks; converting each value with `float(...)` would also check it at run time.",
             True),
     ],
-    "`json.load` has no idea what the file contains, so its result is `Any`, and strict mode will not let a function promise `dict[str, float]` while returning an unknown. The lab's row says: the value came from something untyped; convert it or annotate the variable. Writing `budgets: dict[str, float] = json.load(handle)` and returning `budgets` states what you expect the file to hold. We ran that version: `Success: no issues found in 1 source file`.",
+    "`json.load` has no idea what the file contains, so its result is `Any`, and strict mode will not let a function promise `dict[str, float]` while returning an unknown. The lab's row says: the value came from something untyped; convert it or annotate the variable. This is the kind his answer to sample Q9 calls Any leaks in: mypy gave up on the value, and it leaked into a typed return. Writing `budgets: dict[str, float] = json.load(handle)` and returning `budgets` states what you expect the file to hold. We ran that version: `Success: no issues found in 1 source file`.",
 )
 
 # q30 ------------------------------------------------------------------------
@@ -2045,11 +2052,12 @@ questions.append(
         "type": "sort",
         "level": "hard",
         "skills": ["read-tool-output"],
-        "stem_md": "Each line is a real message from `mypy --strict` (file and line removed). Sort it into the session 7 kind it reports.",
+        "stem_md": "Each line is a real message from `mypy --strict` (file and line removed). Sort it into the kind it reports: the three of session 7 slide 10, and the fourth that the teacher's official answer to sample Q9 adds.",
         "categories": [
             {"id": "missing", "label": "Missing annotation"},
             {"id": "disagree", "label": "Types disagree"},
             {"id": "none", "label": "None not handled"},
+            {"id": "leaks", "label": "Any leaks in"},
         ],
         "items": [
             {"text_md": "`Function is missing a type annotation  [no-untyped-def]`",
@@ -2073,6 +2081,9 @@ questions.append(
             {"text_md": "`Incompatible return value type (got \"str\", expected \"float\")  [return-value]`",
              "category": "disagree",
              "why_md": "A CSV field is a `str`; the function promised a `float`. Convert it with `float(...)`."},
+            {"text_md": "`Returning Any from function declared to return \"float\"  [no-any-return]`",
+             "category": "leaks",
+             "why_md": "\"I gave up on this value\": the value is `Any` (from `json` or an untyped function), so mypy cannot check it. Give it a real type: convert it or annotate it. Not types disagree: no two known types clash."},
             {"text_md": "`Item \"None\" of \"Expense | None\" has no attribute \"amount\"  [union-attr]`",
              "category": "none",
              "why_md": "The value can be missing and the code uses it as if it never is. Check it, or change the type."},
@@ -2080,7 +2091,7 @@ questions.append(
              "category": "none",
              "why_md": "The note shows the cause: a value of type `float | None` is used in a subtraction without checking for `None`."},
         ],
-        "explanation_md": "Read the message words. \"Missing a type annotation\", \"untyped\", \"Need type annotation\" and \"Missing type arguments\" all ask \"what type is this?\": write the hint. \"Incompatible types\", \"incompatible type\" and \"Incompatible return value\" say two types that should match do not: make them agree. `Item \"None\" of` and an operand of type `... | None` say a value can be missing: check it, or change the type. Every line here came from running mypy 2.4.0 on small snippets of expense-tracker code.",
+        "explanation_md": "Read the message words. \"Missing a type annotation\", \"untyped\", \"Need type annotation\" and \"Missing type arguments\" all ask \"what type is this?\": write the hint. \"Incompatible types\", \"incompatible type\" and \"Incompatible return value\" say two types that should match do not: make them agree. `Returning Any ... declared to return` says the value is already `Any`, so mypy gave up on it before it reached the return: his fourth kind, Any leaks in. `Item \"None\" of` and an operand of type `... | None` say a value can be missing: check it, or change the type. Every line here came from running mypy 2.4.0 on small snippets of expense-tracker code.",
         "section_ref": s(6),
         "source_ref": "S7 slide 10; labs/07-refactor.md troubleshooting",
         "origin": "slides",
@@ -2144,10 +2155,10 @@ open_q(
     + "\n\n" + code("text", Q9_RUN),
     [
         part("1", "Sort the four errors into the kinds we discussed in session 7.", 2,
-             "Line 29 is a missing annotation. Lines 8 and 15 are types disagree: `json.load` returns `Any` where a `dict[str, float]` was promised, and `spent = 0` is an `int` that receives floats. Line 26 is None not handled.",
+             "Line 29 is a missing annotation. Line 15 is types disagree: `spent = 0` is an `int` that receives floats. Line 26 is None not handled. Line 8 is Any leaks in: `json.load` returns `Any`, so mypy gave up on the value, and it leaked into a function that promised a `dict[str, float]`.",
              ["Line 29 (a parameter without a hint) → missing annotation, and line 26 (`Item \"None\" of \"str | None\"`) → None not handled",
-              "Lines 15 and 8 → types disagree, with a reason for line 8: the promised `dict[str, float]` and the untyped `json.load` result (`Any`) do not match (accept \"missing annotation\" for line 8 only if the answer explains that the `Any` comes from untyped `json`)"],
-             "Answers that copy the error codes (`no-untyped-def`, `assignment`) without naming the session 7 kinds earn nothing for the sort. Putting line 8 under missing annotation is acceptable only if the answer explains that the value comes from untyped `json`; a bare label is not. A common slip is to call line 26 \"types disagree\" because a type is mentioned: the words `Item \"None\" of` mark the None kind."),
+              "Line 15 → types disagree (`spent = 0` is an `int` that receives floats), and line 8 → Any leaks in, with the reason: the `Any` from the untyped `json.load` is returned where `dict[str, float]` was promised (different wording is fine if the idea is there)"],
+             "Answers that copy the error codes (`no-untyped-def`, `assignment`) without naming the kinds earn nothing for the sort. Line 8 is where students slip: it is not types disagree, because mypy never saw a clashing type, only an `Any`, and it is not a missing annotation, because the function has its hints. A bare label without the reason (the value comes from untyped `json`) earns half. Another slip is to call line 26 \"types disagree\" because a type is mentioned: the words `Item \"None\" of` mark the None kind."),
         part("2", "Which one points to a bug that could crash the program for a real user, and when?", 2,
              "Line 26. `biggest_category` returns `None` for a month with no expenses, and `headline` then calls `.upper()` on it: `AttributeError`. The other three crash nothing by themselves.",
              ["Picks line 26 (`headline`) and says it raises `AttributeError` (crashes) when `.upper()` is called on `None`",
@@ -2159,7 +2170,7 @@ open_q(
               "Gives at least one concrete real fix (handle `None` in `headline`, `0.0`, hint `budgets`, annotate the JSON)"],
              "\"No, because it is bad practice\" is a slogan without a reason and scores at most one mark. Answers that accept `# type: ignore` for \"the harmless ones\" but not line 26 are better, but still miss that each of those has a one-line real fix. Full marks need the runtime point (the crash still happens) and a concrete alternative."),
     ],
-    "This is sample Q9 with a new log. The kinds come from the message words: \"missing a type annotation\" (write the hint), \"Incompatible types\" and `Returning Any` where a type was promised (make them agree), `Item \"None\" of` (check it, or change the type). We ran the module: `headline({})` raises `AttributeError: 'NoneType' object has no attribute 'upper'`, while `spent_in([], \"dining\")` simply returns `0`. A green CI means the referee is satisfied; `# type: ignore` only tells it to look away.",
+    "This is sample Q9 with a new log. The kinds come from the message words: \"missing a type annotation\" (write the hint), \"Incompatible types\" (make them agree), `Returning Any` where a type was promised (Any leaks in: give the value a real type), `Item \"None\" of` (check it, or change the type). We ran the module: `headline({})` raises `AttributeError: 'NoneType' object has no attribute 'upper'`, while `spent_in([], \"dining\")` simply returns `0`. A green CI means the referee is satisfied; `# type: ignore` only tells it to look away.",
     lines="6–8",
     variant_of="sample-paper-q09",
 )
@@ -2604,11 +2615,11 @@ Found 2 errors in 1 file (checked 1 source file)
 """),
     [
         part("1", "Sort the four findings: which come from the linter as style or code-quality findings, and which kind is each mypy error?", 3,
-             "`F401` and `E722` are ruff's: an unused import and a bare `except`. Line 9 is types disagree: `json.load` gives `Any` where a `dict[str, float]` was promised. Line 16 is None not handled: `re.search` can return `None`.",
+             "`F401` and `E722` are ruff's: an unused import and a bare `except`. Line 9 is Any leaks in: `json.load` gives `Any`, mypy gave up on the value, and it leaked into a function that promised a `dict[str, float]`. Line 16 is None not handled: `re.search` can return `None`.",
              ["F401 and E722 named as ruff findings (style and code quality), not type errors",
-              "Line 9: types disagree (`Any` returned where a typed value is promised)",
+              "Line 9: Any leaks in (`Any` returned where a typed value is promised)",
               "Line 16: None not handled"],
-             "Calling all four \"type errors\" misses that ruff does not read types. Calling line 9 \"missing annotation\" confuses it with `no-untyped-def`: the function has hints; the value returned is unknown."),
+             "Calling all four \"type errors\" misses that ruff does not read types. Calling line 9 \"missing annotation\" confuses it with `no-untyped-def`: the function has hints; the value returned is unknown. Calling it \"types disagree\" misses his fourth kind: mypy saw no type at all."),
         part("2", "Which finding can crash a user, and with what input?", 2,
              "Line 16. `euros(\"free\")` has no digits, so `re.search` returns `None` and `.group` raises `AttributeError` (we ran it).",
              ["Line 16 (the `None` case)",
@@ -2670,13 +2681,13 @@ module = {
         "midterm sample questions Q2, Q3, Q9",
         "expense-tracker 5e9466d–04d699f, 88b83c3",
     ],
-    "summary_md": "Session 7 gives names to the clean-code steps of session 6 and adds a second referee. **Refactoring** means changing the structure of code while keeping its behaviour: if the output changes, it was not a refactoring. You learn the six moves (extract constant, rename, separate I/O from logic, introduce a type, extract function, decompose conditional) and where you saw each one: five in the expense-tracker history, decompose conditional on the slides. Then **mypy**: what a type checker catches that a linter cannot, how to read an error, what `--strict` reports on untyped code, the three kinds of error and their fixes, and why `strict = true` in `pyproject.toml` means every test needs `-> None`. The invoice lab puts it together, and its troubleshooting table is the vocabulary of the exam's tool-output questions.",
+    "summary_md": "Session 7 gives names to the clean-code steps of session 6 and adds a second referee. **Refactoring** means changing the structure of code while keeping its behaviour: if the output changes, it was not a refactoring. You learn the six moves (extract constant, rename, separate I/O from logic, introduce a type, extract function, decompose conditional) and where you saw each one: five in the expense-tracker history, decompose conditional on the slides. Then **mypy**: what a type checker catches that a linter cannot, how to read an error, what `--strict` reports on untyped code, the kinds of error and their fixes (three on the slide, and a fourth from the teacher's answer to sample Q9, Any leaks in), and why `strict = true` in `pyproject.toml` means every test needs `-> None`. The invoice lab puts it together, and its troubleshooting table is the vocabulary of the exam's tool-output questions.",
     "exam_focus_md": "\n".join(
         [
             "- \"Which of these changes is a refactoring?\" (sample Q2): the change with identical output and tests passing unedited; features, bug fixes and format changes are not refactorings.",
             "- A `diff` of before and after, or the lab's two numbers: did the behaviour stay the same, and for which inputs do you actually know?",
             "- A short function: name, in words, the moves you would apply and the problem each solves (sample Q7 part 3).",
-            "- A mypy log (sample Q9): sort the errors into missing annotation, types disagree and None not handled; say which one is a real crash and when; judge `# type: ignore`.",
+            "- A mypy log (sample Q9): sort the errors into missing annotation, types disagree, None not handled and Any leaks in; say which one is a real crash and when; judge `# type: ignore`.",
             "- \"Which fix is most appropriate?\" (sample Q3): handle the `None`. `# type: ignore`, `Any` and deleting hints only silence the referee.",
             "- Long or noisy logs: read the first error, spot the lines that repeat one cause, predict what is left after one fix.",
             "- CI red at Types but green locally: compare `mypy src` with `mypy src tests`, and add `-> None` to tests rather than weaken CI.",

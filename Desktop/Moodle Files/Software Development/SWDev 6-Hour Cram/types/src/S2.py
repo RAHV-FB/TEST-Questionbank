@@ -1,0 +1,201 @@
+"""S2 (sample Q2): is it a refactoring? Writes ../S2.json.
+
+Facts from session 7 slide 5, labs/07-refactor.md and the bank (refactor-types).
+Practice ids are mcq only, level core or exam.
+"""
+
+import json
+from pathlib import Path
+
+S2 = {
+    "tid": "S2",
+    "name": "Is it a refactoring?",
+    "minutes": 15,
+    "shape_md": (
+        "Sample Q2: four changes to the expense-tracker, and you pick the one that is a refactoring. "
+        "The right option usually carries its own proof, such as \"every test still passing unchanged\"."
+    ),
+    "one_md": (
+        "A refactoring changes the structure and keeps the behaviour, "
+        "so if the output changes, it was not a refactoring."
+    ),
+    "sample": {
+        "qnum": "Q2",
+        "kind": "mcq",
+        "question_md": "Which of these changes is a refactoring?",
+        "options": [
+            "Adding a `--month` option to the `report` command",
+            "Fixing a bug where the last expense in the file was skipped",
+            "Renaming variables and splitting one long function into two, with every test still passing unchanged",
+            "Replacing the CSV file with a JSON file",
+        ],
+        "answer": 2,
+        "his_answer_md": (
+            "**c.** A refactoring changes structure and keeps behaviour, and unchanged tests passing is the "
+            "evidence. (a) is a feature, (b) a bug fix, (d) a design change."
+        ),
+        "decoded_md": (
+            "- **The pattern.** Four changes, one refactoring. The other three are other kinds of work, and he "
+            "names them: feature (a), bug fix (b), design change (d).\n"
+            "- **The test he uses.** Does the behaviour change? A `--month` option adds behaviour. Counting the "
+            "last expense changes the output on purpose. JSON instead of CSV means the program reads and "
+            "writes something else.\n"
+            "- **Why c wins.** It carries its own proof: \"every test still passing unchanged\". His answer "
+            "names that evidence.\n"
+            "- **Why the others tempt.** All four sound like improving the code. \"Better\" is not the test; "
+            "\"the same output\" is.\n"
+            "- **Level.** One sentence of definition with the evidence, then one clause per wrong option "
+            "saying what kind of work it is."
+        ),
+    },
+    "spot_md": (
+        "- The stem is short: \"Which of these changes is a refactoring?\" or \"Which move is this?\".\n"
+        "- The options mix a new option or command, a fixed bug, a new file format, and one tidy-up.\n"
+        "- Phrases that guarantee behaviour: \"every test still passing unchanged\", \"the report is identical\", "
+        "\"`diff` prints nothing\".\n"
+        "- A `diff before.txt after.txt` or a commit hunk may be shown, and you name the move or say it is not a refactoring."
+    ),
+    "basics": [
+        {
+            "id": "S2-b1",
+            "heading": "The one test, and the other kinds of work",
+            "body_md": (
+                "A refactoring changes the structure of code and keeps its behaviour. Session 7 gives the test: "
+                "**if the output changes, it was not a refactoring.**\n\n"
+                "| Kind of work | Does the output change? | Example |\n|---|---|---|\n"
+                "| Feature | yes, new behaviour | a `--month` option |\n"
+                "| Bug fix | yes, on purpose | the last expense is no longer skipped |\n"
+                "| Design change | yes, it reads or writes something else | CSV replaced by JSON |\n"
+                "| Refactoring | no | `calculate_totals` renamed `total_by_category` |\n\n"
+                "Behaviour is what a user types, reads or gets back: the command, its options, the printed report, "
+                "the exit code. Structure is what they cannot see: names, how the code is split, which function prints.\n\n"
+                "The evidence he accepts: every test still passes unchanged, or `diff before.txt after.txt` prints "
+                "nothing. A test you had to edit means the behaviour changed. ruff and mypy are not evidence, "
+                "because they check how code is written, not what it returns."
+            ),
+        },
+        {
+            "id": "S2-b2",
+            "heading": "The six moves, and the proof",
+            "body_md": (
+                "Session 7 names what you watched between `v0.1` and `v0.2`.\n\n"
+                "| Move | You saw it as | Problem it solves |\n|---|---|---|\n"
+                "| Extract constant | `40` becomes `RULE_WIDTH` | a bare number nobody can explain |\n"
+                "| Rename | `calculate_totals` becomes `total_by_category` | a name that needs a comment |\n"
+                "| Separate I/O from logic | `run()` split into read, compute, format | a function that prints can only be looked at |\n"
+                "| Introduce a type | tuple becomes `Expense` | `e[3]` tells you nothing |\n"
+                "| Extract function | `largest_expense` out of `run()` | one function with several jobs |\n"
+                "| Decompose conditional | nested `if` becomes guard clauses | a tangle of conditions |\n\n"
+                "The moves are small on purpose. Save the output first, make one move, save it again and compare:\n\n"
+                "```bash\n"
+                "uv run expenses report --category dining --min 20 > before.txt\n"
+                "diff before.txt after.txt\n"
+                "```\n\n"
+                "The lab's rule: if the output changes, you have not refactored. Undo the last step."
+            ),
+        },
+    ],
+    "checks": [
+        {
+            "id": "S2-c1",
+            "q_md": "A commit renames the installed command from `expenses` to `exp`. Is it a refactoring?",
+            "options": [
+                "Yes, it is only a rename",
+                "No, what the user types has changed",
+                "Yes, as long as the tests pass",
+            ],
+            "answer": 1,
+            "why_md": "Behaviour includes the command a user types. Renaming something the user sees changes behaviour.",
+        },
+        {
+            "id": "S2-c2",
+            "q_md": "After one small step, `diff before.txt after.txt` prints two changed lines. What now?",
+            "options": [
+                "Carry on: it is only spacing",
+                "Undo the last step",
+                "Save a new `before.txt` from the new code",
+            ],
+            "answer": 1,
+            "why_md": (
+                "Spacing is output. The lab says to undo the last step. A new `before.txt` throws the evidence away."
+            ),
+        },
+    ],
+    "method": [
+        "For each option ask: would anything a user types, reads or gets back change?",
+        "Name the other kinds: a new option or command is a feature, a changed output is a bug fix, a new file format is a design change.",
+        "Take the option that carries its own proof: tests unchanged, report identical.",
+        "If it is open: say \"structure changes, behaviour kept\", name the move and the problem it solves, and give the evidence.",
+    ],
+    "worked": [
+        {
+            "title": "Same shape, other topic: the invoice lab",
+            "question_md": (
+                "Which of these changes is a refactoring?\n\n"
+                "- a) Making the invoice code reject a discount above 100%\n"
+                "- b) Adding a `--sort` option to `report`\n"
+                "- c) Giving the bare `0.21` in the lab's `main.py` a name, with the output still `163.35` and `20.0`\n"
+                "- d) Saving the report as a PDF instead of printing it"
+            ),
+            "steps_md": [
+                "Ask of each option: does what the user gets change?",
+                "a) An input that used to return a number now raises an error. b) is a new option. d) is a new output.",
+                "c) Names a number and the invoice still prints the same two numbers: same behaviour, new structure.",
+            ],
+            "answer_md": (
+                "**c.** A refactoring changes structure and keeps behaviour, and the invoice still printing "
+                "`163.35` and `20.0` is the evidence. (a) changes behaviour, (b) is a feature, (d) a design change."
+            ),
+        }
+    ],
+    "twists": [
+        {
+            "twist_md": "An option looks harmless because it is only presentation: a euro sign on each amount, wider columns.",
+            "how_md": "Presentation is output. `diff before.txt after.txt` would print the changed lines, so it is not a refactoring.",
+        },
+        {
+            "twist_md": "An option says \"and the tests were updated to match\".",
+            "how_md": "A test you had to change means the behaviour it pins has changed. The refactoring is the one where every test passes unedited.",
+        },
+        {
+            "twist_md": "An option renames the installed command or an option, such as `--min` to `--minimum`.",
+            "how_md": "What the user types has changed. A rename is a refactoring only for names the user never sees.",
+        },
+        {
+            "twist_md": "You replaced the widths `20`, `10` and `40` with constants and `diff` shows two lines moved four characters right.",
+            "how_md": "The step changed the output, so undo it and redo it. One constant does not hold the number it replaced.",
+        },
+        {
+            "twist_md": "Open: \"Name the move and the problem it solves.\"",
+            "how_md": "Pair them: rename (names say nothing), extract constant (bare number), separate I/O (a `print` inside a calculation), introduce a type (a tuple), extract function (several jobs). Add the evidence.",
+        },
+    ],
+    "traps": [
+        "\"The code is cleaner, so it is a refactoring.\" Tidier code is the reason for a refactoring. The test is unchanged behaviour.",
+        "\"A bug fix that also tidies is a refactoring.\" The fix changes the output on purpose. It belongs in its own commit, with a message that says so.",
+        "\"ruff and mypy pass, so the behaviour is the same.\" They check how the code is written and typed, not what it returns.",
+        "\"`diff` printed nothing, so it is right for every input.\" It is proven for the input you ran. Try an empty file and an amount equal to the limit.",
+    ],
+    "say_md": (
+        "- A refactoring changes the structure and keeps the behaviour. If the output changes, it was not a refactoring.\n"
+        "- The evidence is that every test still passes unchanged, or that `diff before.txt after.txt` prints nothing.\n"
+        "- A feature adds behaviour, a bug fix changes the output on purpose, a design change reads or writes something else.\n"
+        "- Small steps: run after each move, and undo the last step if the output changes."
+    ),
+    "practice": [
+        "refactor-types-q01",
+        "refactor-types-q23",
+        "refactor-types-q02",
+        "refactor-types-q05",
+        "refactor-types-q27",
+        "refactor-types-q46",
+    ],
+    "short_answers": {},
+}
+
+if __name__ == "__main__":
+    out = Path(__file__).resolve().parent.parent / "S2.json"
+    with out.open("w", encoding="utf-8") as f:
+        json.dump(S2, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    print(f"wrote {out}")

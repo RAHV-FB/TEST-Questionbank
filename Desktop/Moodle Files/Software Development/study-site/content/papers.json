@@ -1010,7 +1010,7 @@
        "why_md": "Under `--strict` a missing return type is itself an error, `no-untyped-def` (we ran it), and the contract is lost."
       }
      ],
-     "explanation_md": "`Returning Any` is the types-disagree kind, caused by a value mypy cannot see into: `json.load` returns `Any`. The function promises a `float`, and nothing has checked that the file holds one. The fix is to make the promise true where the unknown value enters the program, which `float(...)` does, and it also turns a numeric string into a number. An ignore comment or a wider type would silence the message and leave the promise unchecked. Real run on all four versions with mypy 2.4.0.",
+     "explanation_md": "`Returning Any` is the kind his official answer to sample Q9 calls Any leaks in (\"I gave up on this value\"), not types disagree: `json.load` returns `Any`, mypy cannot see into it, and the `Any` leaks into a function that promises a `float`. Nothing has checked that the file holds one. The fix is to make the promise true where the unknown value enters the program, which `float(...)` does, and it also turns a numeric string into a number. An ignore comment or a wider type would silence the message and leave the promise unchecked. Real run on all four versions with mypy 2.4.0.",
      "module_ref": "refactor-types",
      "section_ref": "refactor-types-s9",
      "source_ref": "S7 slides 8 to 10; labs/07-refactor.md troubleshooting",
@@ -1957,15 +1957,15 @@
      "parts": [
       {
        "label": "1",
-       "prompt_md": "Sort the six errors by line into the three kinds of session 7 (missing annotation, types disagree, None not handled). Which of them are repeats of an earlier error?",
+       "prompt_md": "Sort the six errors by line into the kinds of session 7 (missing annotation, types disagree, None not handled, Any leaks in). Which of them are repeats of an earlier error?",
        "marks": 2,
-       "model_answer_md": "Line 12 is the missing annotation, and both errors on line 24 repeat it: they vanish once it is annotated. Line 17 is None not handled. Lines 23 and 28 are types disagree.",
+       "model_answer_md": "Line 12 is the missing annotation, and both errors on line 24 repeat it: they vanish once it is annotated. Of the two, `Returning Any` is Any leaks in (the `Any` comes from the untyped `weekly_cap`) and the untyped call is the missing annotation seen from the caller. Line 17 is None not handled. Lines 23 and 28 are types disagree.",
        "rubric": [
         "Line 12 is a missing annotation",
-        "Both errors on line 24 are consequences of line 12 and vanish when it is annotated (accept types disagree for the no-any-return error if the student says the Any comes from the untyped weekly_cap; seeing that line 12 is the root matters more than the sort)",
+        "Both errors on line 24 are consequences of line 12 and vanish when it is annotated: the no-any-return error is Any leaks in (the Any comes from the untyped weekly_cap) and the untyped call is a missing annotation seen from the caller (seeing that line 12 is the root matters more than the label)",
         "Line 17 is None not handled, and lines 23 and 28 are types disagree"
        ],
-       "weak_answers_md": "Counting six separate causes misses that the first error is the root of the two on line 24: annotate line 12 and the log shrinks from six errors to three. Sorting the `no-any-return` error under \"types disagree\" is acceptable only if the answer notes where the `Any` comes from."
+       "weak_answers_md": "Counting six separate causes misses that the first error is the root of the two on line 24: annotate line 12 and the log shrinks from six errors to three. Filing the `no-any-return` error under \"types disagree\" is the slip: mypy saw no clashing types there, only an `Any` that leaked in from the untyped `weekly_cap`."
       },
       {
        "label": "2",
